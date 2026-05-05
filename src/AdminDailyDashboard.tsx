@@ -18,11 +18,15 @@ async function sbGet(table: string, params = '') {
 }
 
 async function sbInsert(table: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
     body: JSON.stringify(body),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `Insert failed: ${res.status}`);
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -147,7 +151,13 @@ export default function AdminDailyDashboard() {
     setAuthLoading(true);
     const existing = await sbGet('users', `username=eq.${encodeURIComponent(username)}`);
     if (existing.length > 0) { alert('Username นี้ถูกใช้งานแล้ว'); setAuthLoading(false); return; }
-    await sbInsert('users', { full_name: fullName, username, password, role: 'employee' });
+    try {
+      await sbInsert('users', { full_name: fullName, username, password, role: 'employee' });
+    } catch (e: unknown) {
+      alert('เกิดข้อผิดพลาด: ' + (e instanceof Error ? e.message : String(e)));
+      setAuthLoading(false);
+      return;
+    }
     alert('สมัครสมาชิกเรียบร้อยแล้ว');
     setIsRegisterMode(false);
     setFullName(''); setUsername(''); setPassword('');
@@ -182,18 +192,24 @@ export default function AdminDailyDashboard() {
   const handleSubmitReport = async () => {
     if (!employeeName) { alert('กรุณากรอกชื่อพนักงานก่อนส่งรายงาน'); return; }
     setAuthLoading(true);
-    await sbInsert('reports', {
-      date: today, employee: employeeName,
-      check_in_time: checkInTime,
-      submit_time: new Date().toLocaleTimeString('th-TH'),
-      status: 'ส่งแล้ว',
-      completed_tasks: completedTasks, pending_tasks: pendingTasks,
-      issues_found: issuesFound, suggestions,
-      check_in_guests: checkInGuests, check_in_rooms: checkInRooms,
-      check_out_guests: checkOutGuests, check_out_rooms: checkOutRooms,
-      tm30_status: tm30Status, new_bookings: newBookings, new_booking_rooms: newBookingRooms,
-      invoice_rooms: invoiceRooms, invoice_total: invoiceTotal, invoice_room_numbers: invoiceRoomNumbers,
-    });
+    try {
+      await sbInsert('reports', {
+        date: today, employee: employeeName,
+        check_in_time: checkInTime,
+        submit_time: new Date().toLocaleTimeString('th-TH'),
+        status: 'ส่งแล้ว',
+        completed_tasks: completedTasks, pending_tasks: pendingTasks,
+        issues_found: issuesFound, suggestions,
+        check_in_guests: checkInGuests, check_in_rooms: checkInRooms,
+        check_out_guests: checkOutGuests, check_out_rooms: checkOutRooms,
+        tm30_status: tm30Status, new_bookings: newBookings, new_booking_rooms: newBookingRooms,
+        invoice_rooms: invoiceRooms, invoice_total: invoiceTotal, invoice_room_numbers: invoiceRoomNumbers,
+      });
+    } catch (e: unknown) {
+      alert('บันทึกไม่สำเร็จ: ' + (e instanceof Error ? e.message : String(e)));
+      setAuthLoading(false);
+      return;
+    }
     // refresh
     const params = currentUser?.role === 'admin'
       ? 'order=created_at.desc'
