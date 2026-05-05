@@ -83,7 +83,7 @@ export default function AdminDailyDashboard() {
   // IP
   const [clientIP, setClientIP]     = useState('');
   const [ipLoading, setIpLoading]   = useState(true);
-  const isOfficeNetwork = clientIP === OFFICE_IP;
+  const isOfficeNetwork = clientIP === '49.228.64.50';
 
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
