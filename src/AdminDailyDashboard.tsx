@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const OFFICE_IP    = '49.228.64.50'; // 🔧 เปลี่ยนเป็น IP จริงของออฟฟิศ
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
 
