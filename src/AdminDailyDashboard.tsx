@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const OFFICE_IP    = '184.22.163.172';
+// 🔧 ใส่ 3 ส่วนแรกของ IP ออฟฟิศ (ไม่ต้องใส่ส่วนสุดท้าย)
+const OFFICE_IP_PREFIX = '184.22.16';
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
 
@@ -154,7 +155,7 @@ export default function AdminDailyDashboard() {
   // IP
   const [clientIP, setClientIP]   = useState('');
   const [ipLoading, setIpLoading] = useState(true);
-  const isOfficeNetwork = clientIP === OFFICE_IP;
+  const isOfficeNetwork = clientIP.startsWith(OFFICE_IP_PREFIX);
 
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
