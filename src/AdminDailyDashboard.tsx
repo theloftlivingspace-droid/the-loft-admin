@@ -159,9 +159,9 @@ export default function AdminDailyDashboard() {
   const isOfficeNetwork = clientIP.startsWith(OFFICE_IP_PREFIX);
 
   useEffect(() => {
-    let link = document.querySelector("link[rel='apple-touch-icon']");
+    let link = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
     if (!link) {
-      link = document.createElement('link');
+      link = document.createElement('link') as HTMLLinkElement;
       link.rel = 'apple-touch-icon';
       document.head.appendChild(link);
     }
