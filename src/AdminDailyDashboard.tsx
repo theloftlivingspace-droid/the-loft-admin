@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import BookingInvoiceTodo from './BookingInvoiceTodo';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // 🔧 ใส่ 3 ส่วนแรกของ IP ออฟฟิศ (ไม่ต้องใส่ส่วนสุดท้าย)
@@ -381,6 +382,7 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'todo'>('dashboard');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-slate-900 to-amber-50 p-4 md:p-6">
@@ -412,6 +414,32 @@ export default function AdminDailyDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Admin Tab Switcher */}
+        {isAdmin && (
+          <div className="flex border-b mb-6 -mx-1">
+            {([
+              { key: 'dashboard', label: '📊 Dashboard' },
+              { key: 'todo',      label: '📋 Booking & Invoice To-Do' },
+            ] as const).map(t => (
+              <button key={t.key} onClick={() => setAdminTab(t.key)}
+                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors
+                  ${adminTab === t.key
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* To-Do Tab (admin only) */}
+        {isAdmin && adminTab === 'todo' && (
+          <BookingInvoiceTodo />
+        )}
+
+        {/* Dashboard Tab */}
+        {(!isAdmin || adminTab === 'dashboard') && <>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -641,6 +669,8 @@ export default function AdminDailyDashboard() {
           </button>
         </div>
       </div>
+
+        </> {/* end dashboard tab */}
 
       {/* Modal — แสดงสรุปอัตโนมัติ */}
       {selectedReport && (
