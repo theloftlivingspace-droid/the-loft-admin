@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const GAS_API = 'https://script.google.com/macros/s/AKfycby1BPnA-C_1UfgebHuNhaoey_N2CnmfLtPCPIwLFkJ4bPRQcfYIjggo977YB0DSugY/exec';
+const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BookingItem {
