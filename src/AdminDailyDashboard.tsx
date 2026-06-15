@@ -4,7 +4,7 @@ import BookingInvoiceTodo from './BookingInvoiceTodo';
 // ─── Config ───────────────────────────────────────────────────────────────────
 // 🔧 ใส่ 3 ส่วนแรกของ IP ออฟฟิศ (ไม่ต้องใส่ส่วนสุดท้าย)
 // v2: force rebuild for apple-touch-icon
-const OFFICE_IP_PREFIX = '49.228.65';
+const OFFICE_IP_PREFIX = '184.22.16';
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
 
@@ -191,6 +191,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo'>('dashboard');
 
   // Form — basic
   const [employeeName, setEmployeeName] = useState('');
@@ -382,7 +383,6 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'todo'>('dashboard');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-slate-900 to-amber-50 p-4 md:p-6">
