@@ -4,45 +4,168 @@ import { useState, useEffect, useCallback } from 'react';
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface BookingItem {
-  resId: string;
-  room: string;
-  guest: string;
-  checkin: string;
-  checkout: string;
-  channel: string;
-  note: string;
-  firstSeen: string;
-  isNewToday: boolean;
-  done: boolean;
-  matchKeys: string[];
+interface BookingRaw {
+  resId: string; room: string; guest: string;
+  checkin: string; checkout: string; channel: string; note: string;
+  firstSeen?: string; isNewToday?: boolean; done?: boolean;
+  matchKeys?: string[];
+}
+interface InvoiceRaw {
+  invoiceKey?: string; bookingId: string; room: string; guest: string;
+  checkin: string; checkout: string; nights: string | number; net: string | number;
+  groupNet?: string | number; isSplitFromMulti?: boolean;
+  splitIndex?: number; splitTotal?: number;
+  ota: string; status: string; detectedDate?: string; detectedToday?: boolean;
+  done?: boolean; matchKeys?: string[];
+  // old GAS format
+  date?: string;
 }
 
-interface InvoiceItem {
-  invoiceKey: string;
-  bookingId: string;
-  room: string;
-  guest: string;
-  checkin: string;
-  checkout: string;
-  nights: string | number;
-  net: string | number;
-  groupNet?: string | number;
-  isSplitFromMulti: boolean;
-  splitIndex?: number;
-  splitTotal?: number;
-  ota: string;
-  status: string;
-  detectedDate: string;
-  detectedToday: boolean;
-  done: boolean;
-  matchKeys: string[];
-}
+interface BookingItem extends BookingRaw { matchKeys: string[]; isNewToday: boolean; done: boolean; }
+interface InvoiceItem extends InvoiceRaw { matchKeys: string[]; invoiceKey: string; detectedToday: boolean; done: boolean; detectedDate: string; }
 
 interface DashboardData {
   today: string;
   booking: BookingItem[];
   invoice: InvoiceItem[];
+}
+
+// ─── Frontend Matching ────────────────────────────────────────────────────────
+function normName(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function nameTokenPrefixes(fullName: string): string[] {
+  return fullName.replace(/,/g, ' ').split(/\s+/)
+    .filter(t => t.length > 1)
+    .map(t => 'n6:' + normName(t).substring(0, 6))
+    .filter(k => k.length > 4);
+}
+
+function normDate(s: string): string {
+  if (!s) return '';
+  if (/T\d\d:\d\d/.test(s)) {
+    // UTC ISO → Bangkok (+7)
+    const d = new Date(s);
+    const bkk = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+    return bkk.toISOString().substring(0, 10);
+  }
+  return String(s).substring(0, 10);
+}
+
+function extractRoomNum(r: string): string {
+  const m = String(r || '').match(/(\d{3})/);
+  return m ? m[1] : '';
+}
+
+function buildBookingKeys(b: BookingRaw): string[] {
+  const keys: string[] = [];
+  // 1. Airbnb conf from resId: ABB-HMXXXXXX-YYYYMMDD
+  const confM = b.resId.match(/ABB-([A-Za-z0-9]{6,})-\d{8}/i);
+  if (confM) {
+    const c = confM[1].toUpperCase();
+    if (/^HM/.test(c)) keys.push('conf:' + c);
+  }
+  // 2. checkin + room
+  const ci = normDate(b.checkin);
+  const rm = extractRoomNum(b.room);
+  if (ci && rm) keys.push('cr:' + ci + ':' + rm);
+  // 3. name token prefixes (handles "Last, First" order)
+  nameTokenPrefixes(b.guest).forEach(p => keys.push(p));
+  // 4. full norm name
+  const nn = normName(b.guest.replace(/,/g, ' '));
+  if (nn.length >= 4) keys.push('n:' + nn);
+  return keys;
+}
+
+function buildInvoiceKeys(inv: InvoiceRaw): string[] {
+  const keys: string[] = [];
+  // 1. conf codes from bookingId or guest field
+  const bid = inv.bookingId || inv.invoiceKey || '';
+  // Airbnb: conf codes appear in bookingId or as HM... codes in guest
+  const confMatches = bid.match(/HM[A-Z0-9]{6,}/g) || [];
+  confMatches.forEach(c => keys.push('conf:' + c));
+  // Also check guest field for HM codes
+  const guestConfs = (inv.guest || '').match(/HM[A-Z0-9]{6,}/g) || [];
+  guestConfs.forEach(c => keys.push('conf:' + c));
+  // 2. checkin + each room (multi-room rows have comma-separated rooms)
+  const ci = normDate(inv.checkin);
+  const rooms = String(inv.room || '').split(',');
+  rooms.forEach(r => {
+    const rm = extractRoomNum(r);
+    if (ci && rm) keys.push('cr:' + ci + ':' + rm);
+  });
+  // 3. name token prefixes for each guest
+  const guests = String(inv.guest || '').split(',');
+  guests.forEach(g => nameTokenPrefixes(g.trim()).forEach(p => keys.push(p)));
+  // 4. full norm name
+  guests.forEach(g => {
+    const nn = normName(g);
+    if (nn.length >= 4) keys.push('n:' + nn);
+  });
+  return keys;
+}
+
+function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: InvoiceRaw[]; bookings?: BookingRaw[]; ledger?: InvoiceRaw[] }): DashboardData {
+  const today = raw.today || new Date().toISOString().substring(0, 10);
+  const bookingsRaw: BookingRaw[] = Array.isArray(raw.booking) ? raw.booking : Array.isArray(raw.bookings) ? raw.bookings : [];
+  const invoicesRaw: InvoiceRaw[] = Array.isArray(raw.invoice) ? raw.invoice : Array.isArray(raw.ledger) ? raw.ledger : [];
+
+  const booking: BookingItem[] = bookingsRaw.map(b => ({
+    ...b,
+    done: b.done ?? false,
+    isNewToday: b.isNewToday ?? false,
+    matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
+  }));
+
+  // Deduplicate invoices by bookingId, split multi-room
+  const seen = new Set<string>();
+  const invoice: InvoiceItem[] = [];
+  invoicesRaw.forEach(inv => {
+    const bid = inv.bookingId || inv.invoiceKey || '';
+    if (!bid || seen.has(bid)) return;
+    seen.add(bid);
+    const rooms = String(inv.room || '').split(',').map(r => r.trim()).filter(Boolean);
+    const guests = String(inv.guest || '').split(',').map(g => g.trim()).filter(Boolean);
+    const detectedDate = normDate(inv.detectedDate || inv.date || today);
+    const detectedToday = detectedDate === today || inv.detectedToday === true;
+    if (rooms.length > 1) {
+      rooms.forEach((room, i) => {
+        const iKey = bid + ':' + i;
+        const partial: InvoiceItem = {
+          ...inv,
+          invoiceKey: iKey,
+          room,
+          guest: guests[i] || inv.guest,
+          detectedDate,
+          detectedToday,
+          done: inv.done ?? false,
+          isSplitFromMulti: true,
+          splitIndex: i + 1,
+          splitTotal: rooms.length,
+          matchKeys: [],
+        };
+        partial.matchKeys = buildInvoiceKeys(partial);
+        invoice.push(partial);
+      });
+    } else {
+      const item: InvoiceItem = {
+        ...inv,
+        invoiceKey: bid,
+        detectedDate,
+        detectedToday,
+        done: inv.done ?? false,
+        isSplitFromMulti: inv.isSplitFromMulti ?? false,
+        matchKeys: [],
+      };
+      item.matchKeys = buildInvoiceKeys(item);
+      invoice.push(item);
+    }
+  });
+
+  return { today, booking, invoice };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -51,37 +174,26 @@ function buildKeySet(items: { matchKeys: string[] }[]): Set<string> {
   items.forEach(x => x.matchKeys.forEach(k => s.add(k)));
   return s;
 }
-
 function hasMatch(item: { matchKeys: string[] }, keySet: Set<string>): boolean {
   return item.matchKeys.some(k => keySet.has(k));
 }
-
 function jumpKey(item: { matchKeys: string[] }): string {
   return item.matchKeys.find(k => k.startsWith('n:')) || item.matchKeys[0] || '';
 }
-
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
   if (isNaN(v)) return String(n ?? '');
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
 function copyToClipboard(text: string): void {
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
-  }
+  } else { fallbackCopy(text); }
 }
-
 function fallbackCopy(text: string): void {
   const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
   try { document.execCommand('copy'); } catch (_) {}
   document.body.removeChild(ta);
 }
@@ -99,22 +211,18 @@ export default function BookingInvoiceTodo() {
   const [togglingId, setTogglingId] = useState<string>('');
 
   const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
+    setToast(msg); setTimeout(() => setToast(''), 2500);
   }, []);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await fetch(`${GAS_API}?action=getData`);
       const json = await res.json();
-      setData({ today: json.today || "", booking: Array.isArray(json.booking) ? json.booking : [], invoice: Array.isArray(json.invoice) ? json.invoice : [] });
+      setData(enrichData(json));
     } catch (e) {
       setError('โหลดข้อมูลไม่สำเร็จ: ' + String(e));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -122,15 +230,9 @@ export default function BookingInvoiceTodo() {
   const toggleBookingDone = async (resId: string, done: boolean) => {
     if (!data) return;
     setTogglingId(resId);
-    // Optimistic update
     setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done } : x) } : d);
-    try {
-      await fetch(`${GAS_API}?action=setBookingDone&id=${encodeURIComponent(resId)}&done=${done}`);
-    } catch {
-      // Revert
-      setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done: !done } : x) } : d);
-      showToast('บันทึกไม่สำเร็จ');
-    }
+    try { await fetch(`${GAS_API}?action=setBookingDone&id=${encodeURIComponent(resId)}&done=${done}`); }
+    catch { setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
     setTogglingId('');
   };
 
@@ -138,12 +240,8 @@ export default function BookingInvoiceTodo() {
     if (!data) return;
     setTogglingId(invoiceKey);
     setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done } : x) } : d);
-    try {
-      await fetch(`${GAS_API}?action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`);
-    } catch {
-      setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d);
-      showToast('บันทึกไม่สำเร็จ');
-    }
+    try { await fetch(`${GAS_API}?action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`); }
+    catch { setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
     setTogglingId('');
   };
 
@@ -158,21 +256,17 @@ export default function BookingInvoiceTodo() {
     }, 80);
   };
 
-  // ─── Loading / Error ───────────────────────────────────────────────────────
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
       กำลังโหลดข้อมูล...
     </div>
   );
-
   if (error) return (
     <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-      ⚠️ {error}
-      <button onClick={loadData} className="ml-4 underline">ลองใหม่</button>
+      ⚠️ {error}<button onClick={loadData} className="ml-4 underline">ลองใหม่</button>
     </div>
   );
-
   if (!data) return null;
 
   const invKeySet = buildKeySet(data.invoice);
@@ -186,10 +280,8 @@ export default function BookingInvoiceTodo() {
   const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done);
   const visibleInvoice = data.invoice.filter(x => showDoneInvoice || !x.done);
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="relative">
-      {/* Header bar */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
@@ -200,7 +292,6 @@ export default function BookingInvoiceTodo() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b mb-4">
         {([
           { key: 'booking', label: '📅 Booking To Add', count: bookingPending, flag: bookingNewToday },
@@ -219,7 +310,6 @@ export default function BookingInvoiceTodo() {
         ))}
       </div>
 
-      {/* Booking panel */}
       {activeTab === 'booking' && (
         <div>
           <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
@@ -271,7 +361,6 @@ export default function BookingInvoiceTodo() {
         </div>
       )}
 
-      {/* Invoice panel */}
       {activeTab === 'invoice' && (
         <div>
           <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
@@ -327,9 +416,8 @@ export default function BookingInvoiceTodo() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none">
           {toast}
         </div>
       )}
