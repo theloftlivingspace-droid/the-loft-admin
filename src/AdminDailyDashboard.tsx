@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import BookingInvoiceTodo from './BookingInvoiceTodo';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// 🔧 ใส่ 3 ส่วนแรกของ IP ออฟฟิศ (ไม่ต้องใส่ส่วนสุดท้าย)
-// v2: force rebuild for apple-touch-icon
-const OFFICE_IP_PREFIX = '49.228.65';
+// IP prefix โหลดจาก Supabase settings table
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
 
@@ -22,6 +20,14 @@ async function sbInsert(table: string, body: object) {
   await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
+    body: JSON.stringify(body),
+  });
+}
+
+async function sbUpsert(table: string, body: object) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(body),
   });
 }
@@ -157,7 +163,7 @@ export default function AdminDailyDashboard() {
   // IP
   const [clientIP, setClientIP]   = useState('');
   const [ipLoading, setIpLoading] = useState(true);
-  const isOfficeNetwork = clientIP.startsWith(OFFICE_IP_PREFIX);
+  const isOfficeNetwork = officeIpPrefix ? clientIP.startsWith(officeIpPrefix) : false;
 
   useEffect(() => {
     const existingLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
@@ -177,6 +183,16 @@ export default function AdminDailyDashboard() {
       .finally(() => setIpLoading(false));
   }, []);
 
+  useEffect(() => {
+    sbGet('settings', 'key=eq.office_ip_prefix')
+      .then(rows => {
+        if (rows && rows.length > 0) {
+          setOfficeIpPrefix(rows[0].value);
+          setIpPrefixInput(rows[0].value);
+        }
+      });
+  }, []);
+
   // Auth
   const [loggedIn, setLoggedIn]             = useState(false);
   const [username, setUsername]             = useState('');
@@ -192,6 +208,9 @@ export default function AdminDailyDashboard() {
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo'>('dashboard');
+  const [officeIpPrefix, setOfficeIpPrefix] = useState('');
+  const [ipPrefixInput, setIpPrefixInput]   = useState('');
+  const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
 
   // Form — basic
   const [employeeName, setEmployeeName] = useState('');
@@ -270,15 +289,23 @@ export default function AdminDailyDashboard() {
   const handleLogin = async () => {
     if (!username || !password) { alert('กรุณากรอก Username และ Password'); return; }
     setAuthLoading(true);
-    // Re-fetch IP fresh every login attempt
+    // Re-fetch IP + prefix fresh every login attempt
     let currentIP = clientIP;
+    let currentPrefix = officeIpPrefix;
     try {
-      const ipRes = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipRes.json();
-      currentIP = ipData.ip;
+      const [ipRes, prefixRows] = await Promise.all([
+        fetch('https://api.ipify.org?format=json').then(r => r.json()),
+        sbGet('settings', 'key=eq.office_ip_prefix'),
+      ]);
+      currentIP = ipRes.ip;
       setClientIP(currentIP);
+      if (prefixRows && prefixRows.length > 0) {
+        currentPrefix = prefixRows[0].value;
+        setOfficeIpPrefix(currentPrefix);
+        setIpPrefixInput(currentPrefix);
+      }
     } catch (_) {}
-    const isOfficeNow = currentIP.startsWith(OFFICE_IP_PREFIX);
+    const isOfficeNow = currentPrefix ? currentIP.startsWith(currentPrefix) : false;
     const results = await sbGet('users',
       `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
     setAuthLoading(false);
@@ -439,6 +466,46 @@ export default function AdminDailyDashboard() {
                 {t.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Admin IP Management */}
+        {isAdmin && adminTab === 'dashboard' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex-1">
+              <p className="text-xs font-semibold text-blue-700 mb-1">🌐 IP ปัจจุบัน (ของคุณ)</p>
+              <p className="font-mono text-sm font-bold text-blue-900">{clientIP || '...'}</p>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold text-blue-700 mb-1">🏢 Office IP Prefix (ที่ตั้งไว้)</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={ipPrefixInput}
+                  onChange={e => setIpPrefixInput(e.target.value)}
+                  placeholder="เช่น 49.228.65"
+                  className="border rounded-xl px-3 py-1.5 text-sm font-mono flex-1 focus:outline-none focus:border-blue-400"
+                />
+                <button
+                  onClick={async () => {
+                    setIpPrefixSaving(true);
+                    await sbUpsert('settings', { key: 'office_ip_prefix', value: ipPrefixInput });
+                    setOfficeIpPrefix(ipPrefixInput);
+                    setIpPrefixSaving(false);
+                  }}
+                  disabled={ipPrefixSaving || ipPrefixInput === officeIpPrefix}
+                  className="px-4 py-1.5 bg-blue-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:bg-blue-800 transition">
+                  {ipPrefixSaving ? '...' : 'บันทึก'}
+                </button>
+              </div>
+              <p className="text-xs text-blue-500 mt-1">
+                {clientIP && ipPrefixInput
+                  ? clientIP.startsWith(ipPrefixInput)
+                    ? '✅ IP ปัจจุบันตรงกับ Office'
+                    : '⚠️ IP ปัจจุบันไม่ตรงกับ Office — employee จะ login ไม่ได้'
+                  : ''}
+              </p>
+            </div>
           </div>
         )}
 
