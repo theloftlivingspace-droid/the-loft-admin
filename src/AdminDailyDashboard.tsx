@@ -451,8 +451,8 @@ export default function AdminDailyDashboard() {
           </div>
         </div>
 
-        {/* Admin Tab Switcher */}
-        {isAdmin && (
+        {/* Tab Switcher */}
+        {(
           <div className="flex border-b mb-6 -mx-1">
             {([
               { key: 'dashboard', label: '📊 Dashboard' },
@@ -509,13 +509,13 @@ export default function AdminDailyDashboard() {
           </div>
         )}
 
-        {/* To-Do Tab (admin only) */}
-        {isAdmin && adminTab === 'todo' && (
+        {/* To-Do Tab */}
+        {adminTab === 'todo' && (
           <BookingInvoiceTodo />
         )}
 
         {/* Dashboard Tab */}
-        {(!isAdmin || adminTab === 'dashboard') && <div>
+        {adminTab === 'dashboard' && <div>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
