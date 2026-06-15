@@ -109,7 +109,7 @@ export default function BookingInvoiceTodo() {
     try {
       const res = await fetch(`${GAS_API}?action=getData`);
       const json = await res.json();
-      setData(json);
+      setData({ today: json.today || "", booking: Array.isArray(json.booking) ? json.booking : [], invoice: Array.isArray(json.invoice) ? json.invoice : [] });
     } catch (e) {
       setError('โหลดข้อมูลไม่สำเร็จ: ' + String(e));
     } finally {
