@@ -163,7 +163,7 @@ export default function AdminDailyDashboard() {
   // IP
   const [clientIP, setClientIP]   = useState('');
   const [ipLoading, setIpLoading] = useState(true);
-  const isOfficeNetwork = officeIpPrefix ? clientIP.startsWith(officeIpPrefix) : false;
+
 
   useEffect(() => {
     const existingLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
@@ -273,6 +273,8 @@ export default function AdminDailyDashboard() {
       .then(d => setReports(Array.isArray(d) ? d : []))
       .finally(() => setReportsLoading(false));
   }, [loggedIn, currentUser]);
+
+  const isOfficeNetwork = officeIpPrefix ? clientIP.startsWith(officeIpPrefix) : false;
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
   const handleRegister = async () => {
