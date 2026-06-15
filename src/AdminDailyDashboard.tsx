@@ -270,12 +270,21 @@ export default function AdminDailyDashboard() {
   const handleLogin = async () => {
     if (!username || !password) { alert('กรุณากรอก Username และ Password'); return; }
     setAuthLoading(true);
+    // Re-fetch IP fresh every login attempt
+    let currentIP = clientIP;
+    try {
+      const ipRes = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipRes.json();
+      currentIP = ipData.ip;
+      setClientIP(currentIP);
+    } catch (_) {}
+    const isOfficeNow = currentIP.startsWith(OFFICE_IP_PREFIX);
     const results = await sbGet('users',
       `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
     setAuthLoading(false);
     if (!results || results.length === 0) { alert('Username หรือ Password ไม่ถูกต้อง'); return; }
     const matched: User = results[0];
-    if (matched.role === 'employee' && !isOfficeNetwork) {
+    if (matched.role === 'employee' && !isOfficeNow) {
       alert('⛔ ไม่อนุญาต\nพนักงานสามารถเข้าใช้งานได้เฉพาะเครือข่ายออฟฟิศเท่านั้น'); return;
     }
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
