@@ -439,7 +439,7 @@ export default function AdminDailyDashboard() {
         )}
 
         {/* Dashboard Tab */}
-        {(!isAdmin || adminTab === 'dashboard') && <>
+        {(!isAdmin || adminTab === 'dashboard') && <div>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -668,9 +668,10 @@ export default function AdminDailyDashboard() {
             {authLoading ? '⏳ กำลังบันทึก...' : submitted ? '✅ ส่งรายงานเรียบร้อยแล้ว' : 'ส่งรายงานประจำวัน'}
           </button>
         </div>
-      </div>
 
-        </> {/* end dashboard tab */}
+        </div> /* end dashboard tab */}
+
+      </div>
 
       {/* Modal — แสดงสรุปอัตโนมัติ */}
       {selectedReport && (
