@@ -46,12 +46,8 @@ function nameTokenPrefixes(fullName: string): string[] {
 
 function normDate(s: string): string {
   if (!s) return '';
-  if (/T\d\d:\d\d/.test(s)) {
-    // UTC ISO → Bangkok (+7)
-    const d = new Date(s);
-    const bkk = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-    return bkk.toISOString().substring(0, 10);
-  }
+  // T17:00:00.000Z = Bangkok midnight — just take the date part, no +7 shift
+  if (/T\d\d:\d\d/.test(s)) return String(s).substring(0, 10);
   return String(s).substring(0, 10);
 }
 
