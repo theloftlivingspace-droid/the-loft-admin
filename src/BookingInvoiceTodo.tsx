@@ -116,49 +116,26 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
     matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
   }));
 
-  // Deduplicate invoices by bookingId, split multi-room
+  // Deduplicate by invoiceKey (GAS already handles multi-guest splitting via bookingId#confCode)
   const seen = new Set<string>();
   const invoice: InvoiceItem[] = [];
   invoicesRaw.forEach(inv => {
-    const bid = inv.bookingId || inv.invoiceKey || '';
-    if (!bid || seen.has(bid)) return;
-    seen.add(bid);
-    const rooms = String(inv.room || '').split(',').map(r => r.trim()).filter(Boolean);
-    const guests = String(inv.guest || '').split(',').map(g => g.trim()).filter(Boolean);
+    const iKey = inv.invoiceKey || inv.bookingId || '';
+    if (!iKey || seen.has(iKey)) return;
+    seen.add(iKey);
     const detectedDate = normDate(inv.detectedDate || inv.date || today);
     const detectedToday = detectedDate === today || inv.detectedToday === true;
-    if (rooms.length > 1) {
-      rooms.forEach((room, i) => {
-        const iKey = bid + ':' + i;
-        const partial: InvoiceItem = {
-          ...inv,
-          invoiceKey: iKey,
-          room,
-          guest: guests[i] || inv.guest,
-          detectedDate,
-          detectedToday,
-          done: inv.done ?? false,
-          isSplitFromMulti: true,
-          splitIndex: i + 1,
-          splitTotal: rooms.length,
-          matchKeys: [],
-        };
-        partial.matchKeys = buildInvoiceKeys(partial);
-        invoice.push(partial);
-      });
-    } else {
-      const item: InvoiceItem = {
-        ...inv,
-        invoiceKey: bid,
-        detectedDate,
-        detectedToday,
-        done: inv.done ?? false,
-        isSplitFromMulti: inv.isSplitFromMulti ?? false,
-        matchKeys: [],
-      };
-      item.matchKeys = buildInvoiceKeys(item);
-      invoice.push(item);
-    }
+    const item: InvoiceItem = {
+      ...inv,
+      invoiceKey: iKey,
+      detectedDate,
+      detectedToday,
+      done: inv.done ?? false,
+      isSplitFromMulti: inv.isSplitFromMulti ?? false,
+      matchKeys: [],
+    };
+    item.matchKeys = buildInvoiceKeys(item);
+    invoice.push(item);
   });
 
   return { today, booking, invoice };
