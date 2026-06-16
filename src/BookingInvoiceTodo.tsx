@@ -242,7 +242,6 @@ export default function BookingInvoiceTodo() {
   );
   if (!data) return null;
 
-  const invKeySet = buildKeySet(data.invoice);
   const bkKeySet  = buildKeySet(data.booking);
 
   const bookingPending  = data.booking.filter(x => !x.done).length;
@@ -294,7 +293,7 @@ export default function BookingInvoiceTodo() {
           {visibleBooking.length === 0
             ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleBooking.map(item => {
-                const hasMat = hasMatch(item, invKeySet);
+                const matchedInvoices = data.invoice.filter(inv => inv.matchKeys.some(k => item.matchKeys.includes(k)));
                 const jk = jumpKey(item);
                 const isHl = highlighted === jk;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
@@ -320,11 +319,18 @@ export default function BookingInvoiceTodo() {
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.channel}</span>
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5 font-mono">{item.resId}</span>
-                        <button onClick={() => jumpTo('invoice', jk)}
-                          className={`text-xs border rounded-lg px-2 py-0.5 transition
-                            ${hasMat ? 'border-blue-400 text-blue-700 font-semibold hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-50'}`}>
-                          {hasMat ? '🧾 ดู Invoice' : '🧾 ไม่มี Invoice'}
-                        </button>
+                        {matchedInvoices.length === 0
+                          ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">🧾 ไม่มี Invoice</button>
+                          : matchedInvoices.map(inv => {
+                              const invJk = jumpKey(inv);
+                              return (
+                                <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', invJk)}
+                                  className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
+                                  🧾 NET ฿{formatNum(inv.net)}
+                                </button>
+                              );
+                            })
+                        }
                       </div>
                     </div>
                   </div>
