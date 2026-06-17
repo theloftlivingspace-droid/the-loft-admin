@@ -141,16 +141,10 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function buildKeySet(items: { matchKeys: string[] }[]): Set<string> {
-  const s = new Set<string>();
-  items.forEach(x => x.matchKeys.forEach(k => s.add(k)));
-  return s;
-}
-function hasMatch(item: { matchKeys: string[] }, keySet: Set<string>): boolean {
-  return item.matchKeys.some(k => keySet.has(k));
-}
-function jumpKey(item: { matchKeys: string[] }): string {
-  return item.matchKeys.find(k => k.startsWith('n:')) || item.matchKeys[0] || '';
+// Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
+function findMatches<T extends { matchKeys: string[] }>(item: { matchKeys: string[] }, candidates: T[]): T[] {
+  const mySet = new Set(item.matchKeys);
+  return candidates.filter(c => c.matchKeys.some(k => mySet.has(k)));
 }
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
@@ -217,13 +211,13 @@ export default function BookingInvoiceTodo() {
     setTogglingId('');
   };
 
-  const jumpTo = (tab: 'booking' | 'invoice', key: string) => {
+  const jumpTo = (tab: 'booking' | 'invoice', id: string) => {
     setActiveTab(tab);
     setTimeout(() => {
-      setHighlighted(key);
-      const el = document.querySelector(`[data-matchkey="${CSS.escape(key)}"]`);
+      setHighlighted(id);
+      const el = document.querySelector(`[data-itemid="${CSS.escape(id)}"]`);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      else showToast('ไม่พบรายการที่ตรงกัน');
+      else showToast('ไม่พบรายการที่ตรงกัน (อาจถูกซ่อนอยู่ — ลองกด "แสดงทั้งหมด")');
       setTimeout(() => setHighlighted(''), 3000);
     }, 80);
   };
@@ -240,8 +234,6 @@ export default function BookingInvoiceTodo() {
     </div>
   );
   if (!data) return null;
-
-  const bkKeySet  = buildKeySet(data.booking);
 
   const bookingPending  = data.booking.filter(x => !x.done).length;
   const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
@@ -292,12 +284,11 @@ export default function BookingInvoiceTodo() {
           {visibleBooking.length === 0
             ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleBooking.map(item => {
-                const matchedInvoices = data.invoice.filter(inv => inv.matchKeys.some(k => item.matchKeys.includes(k)));
-                const jk = jumpKey(item);
-                const isHl = highlighted === jk;
+                const matchedInvoices = findMatches(item, data.invoice);
+                const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
                 return (
-                  <div key={item.resId} data-matchkey={jk}
+                  <div key={item.resId} data-itemid={item.resId}
                     className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
                       ${item.isNewToday && !item.done ? 'bg-amber-50 border-amber-300' : ''}
                       ${item.done ? 'opacity-50 bg-green-50 border-green-200' : 'bg-white'}
@@ -320,15 +311,12 @@ export default function BookingInvoiceTodo() {
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5 font-mono">{item.resId}</span>
                         {matchedInvoices.length === 0
                           ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">🧾 ไม่มี Invoice</button>
-                          : matchedInvoices.map(inv => {
-                              const invJk = jumpKey(inv);
-                              return (
-                                <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', invJk)}
-                                  className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
-                                  🧾 NET ฿{formatNum(inv.net)}
-                                </button>
-                              );
-                            })
+                          : matchedInvoices.map(inv => (
+                              <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
+                                className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
+                                🧾 NET ฿{formatNum(inv.net)}
+                              </button>
+                            ))
                         }
                       </div>
                     </div>
@@ -350,11 +338,10 @@ export default function BookingInvoiceTodo() {
           {visibleInvoice.length === 0
             ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleInvoice.map(item => {
-                const hasMat = hasMatch(item, bkKeySet);
-                const jk = jumpKey(item);
-                const isHl = highlighted === jk;
+                const matchedBookings = findMatches(item, data.booking);
+                const isHl = highlighted === item.invoiceKey;
                 return (
-                  <div key={item.invoiceKey} data-matchkey={jk}
+                  <div key={item.invoiceKey} data-itemid={item.invoiceKey}
                     className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
                       ${item.detectedToday && !item.done ? 'bg-amber-50 border-amber-300' : ''}
                       ${item.done ? 'opacity-50 bg-green-50 border-green-200' : 'bg-white'}
@@ -380,11 +367,15 @@ export default function BookingInvoiceTodo() {
                             className="ml-0.5 hover:text-green-900 transition" title="copy ยอด">⎘</button>
                         </span>
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">ตรวจพบ {item.detectedDate}</span>
-                        <button onClick={() => jumpTo('booking', jk)}
-                          className={`text-xs border rounded-lg px-2 py-0.5 transition
-                            ${hasMat ? 'border-blue-400 text-blue-700 font-semibold hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-50'}`}>
-                          {hasMat ? '📅 ดู Booking' : '📅 ไม่มี Booking'}
-                        </button>
+                        {matchedBookings.length === 0
+                          ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">📅 ไม่มี Booking</button>
+                          : matchedBookings.map(bk => (
+                              <button key={bk.resId} onClick={() => jumpTo('booking', bk.resId)}
+                                className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
+                                📅 {bk.room} — {bk.guest}
+                              </button>
+                            ))
+                        }
                       </div>
                     </div>
                   </div>
