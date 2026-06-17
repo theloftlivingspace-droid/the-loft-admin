@@ -169,18 +169,18 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
   return candidates.filter(c => {
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) return false;
-    const onlyRoomDateKeys = overlap.every(k => k.startsWith('cr:'));
-    if (onlyRoomDateKeys) {
-      // Reject cr:-only matches when either side has an abnormally long stay (>14 nights).
-      // Such ranges usually mean the checkin/checkout fields are unreliable (e.g. unmatched
-      // SCB transfers spanning 30-70+ nights), and proximity checks on them produce false positives.
-      if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
-      // Require the actual stay date-ranges to genuinely overlap — not just be "close" (±2 days),
-      // since two different guests in the same room with back-to-back stays (normal turnover)
-      // would otherwise be wrongly matched by the ±2-day key-expansion window.
-      return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
-    }
-    return true;
+    const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
+    // A conf: (Airbnb confirmation code) match is unambiguous — trust it directly.
+    if (hasConfMatch) return true;
+    // Otherwise (n: name match and/or cr: room+date match), both are derived from a ±2-day
+    // key-expansion window and can produce false positives:
+    //   - cr: alone can match unrelated guests with back-to-back stays in the same room
+    //   - n: alone can match the SAME guest's other stay if they're a repeat guest checking
+    //     in again within a few days (e.g. Avto Dagdelen staying multiple times in March/April)
+    // So require the real stay date-ranges to genuinely overlap, and reject abnormally long
+    // stays (>14 nights) whose checkin/checkout fields are usually unreliable.
+    if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
+    return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
   });
 }
 function formatNum(n: string | number | undefined): string {
