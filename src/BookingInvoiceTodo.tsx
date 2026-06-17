@@ -142,9 +142,42 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
-function findMatches<T extends { matchKeys: string[] }>(item: { matchKeys: string[] }, candidates: T[]): T[] {
+// Includes a sanity check: if the ONLY overlapping keys are room+date (`cr:`) keys, we double-check
+// the real checkin dates are within 2 days of each other. This guards against invoices whose
+// checkin/checkout span is abnormally wide (e.g. unmatched SCB transfers spanning 30+ nights),
+// which would otherwise generate a wide date range of `cr:` keys and collide with unrelated bookings
+// in the same room.
+function daysBetween(a: string, b: string): number {
+  const da = new Date(a).getTime();
+  const db = new Date(b).getTime();
+  if (isNaN(da) || isNaN(db)) return 999;
+  return Math.abs(da - db) / 86400000;
+}
+function nightsOf(item: { checkin: string; checkout: string }): number {
+  const ci = new Date(item.checkin).getTime();
+  const co = new Date(item.checkout).getTime();
+  if (isNaN(ci) || isNaN(co)) return 0;
+  return (co - ci) / 86400000;
+}
+function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string }>(
+  item: { matchKeys: string[]; checkin: string; checkout: string },
+  candidates: T[]
+): T[] {
   const mySet = new Set(item.matchKeys);
-  return candidates.filter(c => c.matchKeys.some(k => mySet.has(k)));
+  return candidates.filter(c => {
+    const overlap = c.matchKeys.filter(k => mySet.has(k));
+    if (overlap.length === 0) return false;
+    const onlyRoomDateKeys = overlap.every(k => k.startsWith('cr:'));
+    if (onlyRoomDateKeys) {
+      // Reject cr:-only matches when either side has an abnormally long stay (>14 nights).
+      // Such ranges usually mean the checkin/checkout fields are unreliable (e.g. unmatched
+      // SCB transfers spanning 30-70+ nights), and proximity checks on them produce false positives.
+      if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
+      // require real checkin dates to be close, not just within the ±2-day key-expansion window
+      return daysBetween(item.checkin, c.checkin) <= 2;
+    }
+    return true;
+  });
 }
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
