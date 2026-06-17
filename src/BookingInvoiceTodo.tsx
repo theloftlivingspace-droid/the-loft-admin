@@ -147,11 +147,13 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 // checkin/checkout span is abnormally wide (e.g. unmatched SCB transfers spanning 30+ nights),
 // which would otherwise generate a wide date range of `cr:` keys and collide with unrelated bookings
 // in the same room.
-function daysBetween(a: string, b: string): number {
-  const da = new Date(a).getTime();
-  const db = new Date(b).getTime();
-  if (isNaN(da) || isNaN(db)) return 999;
-  return Math.abs(da - db) / 86400000;
+function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
+  const a1 = new Date(aCheckin).getTime();
+  const a2 = new Date(aCheckout).getTime();
+  const b1 = new Date(bCheckin).getTime();
+  const b2 = new Date(bCheckout).getTime();
+  if ([a1, a2, b1, b2].some(isNaN)) return false;
+  return a1 < b2 && b1 < a2;
 }
 function nightsOf(item: { checkin: string; checkout: string }): number {
   const ci = new Date(item.checkin).getTime();
@@ -173,8 +175,10 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
       // Such ranges usually mean the checkin/checkout fields are unreliable (e.g. unmatched
       // SCB transfers spanning 30-70+ nights), and proximity checks on them produce false positives.
       if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
-      // require real checkin dates to be close, not just within the ±2-day key-expansion window
-      return daysBetween(item.checkin, c.checkin) <= 2;
+      // Require the actual stay date-ranges to genuinely overlap — not just be "close" (±2 days),
+      // since two different guests in the same room with back-to-back stays (normal turnover)
+      // would otherwise be wrongly matched by the ±2-day key-expansion window.
+      return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
     }
     return true;
   });
