@@ -161,12 +161,20 @@ function nightsOf(item: { checkin: string; checkout: string }): number {
   if (isNaN(ci) || isNaN(co)) return 0;
   return (co - ci) / 86400000;
 }
-function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string }>(
+function isCancelledOrNoShow(room: string): boolean {
+  const r = room.toLowerCase();
+  return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
+}
+function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string }>(
   item: { matchKeys: string[]; checkin: string; checkout: string },
   candidates: T[]
 ): T[] {
   const mySet = new Set(item.matchKeys);
   return candidates.filter(c => {
+    // A booking flagged "cancel" or "no show" never actually generated revenue, so it should
+    // never be presented as a match for a real invoice (e.g. Gleb Iurkov "108 no show" was
+    // colliding with Dave Casey's real stay in the same room right after).
+    if (c.room && isCancelledOrNoShow(c.room)) return false;
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) return false;
     const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
