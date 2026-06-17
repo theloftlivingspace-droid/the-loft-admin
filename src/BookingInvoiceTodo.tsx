@@ -132,9 +132,8 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
       detectedToday,
       done: inv.done ?? false,
       isSplitFromMulti: inv.isSplitFromMulti ?? false,
-      matchKeys: [],
+      matchKeys: inv.matchKeys?.length ? inv.matchKeys : buildInvoiceKeys(inv),
     };
-    item.matchKeys = buildInvoiceKeys(item);
     invoice.push(item);
   });
 
