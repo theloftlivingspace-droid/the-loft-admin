@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import BookingInvoiceTodo from './BookingInvoiceTodo';
+import CheckInOut from './CheckInOut';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // IP prefix โหลดจาก Supabase settings table
@@ -207,7 +208,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout'>('dashboard');
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -459,6 +460,7 @@ export default function AdminDailyDashboard() {
             {([
               { key: 'dashboard', label: '📊 Dashboard' },
               { key: 'todo',      label: '📋 Booking & Invoice To-Do' },
+              { key: 'checkinout', label: '🏨 Check-in / Check-out' },
             ] as const).map(t => (
               <button key={t.key} onClick={() => setAdminTab(t.key)}
                 className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors
@@ -514,6 +516,9 @@ export default function AdminDailyDashboard() {
         {/* To-Do Tab */}
         {adminTab === 'todo' && (
           <BookingInvoiceTodo />
+        )}
+        {adminTab === 'checkinout' && (
+          <CheckInOut />
         )}
 
         {/* Dashboard Tab */}
