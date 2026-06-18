@@ -285,7 +285,7 @@ export default function BookingInvoiceTodo() {
   const invoicePending  = data.invoice.filter(x => !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
-  const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done).sort((a, b) => { const fa = a.firstSeen || a.checkin; const fb = b.firstSeen || b.checkin; return fb > fa ? 1 : -1; });
+  const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done).sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
   const visibleInvoice = data.invoice.filter(x => showDoneInvoice || !x.done).sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
 
   return (
