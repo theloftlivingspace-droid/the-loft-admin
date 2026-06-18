@@ -2,17 +2,27 @@ import { useState, useEffect, useCallback } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
-const DOCS_STORAGE_KEY = 'checkin_docs_v1'; // shared with CheckInOut tab (TM30/document uploads)
 
 interface DocFile {
-  name: string;
-  type: string;
-  data: string; // base64
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  url: string;
+  downloadUrl: string;
+  previewUrl: string;
   uploadedAt: string;
 }
 
-function loadAllDocs(): Record<string, DocFile[]> {
-  try { return JSON.parse(localStorage.getItem(DOCS_STORAGE_KEY) || '{}'); } catch { return {}; }
+// Docs are stored in Google Drive under folders named "{room}_{checkin}_{resId}"
+// (see CheckInOut tab for the upload UI). This fetches the full index in one call.
+async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
+  try {
+    const res = await fetch(`${GAS_API}?action=getAllDocs`);
+    const json = await res.json();
+    return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
+  } catch {
+    return {};
+  }
 }
 
 function normNameForSearch(s: string): string {
@@ -235,14 +245,14 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
   const [idx, setIdx] = useState(0);
   const doc = docs[idx];
   if (!doc) return null;
-  const isImg = doc.type.startsWith('image/');
-  const isPdf = doc.type === 'application/pdf';
+  const isImg = doc.mimeType.startsWith('image/');
+  const isPdf = doc.mimeType === 'application/pdf';
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">{doc.name}</span>
-          <span className="text-xs text-gray-400">{doc.uploadedAt}</span>
+          <span className="text-sm font-semibold truncate">{doc.fileName}</span>
+          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
@@ -252,22 +262,23 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.data} download={doc.name} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
           <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
         </div>
       </div>
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-        {isImg && <img src={doc.data} alt={doc.name} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={doc.data} className="w-full h-full rounded" title={doc.name} />}
+        {isImg && <img src={doc.downloadUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
+        {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
           <div className="bg-white rounded-xl p-8 text-center text-gray-500">
             <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.name}</div>
-            <a href={doc.data} download={doc.name} className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+            <div className="font-semibold mb-1">{doc.fileName}</div>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
           </div>
         )}
       </div>
     </div>
+
   );
 }
 
@@ -283,28 +294,31 @@ export default function BookingInvoiceTodo() {
   const [highlighted, setHighlighted] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string>('');
   const [search, setSearch] = useState('');
-  const [docs, setDocs] = useState<Record<string, DocFile[]>>(loadAllDocs);
+  const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
   const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
 
-  // Re-read docs from localStorage when tab gains focus (in case uploaded from CheckInOut tab)
-  useEffect(() => {
-    const refresh = () => setDocs(loadAllDocs());
-    window.addEventListener('focus', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('storage', refresh);
-    };
+  const refreshDocs = useCallback(async () => {
+    setDocs(await fetchAllDocsIndex());
   }, []);
 
-  // Find docs uploaded for a booking — matched by resId key, or by normalized guest name
-  // as a fallback (since CheckInOut may key docs by `roomNum+checkin` for non-resId stays).
+  // Load docs from Drive on mount, and re-fetch when tab regains focus
+  // (in case files were uploaded from the CheckInOut tab in the meantime).
+  useEffect(() => {
+    refreshDocs();
+    window.addEventListener('focus', refreshDocs);
+    return () => window.removeEventListener('focus', refreshDocs);
+  }, [refreshDocs]);
+
+  // Find docs uploaded for a booking. Drive folders are named "{room}_{checkin}_{resId}"
+  // — match on resId first, then fall back to room+checkin (covers stays without a resId).
   function findDocsForBooking(item: { resId: string; guest: string; checkin: string; room: string }): DocFile[] {
-    if (docs[item.resId]?.length) return docs[item.resId];
     const rm = (item.room.match(/\d{3}/) || [''])[0];
-    const altKey = rm + item.checkin;
-    if (docs[altKey]?.length) return docs[altKey];
-    return [];
+    const exactKey = `${rm}_${item.checkin}_${item.resId || 'noid'}`;
+    if (docs[exactKey]?.length) return docs[exactKey];
+    // Fallback: any folder for this room+checkin regardless of resId suffix
+    const prefix = `${rm}_${item.checkin}_`;
+    const matchKey = Object.keys(docs).find(k => k.startsWith(prefix));
+    return matchKey ? docs[matchKey] : [];
   }
 
   const showToast = useCallback((msg: string) => {
@@ -390,7 +404,7 @@ export default function BookingInvoiceTodo() {
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
           <p className="text-xs text-gray-400">วันนี้: {data.today}</p>
         </div>
-        <button onClick={loadData} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+        <button onClick={() => { loadData(); refreshDocs(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
           🔄 รีเฟรช
         </button>
       </div>

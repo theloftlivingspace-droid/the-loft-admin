@@ -5,7 +5,6 @@ const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpK
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
-const DOCS_STORAGE_KEY = 'checkin_docs_v1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
@@ -33,9 +32,12 @@ interface CheckoutStatus {
 }
 
 interface DocFile {
-  name: string;
-  type: string;
-  data: string; // base64
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  url: string;
+  downloadUrl: string;
+  previewUrl: string;
   uploadedAt: string;
 }
 
@@ -77,11 +79,42 @@ function channelIcon(ch: string): string {
   return '📋';
 }
 
-function loadDocs(): Record<string, DocFile[]> {
-  try { return JSON.parse(localStorage.getItem(DOCS_STORAGE_KEY) || '{}'); } catch { return {}; }
+// Drive doc helpers — calls GAS Web App endpoints (uploadDoc / deleteDoc / getAllDocs)
+async function uploadDocToDrive(room: string, checkin: string, resId: string, file: File): Promise<DocFile | null> {
+  const base64Data: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target?.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const res = await fetch(GAS_API, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'uploadDoc',
+      room, checkin, resId,
+      fileName: file.name,
+      mimeType: file.type,
+      base64Data,
+    }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'อัปโหลดไม่สำเร็จ');
+  return json as DocFile;
 }
-function saveDocs(docs: Record<string, DocFile[]>) {
-  localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(docs));
+
+async function deleteDocFromDrive(fileId: string): Promise<void> {
+  const res = await fetch(GAS_API, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deleteDoc', fileId }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'ลบไม่สำเร็จ');
+}
+
+async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
+  const res = await fetch(`${GAS_API}?action=getAllDocs`);
+  const json = await res.json();
+  return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
 }
 
 const STATUS_CONFIG = {
@@ -92,18 +125,19 @@ const STATUS_CONFIG = {
 };
 
 // ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
-function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void }) {
+function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void | Promise<void> }) {
   const [idx, setIdx] = useState(0);
+  const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
   if (!doc) return null;
-  const isImg = doc.type.startsWith('image/');
-  const isPdf = doc.type === 'application/pdf';
+  const isImg = doc.mimeType.startsWith('image/');
+  const isPdf = doc.mimeType === 'application/pdf';
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">{doc.name}</span>
-          <span className="text-xs text-gray-400">{doc.uploadedAt}</span>
+          <span className="text-sm font-semibold truncate">{doc.fileName}</span>
+          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
@@ -113,19 +147,27 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.data} download={doc.name} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
-          <button onClick={() => { onDelete(idx); if (idx >= docs.length - 1) setIdx(Math.max(0, idx - 1)); }} className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700">🗑</button>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <button disabled={deleting}
+            onClick={async () => {
+              setDeleting(true);
+              try { await onDelete(idx); if (idx >= docs.length - 1) setIdx(Math.max(0, idx - 1)); }
+              finally { setDeleting(false); }
+            }}
+            className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700 disabled:opacity-50">
+            {deleting ? '…' : '🗑'}
+          </button>
           <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
         </div>
       </div>
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-        {isImg && <img src={doc.data} alt={doc.name} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={doc.data} className="w-full h-full rounded" title={doc.name} />}
+        {isImg && <img src={doc.downloadUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
+        {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
           <div className="bg-white rounded-xl p-8 text-center text-gray-500">
             <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.name}</div>
-            <a href={doc.data} download={doc.name} className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+            <div className="font-semibold mb-1">{doc.fileName}</div>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
           </div>
         )}
       </div>
@@ -141,47 +183,58 @@ export default function CheckInOut() {
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
   const [lastRefresh, setLastRefresh] = useState('');
-  // Docs keyed by cardKey (resId or roomNum+checkin)
-  const [docs, setDocs]             = useState<Record<string, DocFile[]>>(loadDocs);
+  // Docs keyed by cardKey (resId or roomNum+checkin) — mirrors the Drive folder name "{room}_{checkin}_{resId}"
+  const [docs, setDocs]             = useState<Record<string, DocFile[]>>({});
+  const [docsLoading, setDocsLoading] = useState(true);
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadingKeyRef = useRef<string>('');
+  const uploadCtxRef = useRef<{ key: string; room: string; checkin: string; resId: string } | null>(null);
 
-  function handleUploadClick(cardKey: string) {
-    uploadingKeyRef.current = cardKey;
+  function folderKey(room: string, checkin: string, resId: string): string {
+    return `${room}_${checkin}_${resId || 'noid'}`;
+  }
+
+  async function refreshDocs() {
+    setDocsLoading(true);
+    try { setDocs(await fetchAllDocsIndex()); }
+    catch { /* non-fatal — docs panel just stays empty */ }
+    finally { setDocsLoading(false); }
+  }
+
+  function handleUploadClick(room: string, checkin: string, resId: string) {
+    uploadCtxRef.current = { key: folderKey(room, checkin, resId), room, checkin, resId };
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    const key = uploadingKeyRef.current;
-    if (!files.length || !key) return;
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const data64 = ev.target?.result as string;
-        setDocs(prev => {
-          const next = { ...prev, [key]: [...(prev[key] || []), {
-            name: file.name,
-            type: file.type,
-            data: data64,
-            uploadedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
-          }] };
-          saveDocs(next);
-          return next;
-        });
-      };
-      reader.readAsDataURL(file);
-    });
+    const ctx = uploadCtxRef.current;
     e.target.value = '';
+    if (!files.length || !ctx) return;
+    setUploadingFor(ctx.key);
+    try {
+      for (const file of files) {
+        const uploaded = await uploadDocToDrive(ctx.room, ctx.checkin, ctx.resId, file);
+        if (uploaded) {
+          setDocs(prev => ({ ...prev, [ctx.key]: [...(prev[ctx.key] || []), uploaded] }));
+        }
+      }
+    } catch (err) {
+      alert('อัปโหลดไม่สำเร็จ: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploadingFor(null);
+    }
   }
 
-  function deleteDoc(cardKey: string, idx: number) {
+  async function deleteDoc(cardKey: string, idx: number) {
+    const doc = (docs[cardKey] || [])[idx];
+    if (!doc) return;
+    await deleteDocFromDrive(doc.fileId);
     setDocs(prev => {
       const arr = [...(prev[cardKey] || [])];
       arr.splice(idx, 1);
       const next = arr.length ? { ...prev, [cardKey]: arr } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== cardKey));
-      saveDocs(next);
       return next;
     });
   }
@@ -274,7 +327,7 @@ export default function CheckInOut() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); refreshDocs(); }, []);
 
   const filtered = stays.filter(s => {
     if (view === 'checkedin')  return s.status === 'checked-in';
@@ -319,7 +372,7 @@ export default function CheckInOut() {
         <DocViewer
           docs={viewerDocs}
           onClose={() => setViewerKey(null)}
-          onDelete={i => { deleteDoc(viewerKey, i); if (viewerDocs.length <= 1) setViewerKey(null); }}
+          onDelete={async i => { await deleteDoc(viewerKey, i); if (viewerDocs.length <= 1) setViewerKey(null); }}
         />
       )}
 
@@ -334,7 +387,7 @@ export default function CheckInOut() {
             className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl bg-indigo-50 border-indigo-200 hover:bg-indigo-100 transition text-indigo-700 font-medium">
             📋 สร้าง TM30
           </a>
-          <button onClick={load}
+          <button onClick={() => { load(); refreshDocs(); }}
             className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
             🔄 รีเฟรช
           </button>
@@ -381,8 +434,9 @@ export default function CheckInOut() {
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
             const co     = coStatus[s.roomNum];
-            const cardKey = s.resId || s.roomNum + s.checkin;
+            const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
+            const isUploading = uploadingFor === cardKey;
             const roomReady = co?.inspected ?? null;
 
             return (
@@ -441,11 +495,12 @@ export default function CheckInOut() {
                     {/* Upload + doc list */}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <button
-                        onClick={() => handleUploadClick(cardKey)}
-                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition">
-                        📎 อัปโหลดเอกสาร
+                        disabled={isUploading}
+                        onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
+                        {isUploading ? '⏳ กำลังอัปโหลด…' : '📎 อัปโหลดเอกสาร'}
                       </button>
-                      {cardDocs.length > 0 && (
+                      {!docsLoading && cardDocs.length > 0 && (
                         <button
                           onClick={() => setViewerKey(cardKey)}
                           className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
