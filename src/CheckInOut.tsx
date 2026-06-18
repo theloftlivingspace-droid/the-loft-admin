@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
+const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
+const TM30_STORAGE_KEY = 'tm30_done';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
@@ -83,6 +85,18 @@ export default function CheckInOut() {
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
   const [lastRefresh, setLastRefresh] = useState('');
+  // TM30 done — keyed by resId, persisted in localStorage
+  const [tm30Done, setTm30Done] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem(TM30_STORAGE_KEY) || '{}'); } catch { return {}; }
+  });
+
+  function toggleTm30(resId: string) {
+    setTm30Done(prev => {
+      const next = { ...prev, [resId]: !prev[resId] };
+      localStorage.setItem(TM30_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -224,10 +238,16 @@ export default function CheckInOut() {
           <h2 className="text-lg font-bold text-blue-950">สถานะห้องพัก</h2>
           <p className="text-xs text-gray-400">อัปเดต {lastRefresh} · วันนี้ {today()}</p>
         </div>
-        <button onClick={load}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
-          🔄 รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl bg-indigo-50 border-indigo-200 hover:bg-indigo-100 transition text-indigo-700 font-medium">
+            📋 สร้าง TM30
+          </a>
+          <button onClick={load}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+            🔄 รีเฟรช
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI row */}
@@ -270,8 +290,11 @@ export default function CheckInOut() {
           {filtered.map(s => {
             const cfg = STATUS_CONFIG[s.status];
             const co  = coStatus[s.roomNum];
+            const cardKey = s.resId || s.roomNum + s.checkin;
+            // Room ready = checkout log shows "ผ่าน" for this room
+            const roomReady = co?.inspected ?? null;
             return (
-              <div key={s.resId || s.roomNum + s.checkin}
+              <div key={cardKey}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* Top bar */}
                 <div className={`${cfg.bg} px-4 py-2 flex items-center justify-between`}>
@@ -328,15 +351,42 @@ export default function CheckInOut() {
                     )}
                   </div>
 
-                  {/* Checkout status badge */}
-                  {(s.status === 'checking-out-today' || s.status === 'checked-in') && co && (
-                    <div className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                      ${co.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                     : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                      <span>{co.inspected ? '✅' : '❌'}</span>
-                      <span>{co.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
-                    </div>
-                  )}
+                  {/* Right-side badges */}
+                  <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                    {/* Checkout status badge for checked-in / checking-out */}
+                    {(s.status === 'checking-out-today' || s.status === 'checked-in') && co && (
+                      <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
+                        ${co.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                       : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                        <span>{co.inspected ? '✅' : '❌'}</span>
+                        <span>{co.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
+                      </div>
+                    )}
+
+                    {/* Room ready badge for arriving-today */}
+                    {s.status === 'arriving-today' && (
+                      <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
+                        ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
+                                              : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
+                        <span>{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
+                        <span>{roomReady === true ? 'พร้อม' : roomReady === false ? 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
+                      </div>
+                    )}
+
+                    {/* TM30 checkbox for checked-in */}
+                    {s.status === 'checked-in' && (
+                      <button
+                        onClick={() => toggleTm30(cardKey)}
+                        className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium border transition
+                          ${tm30Done[cardKey]
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-indigo-200 hover:text-indigo-400'}`}>
+                        <span>{tm30Done[cardKey] ? '✅' : '☐'}</span>
+                        <span>TM30</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Checkout details (for checkout-today only) */}
