@@ -2,6 +2,27 @@ import { useState, useEffect, useCallback } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
+const DOCS_STORAGE_KEY = 'checkin_docs_v1'; // shared with CheckInOut tab (TM30/document uploads)
+
+interface DocFile {
+  name: string;
+  type: string;
+  data: string; // base64
+  uploadedAt: string;
+}
+
+function loadAllDocs(): Record<string, DocFile[]> {
+  try { return JSON.parse(localStorage.getItem(DOCS_STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+
+function normNameForSearch(s: string): string {
+  return (s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BookingRaw {
@@ -209,6 +230,47 @@ function fallbackCopy(text: string): void {
   document.body.removeChild(ta);
 }
 
+// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
+function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) {
+  const [idx, setIdx] = useState(0);
+  const doc = docs[idx];
+  if (!doc) return null;
+  const isImg = doc.type.startsWith('image/');
+  const isPdf = doc.type === 'application/pdf';
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-semibold truncate">{doc.name}</span>
+          <span className="text-xs text-gray-400">{doc.uploadedAt}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {docs.length > 1 && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
+              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
+              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
+            </div>
+          )}
+          <a href={doc.data} download={doc.name} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+        {isImg && <img src={doc.data} alt={doc.name} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
+        {isPdf && <iframe src={doc.data} className="w-full h-full rounded" title={doc.name} />}
+        {!isImg && !isPdf && (
+          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
+            <div className="text-4xl mb-3">📄</div>
+            <div className="font-semibold mb-1">{doc.name}</div>
+            <a href={doc.data} download={doc.name} className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BookingInvoiceTodo() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -220,6 +282,30 @@ export default function BookingInvoiceTodo() {
   const [toast, setToast] = useState('');
   const [highlighted, setHighlighted] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string>('');
+  const [search, setSearch] = useState('');
+  const [docs, setDocs] = useState<Record<string, DocFile[]>>(loadAllDocs);
+  const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
+
+  // Re-read docs from localStorage when tab gains focus (in case uploaded from CheckInOut tab)
+  useEffect(() => {
+    const refresh = () => setDocs(loadAllDocs());
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+
+  // Find docs uploaded for a booking — matched by resId key, or by normalized guest name
+  // as a fallback (since CheckInOut may key docs by `roomNum+checkin` for non-resId stays).
+  function findDocsForBooking(item: { resId: string; guest: string; checkin: string; room: string }): DocFile[] {
+    if (docs[item.resId]?.length) return docs[item.resId];
+    const rm = (item.room.match(/\d{3}/) || [''])[0];
+    const altKey = rm + item.checkin;
+    if (docs[altKey]?.length) return docs[altKey];
+    return [];
+  }
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 2500);
@@ -285,11 +371,20 @@ export default function BookingInvoiceTodo() {
   const invoicePending  = data.invoice.filter(x => !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
-  const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done).sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
-  const visibleInvoice = data.invoice.filter(x => showDoneInvoice || !x.done).sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
+  const searchNorm = normNameForSearch(search);
+  const visibleBooking = data.booking
+    .filter(x => showDoneBooking || !x.done)
+    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
+    .sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
+  const visibleInvoice = data.invoice
+    .filter(x => showDoneInvoice || !x.done)
+    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
+    .sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
 
   return (
     <div className="relative">
+      {viewerDocs && <DocViewer docs={viewerDocs} onClose={() => setViewerDocs(null)} />}
+
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
@@ -298,6 +393,22 @@ export default function BookingInvoiceTodo() {
         <button onClick={loadData} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
           🔄 รีเฟรช
         </button>
+      </div>
+
+      {/* Name search */}
+      <div className="relative mb-4">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="ค้นหาชื่อแขก…"
+          className="w-full pl-9 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">✕</button>
+        )}
       </div>
 
       <div className="flex border-b mb-4">
@@ -327,11 +438,12 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleBooking.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
             : visibleBooking.map(item => {
                 const matchedInvoices = findMatches(item, data.invoice);
                 const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
+                const itemDocs = findDocsForBooking(item);
                 return (
                   <div key={item.resId} data-itemid={item.resId}
                     className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
@@ -354,6 +466,12 @@ export default function BookingInvoiceTodo() {
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.channel}</span>
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5 font-mono">{item.resId}</span>
+                        {itemDocs.length > 0 && (
+                          <button onClick={() => setViewerDocs(itemDocs)}
+                            className="text-xs border border-indigo-300 text-indigo-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-indigo-50 transition flex items-center gap-1">
+                            🗂 เอกสาร ({itemDocs.length})
+                          </button>
+                        )}
                         {matchedInvoices.length === 0
                           ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">🧾 ไม่มี Invoice</button>
                           : matchedInvoices.map(inv => (
@@ -381,7 +499,7 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleInvoice.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
             : visibleInvoice.map(item => {
                 const matchedBookings = findMatches(item, data.booking);
                 const isHl = highlighted === item.invoiceKey;

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
-const TM30_STORAGE_KEY = 'tm30_done';
+const DOCS_STORAGE_KEY = 'checkin_docs_v1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
@@ -30,6 +30,13 @@ interface CheckoutStatus {
   cleanedBy: string;
   issues: string;
   date: string;
+}
+
+interface DocFile {
+  name: string;
+  type: string;
+  data: string; // base64
+  uploadedAt: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,12 +77,61 @@ function channelIcon(ch: string): string {
   return '📋';
 }
 
+function loadDocs(): Record<string, DocFile[]> {
+  try { return JSON.parse(localStorage.getItem(DOCS_STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+function saveDocs(docs: Record<string, DocFile[]>) {
+  localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(docs));
+}
+
 const STATUS_CONFIG = {
   'checked-in':        { label: 'เช็คอินแล้ว',       bg: 'bg-emerald-500', text: 'text-white',        dot: 'bg-white' },
   'arriving-today':    { label: 'เข้าวันนี้',          bg: 'bg-amber-400',   text: 'text-amber-900',    dot: 'bg-amber-900' },
   'checking-out-today':{ label: 'เช็คเอาท์วันนี้',    bg: 'bg-orange-500',  text: 'text-white',        dot: 'bg-white' },
   'arriving-soon':     { label: 'เข้าเร็วๆ นี้',      bg: 'bg-sky-400',     text: 'text-white',        dot: 'bg-white' },
 };
+
+// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
+function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void }) {
+  const [idx, setIdx] = useState(0);
+  const doc = docs[idx];
+  if (!doc) return null;
+  const isImg = doc.type.startsWith('image/');
+  const isPdf = doc.type === 'application/pdf';
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-semibold truncate">{doc.name}</span>
+          <span className="text-xs text-gray-400">{doc.uploadedAt}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {docs.length > 1 && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
+              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
+              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
+            </div>
+          )}
+          <a href={doc.data} download={doc.name} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <button onClick={() => { onDelete(idx); if (idx >= docs.length - 1) setIdx(Math.max(0, idx - 1)); }} className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700">🗑</button>
+          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+        {isImg && <img src={doc.data} alt={doc.name} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
+        {isPdf && <iframe src={doc.data} className="w-full h-full rounded" title={doc.name} />}
+        {!isImg && !isPdf && (
+          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
+            <div className="text-4xl mb-3">📄</div>
+            <div className="font-semibold mb-1">{doc.name}</div>
+            <a href={doc.data} download={doc.name} className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CheckInOut() {
@@ -85,15 +141,47 @@ export default function CheckInOut() {
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
   const [lastRefresh, setLastRefresh] = useState('');
-  // TM30 done — keyed by resId, persisted in localStorage
-  const [tm30Done, setTm30Done] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem(TM30_STORAGE_KEY) || '{}'); } catch { return {}; }
-  });
+  // Docs keyed by cardKey (resId or roomNum+checkin)
+  const [docs, setDocs]             = useState<Record<string, DocFile[]>>(loadDocs);
+  const [viewerKey, setViewerKey]   = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadingKeyRef = useRef<string>('');
 
-  function toggleTm30(resId: string) {
-    setTm30Done(prev => {
-      const next = { ...prev, [resId]: !prev[resId] };
-      localStorage.setItem(TM30_STORAGE_KEY, JSON.stringify(next));
+  function handleUploadClick(cardKey: string) {
+    uploadingKeyRef.current = cardKey;
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const key = uploadingKeyRef.current;
+    if (!files.length || !key) return;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const data64 = ev.target?.result as string;
+        setDocs(prev => {
+          const next = { ...prev, [key]: [...(prev[key] || []), {
+            name: file.name,
+            type: file.type,
+            data: data64,
+            uploadedAt: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+          }] };
+          saveDocs(next);
+          return next;
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  }
+
+  function deleteDoc(cardKey: string, idx: number) {
+    setDocs(prev => {
+      const arr = [...(prev[cardKey] || [])];
+      arr.splice(idx, 1);
+      const next = arr.length ? { ...prev, [cardKey]: arr } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== cardKey));
+      saveDocs(next);
       return next;
     });
   }
@@ -102,7 +190,6 @@ export default function CheckInOut() {
     setLoading(true);
     setError('');
     try {
-      // ── Sheet1 (via GAS API) ──────────────────────────────────────────────
       const res = await fetch(`${GAS_API}?action=getRoomStatus`);
       if (!res.ok) throw new Error('โหลดข้อมูลห้องไม่สำเร็จ');
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
@@ -110,8 +197,8 @@ export default function CheckInOut() {
 
       const tod = today();
       const soon = addDays(tod, 5);
-
       const list: Stay[] = [];
+
       for (const row of json.stays) {
         const ciStr = (row.checkin || '').substring(0, 10);
         const coStr = (row.checkout || '').substring(0, 10);
@@ -120,20 +207,17 @@ export default function CheckInOut() {
         const daysUntil = diffDays(tod, ciStr);
         const daysLeft  = diffDays(tod, coStr);
 
-        // Filter: currently staying OR arriving within 5 days
-        const checkedIn   = ciStr <= tod && coStr > tod;
-        const arrivingToday = ciStr === tod;
+        const checkedIn        = ciStr <= tod && coStr > tod;
+        const arrivingToday    = ciStr === tod;
         const checkingOutToday = coStr === tod && ciStr < tod;
-        const arrivingSoon = ciStr > tod && ciStr <= soon;
+        const arrivingSoon     = ciStr > tod && ciStr <= soon;
 
         if (!checkedIn && !arrivingSoon && !checkingOutToday) continue;
 
         let status: Stay['status'] = 'checked-in';
-        if (arrivingToday)       status = 'arriving-today';
+        if (arrivingToday)        status = 'arriving-today';
         else if (checkingOutToday) status = 'checking-out-today';
-        else if (arrivingSoon)   status = 'arriving-soon';
-
-        const nights = diffDays(ciStr, coStr);
+        else if (arrivingSoon)    status = 'arriving-soon';
 
         list.push({
           room:     row.room || '',
@@ -144,41 +228,36 @@ export default function CheckInOut() {
           channel:  row.channel || '',
           resId:    row.resId || '',
           note:     row.note || '',
-          nights,
+          nights:   diffDays(ciStr, coStr),
           status,
           daysLeft,
           daysUntil,
         });
       }
 
-      // Sort: checking-out-today first, then arriving-today, then checked-in (by checkout asc), then arriving-soon
       const ORDER = { 'checking-out-today': 0, 'arriving-today': 1, 'checked-in': 2, 'arriving-soon': 3 };
       list.sort((a, b) => {
         const od = ORDER[a.status] - ORDER[b.status];
-        if (od !== 0) return od;
-        return a.checkout.localeCompare(b.checkout);
+        return od !== 0 ? od : a.checkout.localeCompare(b.checkout);
       });
-
       setStays(list);
       setLastRefresh(new Date().toLocaleTimeString('th-TH'));
 
-      // ── Checkout log (Google Sheets CSV) ────────────────────────────────────
+      // Checkout log
       try {
         const csvUrl = `https://docs.google.com/spreadsheets/d/${CHECKOUT_LOG_ID}/export?format=csv&gid=${CHECKOUT_GID}`;
         const cr = await fetch(csvUrl);
         if (cr.ok) {
           const csv = await cr.text();
-          const rows = csv.trim().split('\n').map(r =>
-            r.split(',').map(c => c.replace(/^"|"$/g, '').trim())
-          );
+          const rows = csv.trim().split('\n').map(r => r.split(',').map(c => c.replace(/^"|"$/g, '').trim()));
           const h = rows[0];
           const map: Record<string, CheckoutStatus> = {};
           for (const row of rows.slice(1)) {
-            const room = roomNum(row[h.indexOf('ห้อง')] || row[0] || '');
-            if (!room) continue;
-            map[room] = {
-              room,
-              inspected:   (row[h.indexOf('ตรวจสอบ')] || '').toLowerCase().includes('ผ่าน') || (row[h.indexOf('สถานะ')] || '').toLowerCase().includes('ผ่าน'),
+            const rm = roomNum(row[h.indexOf('ห้อง')] || row[0] || '');
+            if (!rm) continue;
+            map[rm] = {
+              room: rm,
+              inspected: (row[h.indexOf('ตรวจสอบ')] || '').toLowerCase().includes('ผ่าน') || (row[h.indexOf('สถานะ')] || '').toLowerCase().includes('ผ่าน'),
               inspectedBy: row[h.indexOf('ผู้ตรวจ')] || '',
               cleanedBy:   row[h.indexOf('ผู้ทำความสะอาด')] || row[h.indexOf('แม่บ้าน')] || '',
               issues:      row[h.indexOf('ปัญหา')] || row[h.indexOf('หมายเหตุ')] || '',
@@ -187,8 +266,7 @@ export default function CheckInOut() {
           }
           setCoStatus(map);
         }
-      } catch (_) { /* checkout log optional */ }
-
+      } catch (_) { /* optional */ }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
     } finally {
@@ -198,7 +276,6 @@ export default function CheckInOut() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
   const filtered = stays.filter(s => {
     if (view === 'checkedin')  return s.status === 'checked-in';
     if (view === 'arrivals')   return s.status === 'arriving-today' || s.status === 'arriving-soon';
@@ -221,7 +298,6 @@ export default function CheckInOut() {
       </div>
     </div>
   );
-
   if (error) return (
     <div className="text-center py-16 text-red-500">
       <div className="text-2xl mb-2">⚠️</div>
@@ -230,8 +306,23 @@ export default function CheckInOut() {
     </div>
   );
 
+  const viewerDocs = viewerKey ? (docs[viewerKey] || []) : [];
+
   return (
     <div className="pb-8">
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp"
+        multiple className="hidden" onChange={handleFileChange} />
+
+      {/* Doc viewer modal */}
+      {viewerKey && viewerDocs.length > 0 && (
+        <DocViewer
+          docs={viewerDocs}
+          onClose={() => setViewerKey(null)}
+          onDelete={i => { deleteDoc(viewerKey, i); if (viewerDocs.length <= 1) setViewerKey(null); }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -288,11 +379,12 @@ export default function CheckInOut() {
       ) : (
         <div className="space-y-3">
           {filtered.map(s => {
-            const cfg = STATUS_CONFIG[s.status];
-            const co  = coStatus[s.roomNum];
+            const cfg    = STATUS_CONFIG[s.status];
+            const co     = coStatus[s.roomNum];
             const cardKey = s.resId || s.roomNum + s.checkin;
-            // Room ready = checkout log shows "ผ่าน" for this room
+            const cardDocs = docs[cardKey] || [];
             const roomReady = co?.inspected ?? null;
+
             return (
               <div key={cardKey}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -338,20 +430,32 @@ export default function CheckInOut() {
                       <span className="text-xs text-gray-400">{s.nights} คืน</span>
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">
-                        📅 {s.checkin}
-                      </span>
+                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">📅 {s.checkin}</span>
                       <span className="text-gray-300">→</span>
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">
-                        {s.checkout}
-                      </span>
+                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">{s.checkout}</span>
                     </div>
                     {s.note && (
                       <p className="mt-1.5 text-xs text-gray-400 italic truncate">📝 {s.note}</p>
                     )}
+
+                    {/* Upload + doc list */}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        onClick={() => handleUploadClick(cardKey)}
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition">
+                        📎 อัปโหลดเอกสาร
+                      </button>
+                      {cardDocs.length > 0 && (
+                        <button
+                          onClick={() => setViewerKey(cardKey)}
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
+                          🗂 ดูเอกสาร ({cardDocs.length})
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Right-side badges */}
+                  {/* Right badges */}
                   <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                     {/* Checkout status badge for checked-in / checking-out */}
                     {(s.status === 'checking-out-today' || s.status === 'checked-in') && co && (
@@ -373,28 +477,15 @@ export default function CheckInOut() {
                         <span>{roomReady === true ? 'พร้อม' : roomReady === false ? 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
                       </div>
                     )}
-
-                    {/* TM30 checkbox for checked-in */}
-                    {s.status === 'checked-in' && (
-                      <button
-                        onClick={() => toggleTm30(cardKey)}
-                        className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium border transition
-                          ${tm30Done[cardKey]
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-indigo-200 hover:text-indigo-400'}`}>
-                        <span>{tm30Done[cardKey] ? '✅' : '☐'}</span>
-                        <span>TM30</span>
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {/* Checkout details (for checkout-today only) */}
                 {s.status === 'checking-out-today' && co && (
                   <div className="mx-4 mb-3 p-2.5 bg-gray-50 rounded-xl text-[11px] text-gray-500 space-y-0.5">
-                    {co.cleanedBy && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
+                    {co.cleanedBy   && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
                     {co.inspectedBy && <div>👁️ ตรวจโดย: <span className="text-gray-700">{co.inspectedBy}</span></div>}
-                    {co.issues && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
+                    {co.issues      && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
                   </div>
                 )}
               </div>
