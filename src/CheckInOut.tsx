@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const SHEET1_URL = 'https://raw.githubusercontent.com/theloftlivingspace-droid/payout-income-log/main/data/sheet1.json';
+const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
 
@@ -31,22 +31,6 @@ interface CheckoutStatus {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function toDate(raw: string | null | undefined): Date | null {
-  if (!raw) return null;
-  const s = String(raw).trim();
-  if (!s) return null;
-  // ISO with T (from GAS): 2026-04-02T17:00:00.000Z
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d;
-  return null;
-}
-
-function toDateOnly(raw: string | null | undefined): string {
-  const d = toDate(raw);
-  if (!d) return '';
-  return d.toISOString().slice(0, 10);
-}
-
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -104,28 +88,19 @@ export default function CheckInOut() {
     setLoading(true);
     setError('');
     try {
-      // ── Sheet1 ──────────────────────────────────────────────────────────────
-      const res = await fetch(SHEET1_URL + '?t=' + Date.now());
-      if (!res.ok) throw new Error('Sheet1 fetch failed');
-      const raw: (string | number | null)[][] = await res.json();
-      const headers = (raw[0] as string[]).map(h => String(h).trim());
-      const idx = {
-        room:    headers.indexOf('เลขห้อง'),
-        guest:   headers.indexOf('ชื่อแขก'),
-        ci:      headers.indexOf('เช็คอิน'),
-        co:      headers.indexOf('เช็คเอาท์'),
-        channel: headers.indexOf('Channel'),
-        resId:   headers.indexOf('ResId'),
-        note:    headers.indexOf('Note'),
-      };
+      // ── Sheet1 (via GAS API) ──────────────────────────────────────────────
+      const res = await fetch(`${GAS_API}?action=getRoomStatus`);
+      if (!res.ok) throw new Error('โหลดข้อมูลห้องไม่สำเร็จ');
+      const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
+      if (!Array.isArray(json.stays)) throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
 
       const tod = today();
       const soon = addDays(tod, 5);
 
       const list: Stay[] = [];
-      for (const row of raw.slice(1)) {
-        const ciStr = toDateOnly(row[idx.ci] as string);
-        const coStr = toDateOnly(row[idx.co] as string);
+      for (const row of json.stays) {
+        const ciStr = (row.checkin || '').substring(0, 10);
+        const coStr = (row.checkout || '').substring(0, 10);
         if (!ciStr || !coStr) continue;
 
         const daysUntil = diffDays(tod, ciStr);
@@ -147,14 +122,14 @@ export default function CheckInOut() {
         const nights = diffDays(ciStr, coStr);
 
         list.push({
-          room:     String(row[idx.room] || ''),
-          roomNum:  roomNum(String(row[idx.room] || '')),
-          guest:    String(row[idx.guest] || ''),
+          room:     row.room || '',
+          roomNum:  roomNum(row.room || ''),
+          guest:    row.guest || '',
           checkin:  ciStr,
           checkout: coStr,
-          channel:  String(row[idx.channel] || ''),
-          resId:    String(row[idx.resId] || ''),
-          note:     String(row[idx.note] || ''),
+          channel:  row.channel || '',
+          resId:    row.resId || '',
+          note:     row.note || '',
           nights,
           status,
           daysLeft,
