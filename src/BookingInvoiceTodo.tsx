@@ -3,37 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 
-interface DocFile {
-  fileId: string;
-  fileName: string;
-  mimeType: string;
-  url: string;
-  downloadUrl: string;
-  previewUrl: string;
-  uploadedAt: string;
-}
-
-// Docs are stored in Google Drive under folders named "{room}_{checkin}_{resId}"
-// (see CheckInOut tab for the upload UI). This fetches the full index in one call.
-async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
-  try {
-    const res = await fetch(`${GAS_API}?action=getAllDocs`);
-    const json = await res.json();
-    return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function normNameForSearch(s: string): string {
-  return (s || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BookingRaw {
   resId: string; room: string; guest: string;
@@ -89,12 +58,10 @@ function extractRoomNum(r: string): string {
 
 function buildBookingKeys(b: BookingRaw): string[] {
   const keys: string[] = [];
-  // 1. Airbnb conf from resId: ABB-HMXXXXXX-YYYYMMDD
-  const confM = b.resId.match(/ABB-([A-Za-z0-9]{6,})-\d{8}/i);
-  if (confM) {
-    const c = confM[1].toUpperCase();
-    if (/^HM/.test(c)) keys.push('conf:' + c);
-  }
+  // 1. Airbnb conf code — ดึงจาก resId ทุก pattern:
+  //    ABB-HMXXXXXX (plain), ABB-HMXXXXXX-EXT-..., ABB-HMXXXXXX-RES-..., ABB-mickaelser-YYYYMMDD (username style)
+  const allHmCodes = (b.resId || '').match(/HM[A-Z0-9]{6,}/gi) || [];
+  allHmCodes.forEach(c => keys.push('conf:' + c.toUpperCase()));
   // 2. checkin + room
   const ci = normDate(b.checkin);
   const rm = extractRoomNum(b.room);
@@ -211,14 +178,8 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
     // A conf: (Airbnb confirmation code) match is unambiguous — trust it directly.
     if (hasConfMatch) return true;
-    // Otherwise (n: name match and/or cr: room+date match), both are derived from a ±2-day
-    // key-expansion window and can produce false positives:
-    //   - cr: alone can match unrelated guests with back-to-back stays in the same room
-    //   - n: alone can match the SAME guest's other stay if they're a repeat guest checking
-    //     in again within a few days (e.g. Avto Dagdelen staying multiple times in March/April)
-    // So require the real stay date-ranges to genuinely overlap, and reject abnormally long
-    // stays (>14 nights) whose checkin/checkout fields are usually unreliable.
-    if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
+    // Otherwise (n: name match and/or cr: room+date match), require date-range overlap.
+    // Note: removed >14 nights block — long-stay guests (e.g. 68 nights) are valid matches.
     return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
   });
 }
@@ -240,48 +201,6 @@ function fallbackCopy(text: string): void {
   document.body.removeChild(ta);
 }
 
-// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
-function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) {
-  const [idx, setIdx] = useState(0);
-  const doc = docs[idx];
-  if (!doc) return null;
-  const isImg = doc.mimeType.startsWith('image/');
-  const isPdf = doc.mimeType === 'application/pdf';
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {docs.length > 1 && (
-            <div className="flex items-center gap-1">
-              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
-              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
-              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
-            </div>
-          )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
-          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-        {isImg && <img src={doc.downloadUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
-        {!isImg && !isPdf && (
-          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
-            <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
-          </div>
-        )}
-      </div>
-    </div>
-
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BookingInvoiceTodo() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -293,33 +212,6 @@ export default function BookingInvoiceTodo() {
   const [toast, setToast] = useState('');
   const [highlighted, setHighlighted] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string>('');
-  const [search, setSearch] = useState('');
-  const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
-  const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
-
-  const refreshDocs = useCallback(async () => {
-    setDocs(await fetchAllDocsIndex());
-  }, []);
-
-  // Load docs from Drive on mount, and re-fetch when tab regains focus
-  // (in case files were uploaded from the CheckInOut tab in the meantime).
-  useEffect(() => {
-    refreshDocs();
-    window.addEventListener('focus', refreshDocs);
-    return () => window.removeEventListener('focus', refreshDocs);
-  }, [refreshDocs]);
-
-  // Find docs uploaded for a booking. Drive folders are named "{room}_{checkin}_{resId}"
-  // — match on resId first, then fall back to room+checkin (covers stays without a resId).
-  function findDocsForBooking(item: { resId: string; guest: string; checkin: string; room: string }): DocFile[] {
-    const rm = (item.room.match(/\d{3}/) || [''])[0];
-    const exactKey = `${rm}_${item.checkin}_${item.resId || 'noid'}`;
-    if (docs[exactKey]?.length) return docs[exactKey];
-    // Fallback: any folder for this room+checkin regardless of resId suffix
-    const prefix = `${rm}_${item.checkin}_`;
-    const matchKey = Object.keys(docs).find(k => k.startsWith(prefix));
-    return matchKey ? docs[matchKey] : [];
-  }
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 2500);
@@ -385,44 +277,19 @@ export default function BookingInvoiceTodo() {
   const invoicePending  = data.invoice.filter(x => !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
-  const searchNorm = normNameForSearch(search);
-  const visibleBooking = data.booking
-    .filter(x => showDoneBooking || !x.done)
-    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
-    .sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
-  const visibleInvoice = data.invoice
-    .filter(x => showDoneInvoice || !x.done)
-    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
-    .sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
+  const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done).sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
+  const visibleInvoice = data.invoice.filter(x => showDoneInvoice || !x.done).sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
 
   return (
     <div className="relative">
-      {viewerDocs && <DocViewer docs={viewerDocs} onClose={() => setViewerDocs(null)} />}
-
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
           <p className="text-xs text-gray-400">วันนี้: {data.today}</p>
         </div>
-        <button onClick={() => { loadData(); refreshDocs(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+        <button onClick={loadData} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
           🔄 รีเฟรช
         </button>
-      </div>
-
-      {/* Name search */}
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อแขก…"
-          className="w-full pl-9 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-        />
-        {search && (
-          <button onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">✕</button>
-        )}
       </div>
 
       <div className="flex border-b mb-4">
@@ -452,12 +319,11 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleBooking.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleBooking.map(item => {
                 const matchedInvoices = findMatches(item, data.invoice);
                 const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
-                const itemDocs = findDocsForBooking(item);
                 return (
                   <div key={item.resId} data-itemid={item.resId}
                     className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
@@ -480,12 +346,6 @@ export default function BookingInvoiceTodo() {
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.channel}</span>
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5 font-mono">{item.resId}</span>
-                        {itemDocs.length > 0 && (
-                          <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-xs border border-indigo-300 text-indigo-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-indigo-50 transition flex items-center gap-1">
-                            🗂 เอกสาร ({itemDocs.length})
-                          </button>
-                        )}
                         {matchedInvoices.length === 0
                           ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">🧾 ไม่มี Invoice</button>
                           : matchedInvoices.map(inv => (
@@ -513,7 +373,7 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleInvoice.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleInvoice.map(item => {
                 const matchedBookings = findMatches(item, data.booking);
                 const isHl = highlighted === item.invoiceKey;
