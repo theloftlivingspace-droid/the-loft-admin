@@ -109,7 +109,11 @@ function buildMatchKeys(guest: string, checkin: string, room: string): string[] 
 }
 
 function buildBookingKeys(b: BookingRaw): string[] {
-  return buildMatchKeys(b.guest, b.checkin, b.room);
+  const keys = buildMatchKeys(b.guest, b.checkin, b.room);
+  // เพิ่ม conf: keys จาก HM codes ใน resId (fallback เมื่อ GAS ไม่ส่ง matchKeys มา)
+  const hmCodes = String(b.resId || '').match(/HM[A-Z0-9]{6,}/gi) || [];
+  hmCodes.forEach(c => keys.push('conf:' + c.toUpperCase()));
+  return keys;
 }
 
 function buildInvoiceKeys(inv: InvoiceRaw): string[] {
@@ -129,12 +133,20 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
   const bookingsRaw: BookingRaw[] = Array.isArray(raw.booking) ? raw.booking : Array.isArray(raw.bookings) ? raw.bookings : [];
   const invoicesRaw: InvoiceRaw[] = Array.isArray(raw.invoice) ? raw.invoice : Array.isArray(raw.ledger) ? raw.ledger : [];
 
-  const booking: BookingItem[] = bookingsRaw.map(b => ({
-    ...b,
-    done: b.done ?? false,
-    isNewToday: b.isNewToday ?? false,
-    matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
-  }));
+  // dedup bookings by resId (same resId = same booking shown twice in sheet)
+  const seenResId = new Set<string>();
+  const booking: BookingItem[] = bookingsRaw
+    .filter(b => {
+      const key = b.resId || (b.guest + '|' + b.checkin + '|' + b.room);
+      if (seenResId.has(key)) return false;
+      seenResId.add(key); return true;
+    })
+    .map(b => ({
+      ...b,
+      done: b.done ?? false,
+      isNewToday: b.isNewToday ?? false,
+      matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
+    }));
 
   // Deduplicate by invoiceKey (GAS already handles multi-guest splitting via bookingId#confCode)
   const seen = new Set<string>();
