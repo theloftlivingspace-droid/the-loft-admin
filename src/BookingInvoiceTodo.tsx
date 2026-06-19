@@ -224,6 +224,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
   if (!doc) return null;
   const isImg = doc.mimeType.startsWith('image/');
   const isPdf = doc.mimeType === 'application/pdf';
+  const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
@@ -244,7 +245,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
         </div>
       </div>
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-        {isImg && <img src={doc.downloadUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
+        {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
           <div className="bg-white rounded-xl p-8 text-center text-gray-500">
