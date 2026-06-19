@@ -31,75 +31,65 @@ interface DashboardData {
 }
 
 // ─── Frontend Matching ────────────────────────────────────────────────────────
-function normName(s: string): string {
-  return s.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
-function nameTokenPrefixes(fullName: string): string[] {
-  return fullName.replace(/,/g, ' ').split(/\s+/)
-    .filter(t => t.length > 1)
-    .map(t => 'n6:' + normName(t).substring(0, 6))
-    .filter(k => k.length > 4);
-}
+// Keys ต้องตรงกับ format ที่ GAS makeMatchKeys_ สร้าง:
+//   n:NAMEPART|YYYY-MM-DD   (name part + ci date ±2 days)
+//   cr:YYYY-MM-DD|ROOM      (checkin date ±2 days + room number)
 
 function normDate(s: string): string {
   if (!s) return '';
-  // T17:00:00.000Z = Bangkok midnight — just take the date part, no +7 shift
-  if (/T\d\d:\d\d/.test(s)) return String(s).substring(0, 10);
   return String(s).substring(0, 10);
 }
 
 function extractRoomNum(r: string): string {
-  const m = String(r || '').match(/(\d{3})/);
-  return m ? m[1] : '';
+  const m = String(r || '').match(/\b(\d{3})\b/);
+  return m ? m[1] : String(r || '').replace(/[^0-9]/g, '').substring(0, 3);
 }
 
-function buildBookingKeys(b: BookingRaw): string[] {
+function ciDates(ci: string): string[] {
+  const dates = [ci];
+  if (!ci || ci.length < 10) return dates;
+  try {
+    const d = new Date(ci + 'T00:00:00Z');
+    for (let delta = -2; delta <= 2; delta++) {
+      if (delta === 0) continue;
+      const d2 = new Date(d.getTime() + delta * 86400000);
+      dates.push(d2.toISOString().substring(0, 10));
+    }
+  } catch (_) {}
+  return dates;
+}
+
+function allNameParts(raw: string): string[] {
+  return String(raw || '').trim()
+    .split(/[\s,\/\\]+/)
+    .map(p => p.toLowerCase().replace(/[^a-z0-9ก-๙]/g, ''))
+    .filter(p => p.length >= 3);
+}
+
+// สร้าง keys แบบเดียวกับ GAS makeMatchKeys_ — ใช้ทั้งฝั่ง booking และ invoice
+function buildMatchKeys(guest: string, checkin: string, room: string): string[] {
+  const parts = allNameParts(guest);
+  const rn    = extractRoomNum(room);
+  const ci    = normDate(checkin);
+  const dates = ciDates(ci);
   const keys: string[] = [];
-  // 1. Airbnb conf from resId: ABB-HMXXXXXX-YYYYMMDD
-  const confM = b.resId.match(/ABB-([A-Za-z0-9]{6,})-\d{8}/i);
-  if (confM) {
-    const c = confM[1].toUpperCase();
-    if (/^HM/.test(c)) keys.push('conf:' + c);
-  }
-  // 2. checkin + room
-  const ci = normDate(b.checkin);
-  const rm = extractRoomNum(b.room);
-  if (ci && rm) keys.push('cr:' + ci + ':' + rm);
-  // 3. name token prefixes (handles "Last, First" order)
-  nameTokenPrefixes(b.guest).forEach(p => keys.push(p));
-  // 4. full norm name
-  const nn = normName(b.guest.replace(/,/g, ' '));
-  if (nn.length >= 4) keys.push('n:' + nn);
+  parts.forEach(p => dates.forEach(dt => keys.push('n:' + p + '|' + dt)));
+  if (rn) dates.forEach(dt => keys.push('cr:' + dt + '|' + rn));
   return keys;
 }
 
+function buildBookingKeys(b: BookingRaw): string[] {
+  return buildMatchKeys(b.guest, b.checkin, b.room);
+}
+
 function buildInvoiceKeys(inv: InvoiceRaw): string[] {
-  const keys: string[] = [];
-  // 1. conf codes from bookingId or guest field
-  const bid = inv.bookingId || inv.invoiceKey || '';
-  // Airbnb: conf codes appear in bookingId or as HM... codes in guest
-  const confMatches = bid.match(/HM[A-Z0-9]{6,}/g) || [];
-  confMatches.forEach(c => keys.push('conf:' + c));
-  // Also check guest field for HM codes
-  const guestConfs = (inv.guest || '').match(/HM[A-Z0-9]{6,}/g) || [];
-  guestConfs.forEach(c => keys.push('conf:' + c));
-  // 2. checkin + each room (multi-room rows have comma-separated rooms)
-  const ci = normDate(inv.checkin);
-  const rooms = String(inv.room || '').split(',');
-  rooms.forEach(r => {
-    const rm = extractRoomNum(r);
-    if (ci && rm) keys.push('cr:' + ci + ':' + rm);
-  });
-  // 3. name token prefixes for each guest
+  // invoice อาจมีหลาย guest/room (comma-separated)
   const guests = String(inv.guest || '').split(',');
-  guests.forEach(g => nameTokenPrefixes(g.trim()).forEach(p => keys.push(p)));
-  // 4. full norm name
-  guests.forEach(g => {
-    const nn = normName(g);
-    if (nn.length >= 4) keys.push('n:' + nn);
+  const rooms  = String(inv.room  || '').split(',');
+  const keys: string[] = [];
+  guests.forEach((g, i) => {
+    const r = rooms[i] || rooms[0] || '';
+    buildMatchKeys(g.trim(), inv.checkin, r).forEach(k => keys.push(k));
   });
   return keys;
 }
@@ -155,12 +145,6 @@ function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bC
   if ([a1, a2, b1, b2].some(isNaN)) return false;
   return a1 < b2 && b1 < a2;
 }
-function nightsOf(item: { checkin: string; checkout: string }): number {
-  const ci = new Date(item.checkin).getTime();
-  const co = new Date(item.checkout).getTime();
-  if (isNaN(ci) || isNaN(co)) return 0;
-  return (co - ci) / 86400000;
-}
 function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
   return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
@@ -180,14 +164,8 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
     // A conf: (Airbnb confirmation code) match is unambiguous — trust it directly.
     if (hasConfMatch) return true;
-    // Otherwise (n: name match and/or cr: room+date match), both are derived from a ±2-day
-    // key-expansion window and can produce false positives:
-    //   - cr: alone can match unrelated guests with back-to-back stays in the same room
-    //   - n: alone can match the SAME guest's other stay if they're a repeat guest checking
-    //     in again within a few days (e.g. Avto Dagdelen staying multiple times in March/April)
-    // So require the real stay date-ranges to genuinely overlap, and reject abnormally long
-    // stays (>14 nights) whose checkin/checkout fields are usually unreliable.
-    if (nightsOf(item) > 14 || nightsOf(c) > 14) return false;
+    // Otherwise (n: name match and/or cr: room+date match), require date-range overlap.
+    // Note: removed >14 nights block — long-stay guests (e.g. 68 nights) are valid matches.
     return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
   });
 }
