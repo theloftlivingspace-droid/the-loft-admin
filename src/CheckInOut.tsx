@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
+const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
+const TM30_DONE_KEY = 'tm30_done_v1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
@@ -23,11 +25,22 @@ interface Stay {
 
 interface CheckoutStatus {
   room: string;
+  ready: boolean;         // ห้องพร้อมรับแขกหรือยัง
   inspected: boolean;
   inspectedBy: string;
   cleanedBy: string;
   issues: string;
   date: string;
+}
+
+// ─── localStorage for TM30 checkboxes ────────────────────────────────────────
+function loadTm30Done(): Record<string, boolean> {
+  try { return JSON.parse(localStorage.getItem(TM30_DONE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveTm30Done(map: Record<string, boolean>) {
+  try { localStorage.setItem(TM30_DONE_KEY, JSON.stringify(map)); }
+  catch { /* ignore */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,26 +82,26 @@ function channelIcon(ch: string): string {
 }
 
 const STATUS_CONFIG = {
-  'checked-in':        { label: 'เช็คอินแล้ว',       bg: 'bg-emerald-500', text: 'text-white',        dot: 'bg-white' },
-  'arriving-today':    { label: 'เข้าวันนี้',          bg: 'bg-amber-400',   text: 'text-amber-900',    dot: 'bg-amber-900' },
-  'checking-out-today':{ label: 'เช็คเอาท์วันนี้',    bg: 'bg-orange-500',  text: 'text-white',        dot: 'bg-white' },
-  'arriving-soon':     { label: 'เข้าเร็วๆ นี้',      bg: 'bg-sky-400',     text: 'text-white',        dot: 'bg-white' },
+  'checked-in':         { label: 'เช็คอินแล้ว',    bg: 'bg-emerald-500', text: 'text-white',     dot: 'bg-white' },
+  'arriving-today':     { label: 'เข้าวันนี้',       bg: 'bg-amber-400',  text: 'text-amber-900', dot: 'bg-amber-900' },
+  'checking-out-today': { label: 'เช็คเอาท์วันนี้', bg: 'bg-orange-500', text: 'text-white',     dot: 'bg-white' },
+  'arriving-soon':      { label: 'เข้าเร็วๆ นี้',   bg: 'bg-sky-400',    text: 'text-white',     dot: 'bg-white' },
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CheckInOut() {
-  const [stays, setStays]           = useState<Stay[]>([]);
-  const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState('');
-  const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
+  const [stays, setStays]         = useState<Stay[]>([]);
+  const [coStatus, setCoStatus]   = useState<Record<string, CheckoutStatus>>({});
+  const [tm30Done, setTm30Done]   = useState<Record<string, boolean>>(loadTm30Done);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [view, setView]           = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
   const [lastRefresh, setLastRefresh] = useState('');
 
   async function load() {
     setLoading(true);
     setError('');
     try {
-      // ── Sheet1 (via GAS API) ──────────────────────────────────────────────
       const res = await fetch(`${GAS_API}?action=getRoomStatus`);
       if (!res.ok) throw new Error('โหลดข้อมูลห้องไม่สำเร็จ');
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
@@ -96,8 +109,8 @@ export default function CheckInOut() {
 
       const tod = today();
       const soon = addDays(tod, 5);
-
       const list: Stay[] = [];
+
       for (const row of json.stays) {
         const ciStr = (row.checkin || '').substring(0, 10);
         const coStr = (row.checkout || '').substring(0, 10);
@@ -105,50 +118,36 @@ export default function CheckInOut() {
 
         const daysUntil = diffDays(tod, ciStr);
         const daysLeft  = diffDays(tod, coStr);
-
-        // Filter: currently staying OR arriving within 5 days
-        const checkedIn   = ciStr <= tod && coStr > tod;
-        const arrivingToday = ciStr === tod;
+        const checkedIn        = ciStr <= tod && coStr > tod;
+        const arrivingToday    = ciStr === tod;
         const checkingOutToday = coStr === tod && ciStr < tod;
-        const arrivingSoon = ciStr > tod && ciStr <= soon;
+        const arrivingSoon     = ciStr > tod && ciStr <= soon;
 
         if (!checkedIn && !arrivingSoon && !checkingOutToday) continue;
 
         let status: Stay['status'] = 'checked-in';
-        if (arrivingToday)       status = 'arriving-today';
+        if (arrivingToday)        status = 'arriving-today';
         else if (checkingOutToday) status = 'checking-out-today';
-        else if (arrivingSoon)   status = 'arriving-soon';
-
-        const nights = diffDays(ciStr, coStr);
+        else if (arrivingSoon)    status = 'arriving-soon';
 
         list.push({
-          room:     row.room || '',
-          roomNum:  roomNum(row.room || ''),
-          guest:    row.guest || '',
-          checkin:  ciStr,
-          checkout: coStr,
-          channel:  row.channel || '',
-          resId:    row.resId || '',
-          note:     row.note || '',
-          nights,
-          status,
-          daysLeft,
-          daysUntil,
+          room: row.room || '', roomNum: roomNum(row.room || ''),
+          guest: row.guest || '', checkin: ciStr, checkout: coStr,
+          channel: row.channel || '', resId: row.resId || '', note: row.note || '',
+          nights: diffDays(ciStr, coStr), status, daysLeft, daysUntil,
         });
       }
 
-      // Sort: checking-out-today first, then arriving-today, then checked-in (by checkout asc), then arriving-soon
       const ORDER = { 'checking-out-today': 0, 'arriving-today': 1, 'checked-in': 2, 'arriving-soon': 3 };
       list.sort((a, b) => {
         const od = ORDER[a.status] - ORDER[b.status];
-        if (od !== 0) return od;
-        return a.checkout.localeCompare(b.checkout);
+        return od !== 0 ? od : a.checkout.localeCompare(b.checkout);
       });
 
       setStays(list);
       setLastRefresh(new Date().toLocaleTimeString('th-TH'));
 
-      // ── Checkout log (Google Sheets CSV) ────────────────────────────────────
+      // ── Checkout log (สถานะห้องพร้อม/ไม่พร้อม) ──────────────────────────
       try {
         const csvUrl = `https://docs.google.com/spreadsheets/d/${CHECKOUT_LOG_ID}/export?format=csv&gid=${CHECKOUT_GID}`;
         const cr = await fetch(csvUrl);
@@ -160,11 +159,11 @@ export default function CheckInOut() {
           const h = rows[0];
           const map: Record<string, CheckoutStatus> = {};
           for (const row of rows.slice(1)) {
-            const room = roomNum(row[h.indexOf('ห้อง')] || row[0] || '');
-            if (!room) continue;
-            map[room] = {
-              room,
-              inspected:   (row[h.indexOf('ตรวจสอบ')] || '').toLowerCase().includes('ผ่าน') || (row[h.indexOf('สถานะ')] || '').toLowerCase().includes('ผ่าน'),
+            const rn = roomNum(row[h.indexOf('ห้อง')] || row[0] || '');
+            if (!rn) continue;
+            const inspected = (row[h.indexOf('ตรวจสอบ')] || row[h.indexOf('สถานะ')] || '').toLowerCase().includes('ผ่าน');
+            map[rn] = {
+              room: rn, ready: inspected, inspected,
               inspectedBy: row[h.indexOf('ผู้ตรวจ')] || '',
               cleanedBy:   row[h.indexOf('ผู้ทำความสะอาด')] || row[h.indexOf('แม่บ้าน')] || '',
               issues:      row[h.indexOf('ปัญหา')] || row[h.indexOf('หมายเหตุ')] || '',
@@ -173,7 +172,7 @@ export default function CheckInOut() {
           }
           setCoStatus(map);
         }
-      } catch (_) { /* checkout log optional */ }
+      } catch (_) { /* optional */ }
 
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
@@ -184,7 +183,14 @@ export default function CheckInOut() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
+  function toggleTm30(key: string) {
+    setTm30Done(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveTm30Done(next);
+      return next;
+    });
+  }
+
   const filtered = stays.filter(s => {
     if (view === 'checkedin')  return s.status === 'checked-in';
     if (view === 'arrivals')   return s.status === 'arriving-today' || s.status === 'arriving-soon';
@@ -224,19 +230,26 @@ export default function CheckInOut() {
           <h2 className="text-lg font-bold text-blue-950">สถานะห้องพัก</h2>
           <p className="text-xs text-gray-400">อัปเดต {lastRefresh} · วันนี้ {today()}</p>
         </div>
-        <button onClick={load}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
-          🔄 รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          {/* TM30 button */}
+          <a href={TM30_URL} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-sm">
+            🛂 สร้าง TM30
+          </a>
+          <button onClick={load}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+            🔄 รีเฟรช
+          </button>
+        </div>
       </div>
 
-      {/* Summary KPI row */}
+      {/* KPI row */}
       <div className="grid grid-cols-4 gap-2 mb-5">
         {[
-          { label: 'อยู่ในโรงแรม', val: counts.checkedin,  icon: '🛏️',  color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-          { label: 'เช็คเอาท์วันนี้', val: counts.checkouts, icon: '🧳',  color: 'bg-orange-50 border-orange-200 text-orange-700' },
-          { label: 'เข้าวันนี้',   val: counts.today_ci,  icon: '📥',  color: 'bg-amber-50 border-amber-200 text-amber-700' },
-          { label: 'เข้าเร็วๆ นี้', val: counts.arrivals - counts.today_ci, icon: '📅', color: 'bg-sky-50 border-sky-200 text-sky-700' },
+          { label: 'อยู่ในโรงแรม',  val: counts.checkedin,                       icon: '🛏️', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+          { label: 'เช็คเอาท์วันนี้', val: counts.checkouts,                      icon: '🧳', color: 'bg-orange-50 border-orange-200 text-orange-700' },
+          { label: 'เข้าวันนี้',     val: counts.today_ci,                        icon: '📥', color: 'bg-amber-50 border-amber-200 text-amber-700' },
+          { label: 'เข้าเร็วๆ นี้',  val: counts.arrivals - counts.today_ci,      icon: '📅', color: 'bg-sky-50 border-sky-200 text-sky-700' },
         ].map(k => (
           <div key={k.label} className={`rounded-2xl border p-3 text-center ${k.color}`}>
             <div className="text-xl mb-0.5">{k.icon}</div>
@@ -268,11 +281,17 @@ export default function CheckInOut() {
       ) : (
         <div className="space-y-3">
           {filtered.map(s => {
-            const cfg = STATUS_CONFIG[s.status];
-            const co  = coStatus[s.roomNum];
+            const cfg    = STATUS_CONFIG[s.status];
+            const co     = coStatus[s.roomNum];
+            const tm30Key = s.resId || (s.roomNum + s.checkin);
+            const tm30   = !!tm30Done[tm30Key];
+            const isArrivingToday = s.status === 'arriving-today';
+            const isCheckedIn     = s.status === 'checked-in';
+
             return (
-              <div key={s.resId || s.roomNum + s.checkin}
+              <div key={tm30Key}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
                 {/* Top bar */}
                 <div className={`${cfg.bg} px-4 py-2 flex items-center justify-between`}>
                   <div className="flex items-center gap-2">
@@ -280,7 +299,7 @@ export default function CheckInOut() {
                     <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {s.status === 'checked-in' && (
+                    {isCheckedIn && (
                       <span className={`text-xs ${cfg.text} opacity-80`}>
                         เหลือ {s.daysLeft} คืน · เช็คเอาท์ {s.checkout}
                       </span>
@@ -288,7 +307,7 @@ export default function CheckInOut() {
                     {s.status === 'arriving-soon' && (
                       <span className={`text-xs ${cfg.text} opacity-90`}>เข้าในอีก {s.daysUntil} วัน</span>
                     )}
-                    {s.status === 'arriving-today' && (
+                    {isArrivingToday && (
                       <span className={`text-xs ${cfg.text} opacity-90`}>วันนี้!</span>
                     )}
                   </div>
@@ -297,8 +316,7 @@ export default function CheckInOut() {
                 {/* Body */}
                 <div className="px-4 py-3 flex items-start gap-3">
                   {/* Room badge */}
-                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-50 border border-blue-100
-                    flex flex-col items-center justify-center">
+                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center">
                     <span className="text-lg font-bold text-blue-700 leading-none">{s.roomNum}</span>
                     <span className="text-[10px] text-blue-400 mt-0.5">
                       {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
@@ -315,36 +333,60 @@ export default function CheckInOut() {
                       <span className="text-xs text-gray-400">{s.nights} คืน</span>
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">
-                        📅 {s.checkin}
-                      </span>
+                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">📅 {s.checkin}</span>
                       <span className="text-gray-300">→</span>
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">
-                        {s.checkout}
-                      </span>
+                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">{s.checkout}</span>
                     </div>
                     {s.note && (
                       <p className="mt-1.5 text-xs text-gray-400 italic truncate">📝 {s.note}</p>
                     )}
                   </div>
 
-                  {/* Checkout status badge */}
-                  {(s.status === 'checking-out-today' || s.status === 'checked-in') && co && (
+                  {/* Room ready badge — เฉพาะ arriving-today */}
+                  {isArrivingToday && (
+                    <div className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border
+                      ${co
+                        ? co.ready
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-red-50 text-red-600 border-red-200'
+                        : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                      <span>{co ? co.ready ? '✅' : '❌' : '❓'}</span>
+                      <span>{co ? co.ready ? 'พร้อม' : 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
+                    </div>
+                  )}
+
+                  {/* Checkout status badge — เฉพาะ checked-in + checkout-today */}
+                  {(isCheckedIn || s.status === 'checking-out-today') && co && (
                     <div className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                      ${co.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                     : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                      ${co.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                       <span>{co.inspected ? '✅' : '❌'}</span>
                       <span>{co.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Checkout details (for checkout-today only) */}
+                {/* TM30 checkbox — เฉพาะ checked-in */}
+                {isCheckedIn && (
+                  <div className="px-4 pb-3">
+                    <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer transition select-none text-xs font-medium
+                      ${tm30 ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-indigo-300 hover:text-indigo-600'}`}>
+                      <input
+                        type="checkbox"
+                        checked={tm30}
+                        onChange={() => toggleTm30(tm30Key)}
+                        className="accent-indigo-600 w-3.5 h-3.5"
+                      />
+                      🛂 TM30 {tm30 ? 'สร้างแล้ว ✓' : 'ยังไม่สร้าง'}
+                    </label>
+                  </div>
+                )}
+
+                {/* Checkout details */}
                 {s.status === 'checking-out-today' && co && (
                   <div className="mx-4 mb-3 p-2.5 bg-gray-50 rounded-xl text-[11px] text-gray-500 space-y-0.5">
-                    {co.cleanedBy && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
+                    {co.cleanedBy   && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
                     {co.inspectedBy && <div>👁️ ตรวจโดย: <span className="text-gray-700">{co.inspectedBy}</span></div>}
-                    {co.issues && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
+                    {co.issues      && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
                   </div>
                 )}
               </div>
