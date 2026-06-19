@@ -145,12 +145,6 @@ function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bC
   if ([a1, a2, b1, b2].some(isNaN)) return false;
   return a1 < b2 && b1 < a2;
 }
-function nightsOf(item: { checkin: string; checkout: string }): number {
-  const ci = new Date(item.checkin).getTime();
-  const co = new Date(item.checkout).getTime();
-  if (isNaN(ci) || isNaN(co)) return 0;
-  return (co - ci) / 86400000;
-}
 function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
   return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
