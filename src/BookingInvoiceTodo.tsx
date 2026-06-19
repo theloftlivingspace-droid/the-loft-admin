@@ -109,11 +109,7 @@ function buildMatchKeys(guest: string, checkin: string, room: string): string[] 
 }
 
 function buildBookingKeys(b: BookingRaw): string[] {
-  const keys = buildMatchKeys(b.guest, b.checkin, b.room);
-  // เพิ่ม conf: key จาก HM code ใน resId (fallback เมื่อ GAS ไม่ส่ง matchKeys มา)
-  const hmCodes = (b.resId || '').match(/HM[A-Z0-9]{6,}/gi) || [];
-  hmCodes.forEach(c => keys.push('conf:' + c.toUpperCase()));
-  return keys;
+  return buildMatchKeys(b.guest, b.checkin, b.room);
 }
 
 function buildInvoiceKeys(inv: InvoiceRaw): string[] {
@@ -133,20 +129,12 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
   const bookingsRaw: BookingRaw[] = Array.isArray(raw.booking) ? raw.booking : Array.isArray(raw.bookings) ? raw.bookings : [];
   const invoicesRaw: InvoiceRaw[] = Array.isArray(raw.invoice) ? raw.invoice : Array.isArray(raw.ledger) ? raw.ledger : [];
 
-  // Deduplicate bookings by resId
-  const seenResId = new Set<string>();
-  const booking: BookingItem[] = bookingsRaw
-    .filter(b => {
-      const key = b.resId || (b.guest + '|' + b.checkin + '|' + b.room);
-      if (seenResId.has(key)) return false;
-      seenResId.add(key); return true;
-    })
-    .map(b => ({
-      ...b,
-      done: b.done ?? false,
-      isNewToday: b.isNewToday ?? false,
-      matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
-    }));
+  const booking: BookingItem[] = bookingsRaw.map(b => ({
+    ...b,
+    done: b.done ?? false,
+    isNewToday: b.isNewToday ?? false,
+    matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
+  }));
 
   // Deduplicate by invoiceKey (GAS already handles multi-guest splitting via bookingId#confCode)
   const seen = new Set<string>();
