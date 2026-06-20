@@ -172,7 +172,7 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 // window (rather than requiring literal overlap) because invoice records sometimes
 // carry a payout/detection date range that's offset by a day or two from the actual
 // guest stay dates recorded in the booking sheet.
-const MATCH_DATE_GRACE_DAYS = 3;
+const MATCH_DATE_GRACE_DAYS = 1;
 function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
   const a1 = new Date(aCheckin).getTime();
   const a2 = new Date(aCheckout).getTime();
@@ -186,6 +186,14 @@ function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
   return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
 }
+// A single shared name-prefix token is only trustworthy on its own once it's long
+// enough that collisions between unrelated guests become unlikely. Short common names
+// (lee, kim, ana, tom, john, etc. — anything ≤4 real chars) must NOT be trusted alone,
+// since many different guests legitimately share a single common first/last name —
+// trusting them caused one invoice to falsely match several unrelated bookings.
+function isSpecificNameKey(key: string): boolean {
+  return key.startsWith('n6:') && key.length >= 'n6:'.length + 5; // ≥5 real chars
+}
 function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string }>(
   item: { matchKeys: string[]; checkin: string; checkout: string },
   candidates: T[]
@@ -198,9 +206,18 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     if (c.room && isCancelledOrNoShow(c.room)) return false;
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) return false;
-    // Require the stay dates to plausibly correspond — guards against two unrelated
-    // guests who happen to share a 6-char name prefix (e.g. "Sharif" twice in different months)
-    // or the same room being reused by a different guest later in the year.
+
+    // Require strong-enough evidence before trusting the match:
+    //   - a room+exact-date (cr:) overlap is specific enough on its own, OR
+    //   - 2+ distinct name-token overlaps (full-name match), OR
+    //   - exactly 1 name-token overlap, but only if that token is long/specific.
+    const crMatch = overlap.some(k => k.startsWith('cr:'));
+    const nameOverlap = overlap.filter(k => k.startsWith('n6:'));
+    const strongNameMatch = nameOverlap.length >= 2 || nameOverlap.some(isSpecificNameKey);
+    if (!crMatch && !strongNameMatch) return false;
+
+    // Final sanity check — guards against two unrelated guests who happen to share
+    // a name/room signal months apart (e.g. same room reused later in the year).
     return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
   });
 }
