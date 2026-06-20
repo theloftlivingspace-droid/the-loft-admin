@@ -147,29 +147,70 @@ function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bC
 }
 function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
-  return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
+  return r.includes('cancel') || r.includes('no show') || r.includes('noshow') || r.includes('\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01');
 }
-function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string }>(
-  item: { matchKeys: string[]; checkin: string; checkout: string },
+function roomNumStr(room: string): string {
+  const m = room.match(/\b(\d{3})\b/);
+  return m ? m[1] : '';
+}
+function daysDiffNum(a: string, b: string): number {
+  const da = new Date(a).getTime(), db = new Date(b).getTime();
+  if (isNaN(da) || isNaN(db)) return 999;
+  return Math.abs(da - db) / 86400000;
+}
+function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string; guest?: string }>(
+  item: { matchKeys: string[]; checkin: string; checkout: string; room?: string },
   candidates: T[]
 ): T[] {
   const mySet = new Set(item.matchKeys);
-  return candidates.filter(c => {
-    // A booking flagged "cancel" or "no show" never actually generated revenue, so it should
-    // never be presented as a match for a real invoice (e.g. Gleb Iurkov "108 no show" was
-    // colliding with Dave Casey's real stay in the same room right after).
-    if (c.room && isCancelledOrNoShow(c.room)) return false;
+  const itemRoomNums = new Set(
+    (item.room || '').split(',').map(r => roomNumStr(r.trim())).filter(Boolean)
+  );
+  const scored: Array<{ score: number; c: T }> = [];
+  for (const c of candidates) {
+    if (c.room && isCancelledOrNoShow(c.room)) continue;
     const overlap = c.matchKeys.filter(k => mySet.has(k));
-    if (overlap.length === 0) return false;
-    const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
-    if (hasConfMatch) return true;
-    // n: name match — trust directly (handles long-stay guests: 19-32+ nights)
-    // Name key overlap = same guest, strong signal regardless of stay length
-    if (overlap.some(k => k.startsWith('n:'))) return true;
-    // cr: room+date only — require actual date-range overlap
-    // prevents back-to-back guests in same room from false-matching
-    return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
-  });
+    if (overlap.length === 0) continue;
+    const hasConf = overlap.some(k => k.startsWith('conf:'));
+    const hasName = overlap.some(k => k.startsWith('n:'));
+    const hasCr   = overlap.some(k => k.startsWith('cr:'));
+    const cRoomNum = roomNumStr(c.room || '');
+    const roomOk = itemRoomNums.size === 0 || !cRoomNum || itemRoomNums.has(cRoomNum);
+    const ciDiff = daysDiffNum(item.checkin || '', c.checkin || '');
+    let score = 0;
+    if (hasConf)  score += 100;
+    if (hasName)  score += 20;
+    if (roomOk)   score += 10;
+    if (hasCr)    score += 2;
+    score += Math.max(0, 5 - ciDiff);
+    if (hasConf) {
+      scored.push({ score, c });
+    } else if (hasName) {
+      if (itemRoomNums.size > 0 && cRoomNum && !roomOk) {
+        if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout))
+          scored.push({ score, c });
+      } else {
+        scored.push({ score, c });
+      }
+    } else if (hasCr) {
+      if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout))
+        scored.push({ score, c });
+    }
+  }
+  if (scored.length === 0) return [];
+  const maxScore = Math.max(...scored.map(x => x.score));
+  const top = scored.filter(x => x.score >= maxScore - 5);
+  // Same-guest repeat stays: keep only the one with closest checkin
+  if (top.length > 1) {
+    const firstNames = new Set(top.map(x => (x.c.guest || '').toLowerCase().split(/[\s,]+/)[0]));
+    if (firstNames.size === 1) {
+      const best = top.reduce((a, b) =>
+        daysDiffNum(item.checkin, a.c.checkin) <= daysDiffNum(item.checkin, b.c.checkin) ? a : b
+      );
+      return [best.c];
+    }
+  }
+  return top.map(x => x.c);
 }
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
