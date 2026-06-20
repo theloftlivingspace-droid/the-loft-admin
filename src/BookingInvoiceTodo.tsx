@@ -1,37 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const GAS_API = 'https://script.google.com/macros/s/AKfycbzb5T7x7qBw35LwX_bufF9oDjMRQAkI2WAqukQqkH4tNjyhCy-CCuWDDmPaiwxbN6M/exec';
-
-interface DocFile {
-  fileId: string;
-  fileName: string;
-  mimeType: string;
-  url: string;
-  downloadUrl: string;
-  previewUrl: string;
-  uploadedAt: string;
-}
-
-// Docs are stored in Google Drive under folders named "{room}_{checkin}_{resId}"
-// (see CheckInOut tab for the upload UI). This fetches the full index in one call.
-async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
-  try {
-    const res = await fetch(`${GAS_API}?action=getAllDocs`);
-    const json = await res.json();
-    return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function normNameForSearch(s: string): string {
-  return (s || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BookingRaw {
@@ -61,15 +31,9 @@ interface DashboardData {
 }
 
 // ─── Frontend Matching ────────────────────────────────────────────────────────
-// Two signal types, combined to find booking ↔ invoice pairs:
-//   n6:PREFIX6      — 6-char prefix of each name token (normalized). Forgiving of
-//                      spelling drift between OTA listing name vs SCB/Little Hotelier
-//                      name, swapped first/last order, and missing middle names.
-//   cr:YYYY-MM-DD:ROOM — exact checkin date + room number (no ± tolerance — this is
-//                      a secondary signal only used to disambiguate, not a primary key).
-// A match requires EITHER an n6: overlap OR a cr: overlap, then is confirmed by
-// checking the stay date ranges actually overlap (handles the case where two
-// different guests happen to share a name-prefix in different months).
+// Keys ต้องตรงกับ format ที่ GAS makeMatchKeys_ สร้าง:
+//   n:NAMEPART|YYYY-MM-DD   (name part + ci date ±2 days)
+//   cr:YYYY-MM-DD|ROOM      (checkin date ±2 days + room number)
 
 function normDate(s: string): string {
   if (!s) return '';
@@ -81,34 +45,36 @@ function extractRoomNum(r: string): string {
   return m ? m[1] : String(r || '').replace(/[^0-9]/g, '').substring(0, 3);
 }
 
-function normNameToken(s: string): string {
-  return String(s || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
+function ciDates(ci: string): string[] {
+  const dates = [ci];
+  if (!ci || ci.length < 10) return dates;
+  try {
+    const d = new Date(ci + 'T00:00:00Z');
+    for (let delta = -2; delta <= 2; delta++) {
+      if (delta === 0) continue;
+      const d2 = new Date(d.getTime() + delta * 86400000);
+      dates.push(d2.toISOString().substring(0, 10));
+    }
+  } catch (_) {}
+  return dates;
 }
 
-// "Sharif, Abdalla" or "Abdalla Sharif" → ["sharif","abdalla"] (order-independent)
-function nameTokens(raw: string): string[] {
-  return String(raw || '').replace(/,/g, ' ').trim()
-    .split(/\s+/)
-    .map(normNameToken)
-    .filter(t => t.length > 1);
+function allNameParts(raw: string): string[] {
+  return String(raw || '').trim()
+    .split(/[\s,\/\\]+/)
+    .map(p => p.toLowerCase().replace(/[^a-z0-9ก-๙]/g, ''))
+    .filter(p => p.length >= 3);
 }
 
-// 6-char prefix of each token — catches "Shahid"/"Shahid Hussain", spelling drift
-// past the first few letters, and handles swapped name order automatically since
-// every token (not just the first) gets its own key.
-function namePrefixKeys(raw: string): string[] {
-  return nameTokens(raw)
-    .map(t => 'n6:' + t.substring(0, 6))
-    .filter(k => k.length > 'n6:'.length + 2); // require at least 3 real chars
-}
-
+// สร้าง keys แบบเดียวกับ GAS makeMatchKeys_ — ใช้ทั้งฝั่ง booking และ invoice
 function buildMatchKeys(guest: string, checkin: string, room: string): string[] {
-  const rn = extractRoomNum(room);
-  const ci = normDate(checkin);
-  const keys: string[] = namePrefixKeys(guest);
-  if (rn && ci) keys.push('cr:' + ci + ':' + rn);
+  const parts = allNameParts(guest);
+  const rn    = extractRoomNum(room);
+  const ci    = normDate(checkin);
+  const dates = ciDates(ci);
+  const keys: string[] = [];
+  parts.forEach(p => dates.forEach(dt => keys.push('n:' + p + '|' + dt)));
+  if (rn) dates.forEach(dt => keys.push('cr:' + dt + '|' + rn));
   return keys;
 }
 
@@ -165,73 +131,45 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-// Date check used alongside key overlap: confirms the two stays' date ranges plausibly
-// correspond. A small 1-day grace handles timezone/off-by-one issues without being loose
-// enough to bridge genuinely different stays.
-const MATCH_DATE_GRACE_DAYS = 1;
+// Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
+// Includes a sanity check: if the ONLY overlapping keys are room+date (`cr:`) keys, we double-check
+// the real checkin dates are within 2 days of each other. This guards against invoices whose
+// checkin/checkout span is abnormally wide (e.g. unmatched SCB transfers spanning 30+ nights),
+// which would otherwise generate a wide date range of `cr:` keys and collide with unrelated bookings
+// in the same room.
 function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
   const a1 = new Date(aCheckin).getTime();
   const a2 = new Date(aCheckout).getTime();
   const b1 = new Date(bCheckin).getTime();
   const b2 = new Date(bCheckout).getTime();
   if ([a1, a2, b1, b2].some(isNaN)) return false;
-  const grace = MATCH_DATE_GRACE_DAYS * 86400000;
-  return (a1 - grace) < (b2 + grace) && (b1 - grace) < (a2 + grace);
+  return a1 < b2 && b1 < a2;
 }
 function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
   return r.includes('cancel') || r.includes('no show') || r.includes('noshow');
 }
-// A single shared name-prefix token is only trustworthy on its own once it's long
-// enough that collisions between unrelated guests become unlikely. Short common names
-// (lee, kim, ana, tom, john, etc. — anything ≤4 real chars) must NOT be trusted alone,
-// since many different guests legitimately share a single common first/last name.
-function isSpecificNameKey(key: string): boolean {
-  return key.startsWith('n6:') && key.length >= 'n6:'.length + 5; // ≥5 real chars
-}
-// IMPORTANT: room+checkin-date (`cr:`) is NOT a unique key on its own — on a high-turnover
-// room, two completely different bookings can legitimately share the same checkin date
-// (one checking out, another checking in same day; or a data-entry coincidence). Trusting
-// `cr:` alone caused one invoice to falsely match every other booking that happened to
-// start in the same room on the same day. So `cr:` is now only a TIE-BREAKER among
-// candidates that already have at least some name evidence — never sufficient by itself.
 function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string }>(
   item: { matchKeys: string[]; checkin: string; checkout: string },
   candidates: T[]
 ): T[] {
   const mySet = new Set(item.matchKeys);
-
-  type Scored = { c: T; score: number };
-  const scored: Scored[] = [];
-
-  for (const c of candidates) {
-    if (c.room && isCancelledOrNoShow(c.room)) continue;
+  return candidates.filter(c => {
+    // A booking flagged "cancel" or "no show" never actually generated revenue, so it should
+    // never be presented as a match for a real invoice (e.g. Gleb Iurkov "108 no show" was
+    // colliding with Dave Casey's real stay in the same room right after).
+    if (c.room && isCancelledOrNoShow(c.room)) return false;
     const overlap = c.matchKeys.filter(k => mySet.has(k));
-    if (overlap.length === 0) continue;
-
-    const crMatch = overlap.some(k => k.startsWith('cr:'));
-    const nameOverlap = overlap.filter(k => k.startsWith('n6:'));
-    const hasAnyNameEvidence = nameOverlap.length > 0;
-    const strongNameMatch = nameOverlap.length >= 2 || nameOverlap.some(isSpecificNameKey);
-
-    // Require name evidence to be present at all — room+date alone is too ambiguous
-    // on high-turnover rooms (see note above). Then require it to be either strong on
-    // its own, or corroborated by a matching room+date.
-    if (!hasAnyNameEvidence) continue;
-    if (!strongNameMatch && !crMatch) continue;
-
-    if (!rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) continue;
-
-    // Score: more name-token overlap + cr: corroboration = more confident match.
-    const score = nameOverlap.length * 2 + (crMatch ? 1 : 0);
-    scored.push({ c, score });
-  }
-
-  if (scored.length === 0) return [];
-  // Keep only the strongest match(es) — if one candidate clearly has better name
-  // evidence than another (e.g. 2 name tokens vs 0), don't show the weaker one too.
-  const maxScore = Math.max(...scored.map(s => s.score));
-  return scored.filter(s => s.score === maxScore).map(s => s.c);
+    if (overlap.length === 0) return false;
+    const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
+    if (hasConfMatch) return true;
+    // n: name match — trust directly (handles long-stay guests: 19-32+ nights)
+    // Name key overlap = same guest, strong signal regardless of stay length
+    if (overlap.some(k => k.startsWith('n:'))) return true;
+    // cr: room+date only — require actual date-range overlap
+    // prevents back-to-back guests in same room from false-matching
+    return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
+  });
 }
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
@@ -251,58 +189,6 @@ function fallbackCopy(text: string): void {
   document.body.removeChild(ta);
 }
 
-// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
-function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) {
-  const [idx, setIdx] = useState(0);
-  const doc = docs[idx];
-
-  // Reset background page scroll so the fixed overlay always starts visible at the top,
-  // regardless of how far down the card list was scrolled when the viewer was opened.
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.scrollTo(0, 0);
-    return () => { document.body.style.overflow = prevOverflow; };
-  }, []);
-
-  if (!doc) return null;
-  const isImg = doc.mimeType.startsWith('image/');
-  const isPdf = doc.mimeType === 'application/pdf';
-  const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {docs.length > 1 && (
-            <div className="flex items-center gap-1">
-              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
-              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
-              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
-            </div>
-          )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
-          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()}>
-        {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
-        {!isImg && !isPdf && (
-          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
-            <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BookingInvoiceTodo() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -314,32 +200,6 @@ export default function BookingInvoiceTodo() {
   const [toast, setToast] = useState('');
   const [highlighted, setHighlighted] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string>('');
-  const [search, setSearch] = useState('');
-  const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
-  const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
-
-  const refreshDocs = useCallback(async () => {
-    setDocs(await fetchAllDocsIndex());
-  }, []);
-
-  // Load docs from Drive on mount, and re-fetch when tab regains focus
-  // (in case files were uploaded from the CheckInOut tab in the meantime).
-  useEffect(() => {
-    refreshDocs();
-    window.addEventListener('focus', refreshDocs);
-    return () => window.removeEventListener('focus', refreshDocs);
-  }, [refreshDocs]);
-
-  // Find docs uploaded for a booking. Drive folders are named "{room}_{checkin}_{resId}"
-  // — match on resId first, then fall back to room+checkin (covers stays without a resId).
-  function findDocsForBooking(item: { resId: string; guest: string; checkin: string; room: string }): DocFile[] {
-    const rm = (item.room.match(/\d{3}/) || [''])[0];
-    const exactKey = `${rm}_${item.checkin}_${item.resId || 'noid'}`;
-    if (docs[exactKey]?.length) return docs[exactKey];
-    const prefix = `${rm}_${item.checkin}_`;
-    const matchKey = Object.keys(docs).find(k => k.startsWith(prefix));
-    return matchKey ? docs[matchKey] : [];
-  }
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 2500);
@@ -405,44 +265,19 @@ export default function BookingInvoiceTodo() {
   const invoicePending  = data.invoice.filter(x => !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
-  const searchNorm = normNameForSearch(search);
-  const visibleBooking = data.booking
-    .filter(x => showDoneBooking || !x.done)
-    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
-    .sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
-  const visibleInvoice = data.invoice
-    .filter(x => showDoneInvoice || !x.done)
-    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
-    .sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
+  const visibleBooking = data.booking.filter(x => showDoneBooking || !x.done).sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
+  const visibleInvoice = data.invoice.filter(x => showDoneInvoice || !x.done).sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
 
   return (
     <div className="relative">
-      {viewerDocs && <DocViewer docs={viewerDocs} onClose={() => setViewerDocs(null)} />}
-
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
           <p className="text-xs text-gray-400">วันนี้: {data.today}</p>
         </div>
-        <button onClick={() => { loadData(); refreshDocs(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+        <button onClick={loadData} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
           🔄 รีเฟรช
         </button>
-      </div>
-
-      {/* Name search */}
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อแขก…"
-          className="w-full pl-9 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-        />
-        {search && (
-          <button onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">✕</button>
-        )}
       </div>
 
       <div className="flex border-b mb-4">
@@ -472,12 +307,11 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleBooking.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleBooking.map(item => {
                 const matchedInvoices = findMatches(item, data.invoice);
                 const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
-                const itemDocs = findDocsForBooking(item);
                 return (
                   <div key={item.resId} data-itemid={item.resId}
                     className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
@@ -500,12 +334,6 @@ export default function BookingInvoiceTodo() {
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.channel}</span>
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5 font-mono">{item.resId}</span>
-                        {itemDocs.length > 0 && (
-                          <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-xs border border-indigo-300 text-indigo-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-indigo-50 transition flex items-center gap-1">
-                            🗂 เอกสาร ({itemDocs.length})
-                          </button>
-                        )}
                         {matchedInvoices.length === 0
                           ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">🧾 ไม่มี Invoice</button>
                           : matchedInvoices.map(inv => (
@@ -533,7 +361,7 @@ export default function BookingInvoiceTodo() {
             </button>
           </div>
           {visibleInvoice.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">ไม่มีรายการ</p>
             : visibleInvoice.map(item => {
                 const matchedBookings = findMatches(item, data.booking);
                 const isHl = highlighted === item.invoiceKey;
