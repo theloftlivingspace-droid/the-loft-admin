@@ -165,13 +165,9 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-// Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
-// Includes a sanity check: if the ONLY overlapping keys are room+date (`cr:`) keys, we double-check
-// Safety check used after a name/room key overlap is found: confirms the two stays'
-// date ranges are close enough to plausibly be the same booking. Uses a small grace
-// window (rather than requiring literal overlap) because invoice records sometimes
-// carry a payout/detection date range that's offset by a day or two from the actual
-// guest stay dates recorded in the booking sheet.
+// Date check used alongside key overlap: confirms the two stays' date ranges plausibly
+// correspond. A small 1-day grace handles timezone/off-by-one issues without being loose
+// enough to bridge genuinely different stays.
 const MATCH_DATE_GRACE_DAYS = 1;
 function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
   const a1 = new Date(aCheckin).getTime();
@@ -189,37 +185,53 @@ function isCancelledOrNoShow(room: string): boolean {
 // A single shared name-prefix token is only trustworthy on its own once it's long
 // enough that collisions between unrelated guests become unlikely. Short common names
 // (lee, kim, ana, tom, john, etc. — anything ≤4 real chars) must NOT be trusted alone,
-// since many different guests legitimately share a single common first/last name —
-// trusting them caused one invoice to falsely match several unrelated bookings.
+// since many different guests legitimately share a single common first/last name.
 function isSpecificNameKey(key: string): boolean {
   return key.startsWith('n6:') && key.length >= 'n6:'.length + 5; // ≥5 real chars
 }
+// IMPORTANT: room+checkin-date (`cr:`) is NOT a unique key on its own — on a high-turnover
+// room, two completely different bookings can legitimately share the same checkin date
+// (one checking out, another checking in same day; or a data-entry coincidence). Trusting
+// `cr:` alone caused one invoice to falsely match every other booking that happened to
+// start in the same room on the same day. So `cr:` is now only a TIE-BREAKER among
+// candidates that already have at least some name evidence — never sufficient by itself.
 function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string }>(
   item: { matchKeys: string[]; checkin: string; checkout: string },
   candidates: T[]
 ): T[] {
   const mySet = new Set(item.matchKeys);
-  return candidates.filter(c => {
-    // A booking flagged "cancel" or "no show" never actually generated revenue, so it should
-    // never be presented as a match for a real invoice (e.g. Gleb Iurkov "108 no show" was
-    // colliding with Dave Casey's real stay in the same room right after).
-    if (c.room && isCancelledOrNoShow(c.room)) return false;
-    const overlap = c.matchKeys.filter(k => mySet.has(k));
-    if (overlap.length === 0) return false;
 
-    // Require strong-enough evidence before trusting the match:
-    //   - a room+exact-date (cr:) overlap is specific enough on its own, OR
-    //   - 2+ distinct name-token overlaps (full-name match), OR
-    //   - exactly 1 name-token overlap, but only if that token is long/specific.
+  type Scored = { c: T; score: number };
+  const scored: Scored[] = [];
+
+  for (const c of candidates) {
+    if (c.room && isCancelledOrNoShow(c.room)) continue;
+    const overlap = c.matchKeys.filter(k => mySet.has(k));
+    if (overlap.length === 0) continue;
+
     const crMatch = overlap.some(k => k.startsWith('cr:'));
     const nameOverlap = overlap.filter(k => k.startsWith('n6:'));
+    const hasAnyNameEvidence = nameOverlap.length > 0;
     const strongNameMatch = nameOverlap.length >= 2 || nameOverlap.some(isSpecificNameKey);
-    if (!crMatch && !strongNameMatch) return false;
 
-    // Final sanity check — guards against two unrelated guests who happen to share
-    // a name/room signal months apart (e.g. same room reused later in the year).
-    return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
-  });
+    // Require name evidence to be present at all — room+date alone is too ambiguous
+    // on high-turnover rooms (see note above). Then require it to be either strong on
+    // its own, or corroborated by a matching room+date.
+    if (!hasAnyNameEvidence) continue;
+    if (!strongNameMatch && !crMatch) continue;
+
+    if (!rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) continue;
+
+    // Score: more name-token overlap + cr: corroboration = more confident match.
+    const score = nameOverlap.length * 2 + (crMatch ? 1 : 0);
+    scored.push({ c, score });
+  }
+
+  if (scored.length === 0) return [];
+  // Keep only the strongest match(es) — if one candidate clearly has better name
+  // evidence than another (e.g. 2 name tokens vs 0), don't show the weaker one too.
+  const maxScore = Math.max(...scored.map(s => s.score));
+  return scored.filter(s => s.score === maxScore).map(s => s.c);
 }
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
