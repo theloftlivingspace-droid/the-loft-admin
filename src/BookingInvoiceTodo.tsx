@@ -168,7 +168,14 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
   );
   const scored: Array<{ score: number; c: T }> = [];
   for (const c of candidates) {
-    if (c.room && isCancelledOrNoShow(c.room)) continue;
+    // cancel/noshow rooms: block ถ้า match แค่ cr: (room+date) เท่านั้น
+    // แต่ถ้ามี name match (n:) หรือ conf: → อนุญาต เพราะ Airbnb จ่ายจริง
+    const isCxl = c.room && isCancelledOrNoShow(c.room);
+    if (isCxl) {
+      const preCheck = c.matchKeys.filter(k => mySet.has(k));
+      const hasNameOrConf = preCheck.some(k => k.startsWith('n:') || k.startsWith('conf:'));
+      if (!hasNameOrConf) continue;
+    }
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) continue;
     const hasConf = overlap.some(k => k.startsWith('conf:'));
