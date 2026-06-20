@@ -61,9 +61,15 @@ interface DashboardData {
 }
 
 // ─── Frontend Matching ────────────────────────────────────────────────────────
-// Keys ต้องตรงกับ format ที่ GAS makeMatchKeys_ สร้าง:
-//   n:NAMEPART|YYYY-MM-DD   (name part + ci date ±2 days)
-//   cr:YYYY-MM-DD|ROOM      (checkin date ±2 days + room number)
+// Two signal types, combined to find booking ↔ invoice pairs:
+//   n6:PREFIX6      — 6-char prefix of each name token (normalized). Forgiving of
+//                      spelling drift between OTA listing name vs SCB/Little Hotelier
+//                      name, swapped first/last order, and missing middle names.
+//   cr:YYYY-MM-DD:ROOM — exact checkin date + room number (no ± tolerance — this is
+//                      a secondary signal only used to disambiguate, not a primary key).
+// A match requires EITHER an n6: overlap OR a cr: overlap, then is confirmed by
+// checking the stay date ranges actually overlap (handles the case where two
+// different guests happen to share a name-prefix in different months).
 
 function normDate(s: string): string {
   if (!s) return '';
@@ -75,36 +81,34 @@ function extractRoomNum(r: string): string {
   return m ? m[1] : String(r || '').replace(/[^0-9]/g, '').substring(0, 3);
 }
 
-function ciDates(ci: string): string[] {
-  const dates = [ci];
-  if (!ci || ci.length < 10) return dates;
-  try {
-    const d = new Date(ci + 'T00:00:00Z');
-    for (let delta = -2; delta <= 2; delta++) {
-      if (delta === 0) continue;
-      const d2 = new Date(d.getTime() + delta * 86400000);
-      dates.push(d2.toISOString().substring(0, 10));
-    }
-  } catch (_) {}
-  return dates;
+function normNameToken(s: string): string {
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 }
 
-function allNameParts(raw: string): string[] {
-  return String(raw || '').trim()
-    .split(/[\s,\/\\]+/)
-    .map(p => p.toLowerCase().replace(/[^a-z0-9ก-๙]/g, ''))
-    .filter(p => p.length >= 3);
+// "Sharif, Abdalla" or "Abdalla Sharif" → ["sharif","abdalla"] (order-independent)
+function nameTokens(raw: string): string[] {
+  return String(raw || '').replace(/,/g, ' ').trim()
+    .split(/\s+/)
+    .map(normNameToken)
+    .filter(t => t.length > 1);
 }
 
-// สร้าง keys แบบเดียวกับ GAS makeMatchKeys_ — ใช้ทั้งฝั่ง booking และ invoice
+// 6-char prefix of each token — catches "Shahid"/"Shahid Hussain", spelling drift
+// past the first few letters, and handles swapped name order automatically since
+// every token (not just the first) gets its own key.
+function namePrefixKeys(raw: string): string[] {
+  return nameTokens(raw)
+    .map(t => 'n6:' + t.substring(0, 6))
+    .filter(k => k.length > 'n6:'.length + 2); // require at least 3 real chars
+}
+
 function buildMatchKeys(guest: string, checkin: string, room: string): string[] {
-  const parts = allNameParts(guest);
-  const rn    = extractRoomNum(room);
-  const ci    = normDate(checkin);
-  const dates = ciDates(ci);
-  const keys: string[] = [];
-  parts.forEach(p => dates.forEach(dt => keys.push('n:' + p + '|' + dt)));
-  if (rn) dates.forEach(dt => keys.push('cr:' + dt + '|' + rn));
+  const rn = extractRoomNum(room);
+  const ci = normDate(checkin);
+  const keys: string[] = namePrefixKeys(guest);
+  if (rn && ci) keys.push('cr:' + ci + ':' + rn);
   return keys;
 }
 
@@ -163,17 +167,20 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
 // Includes a sanity check: if the ONLY overlapping keys are room+date (`cr:`) keys, we double-check
-// the real checkin dates are within 2 days of each other. This guards against invoices whose
-// checkin/checkout span is abnormally wide (e.g. unmatched SCB transfers spanning 30+ nights),
-// which would otherwise generate a wide date range of `cr:` keys and collide with unrelated bookings
-// in the same room.
+// Safety check used after a name/room key overlap is found: confirms the two stays'
+// date ranges are close enough to plausibly be the same booking. Uses a small grace
+// window (rather than requiring literal overlap) because invoice records sometimes
+// carry a payout/detection date range that's offset by a day or two from the actual
+// guest stay dates recorded in the booking sheet.
+const MATCH_DATE_GRACE_DAYS = 3;
 function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
   const a1 = new Date(aCheckin).getTime();
   const a2 = new Date(aCheckout).getTime();
   const b1 = new Date(bCheckin).getTime();
   const b2 = new Date(bCheckout).getTime();
   if ([a1, a2, b1, b2].some(isNaN)) return false;
-  return a1 < b2 && b1 < a2;
+  const grace = MATCH_DATE_GRACE_DAYS * 86400000;
+  return (a1 - grace) < (b2 + grace) && (b1 - grace) < (a2 + grace);
 }
 function isCancelledOrNoShow(room: string): boolean {
   const r = room.toLowerCase();
@@ -191,11 +198,9 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     if (c.room && isCancelledOrNoShow(c.room)) return false;
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) return false;
-    const hasConfMatch = overlap.some(k => k.startsWith('conf:'));
-    // A conf: (Airbnb confirmation code) match is unambiguous — trust it directly.
-    if (hasConfMatch) return true;
-    // Otherwise (n: name match and/or cr: room+date match), require date-range overlap.
-    // Note: removed >14 nights block — long-stay guests (e.g. 68 nights) are valid matches.
+    // Require the stay dates to plausibly correspond — guards against two unrelated
+    // guests who happen to share a 6-char name prefix (e.g. "Sharif" twice in different months)
+    // or the same room being reused by a different guest later in the year.
     return rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout);
   });
 }
