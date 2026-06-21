@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const GAS_API = 'https://script.google.com/macros/s/AKfycbzb5T7x7qBw35LwX_bufF9oDjMRQAkI2WAqukQqkH4tNjyhCy-CCuWDDmPaiwxbN6M/exec';
+// Proxied through /api/gas-proxy (Vercel serverless function) because Google
+// Apps Script Web Apps do not reliably send Access-Control-Allow-Origin even
+// on plain GET requests — server-to-server calls bypass this entirely.
+const GAS_API = '/api/gas-proxy?app=checkinout';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
@@ -112,7 +115,7 @@ async function deleteDocFromDrive(fileId: string): Promise<void> {
 }
 
 async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
-  const res = await fetch(`${GAS_API}?action=getAllDocs`);
+  const res = await fetch(`${GAS_API}&action=getAllDocs`);
   const json = await res.json();
   return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
 }
@@ -256,7 +259,7 @@ export default function CheckInOut() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${GAS_API}?action=getRoomStatus`);
+      const res = await fetch(`${GAS_API}&action=getRoomStatus`);
       if (!res.ok) throw new Error('โหลดข้อมูลห้องไม่สำเร็จ');
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
