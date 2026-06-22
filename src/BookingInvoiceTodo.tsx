@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Proxied through /api/gas-proxy (Vercel serverless function) because Google
-// Apps Script Web Apps do not reliably send Access-Control-Allow-Origin even
-// on plain GET requests — server-to-server calls bypass this entirely.
-const GAS_API = '/api/gas-proxy?app=todo';
+// เรียก GAS Web App โดยตรง (access=ANYONE_ANONYMOUS ไม่ต้องใช้ CORS proxy)
+const GAS_API = 'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec';
 
 interface DocFile {
   fileId: string;
