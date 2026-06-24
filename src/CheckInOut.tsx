@@ -332,8 +332,8 @@ export default function CheckInOut() {
           const iReady     = h.indexOf('Ready');
           const iIssues    = h.indexOf('Issues');
 
-          // Build map: key = roomNum_checkoutDate, match per booking
-          const map: Record<string, CheckoutStatus> = {};
+          // Build list of all log records, lookup by room+booking window later
+          const allLogs: CheckoutStatus[] = [];
           for (const row of rows.slice(1)) {
             const rawRoom = iRoom >= 0 ? row[iRoom] : row[4];
             const rm = roomNum(rawRoom || '');
@@ -343,16 +343,21 @@ export default function CheckInOut() {
             const ready  = iReady  >= 0 ? (row[iReady]  || '') : '';
             const inspected = (status !== '' && !['major','block',''].includes(status.toLowerCase()))
               || ready.includes('พร้อม');
-            // Store by room_date key so we match per checkout booking
-            const key = `${rm}_${date}`;
-            map[key] = {
+            allLogs.push({
               room: rm,
               inspected,
               inspectedBy: iInspector >= 0 ? (row[iInspector] || '') : '',
               cleanedBy:   '',
               issues:      iIssues >= 0 ? (row[iIssues] || '') : '',
               date,
-            };
+            });
+          }
+          // map key = roomNum_checkin_checkout for booking-window matching
+          const map: Record<string, CheckoutStatus> = {};
+          for (const log of allLogs) {
+            // key by room+date so stays can look up by their window
+            const key = `${log.room}_${log.date}`;
+            map[key] = log;
           }
           setCoStatus(map);
         }
@@ -470,7 +475,18 @@ export default function CheckInOut() {
         <div className="space-y-3">
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
-            const co     = coStatus[`${s.roomNum}_${s.checkout}`] || coStatus[`${s.roomNum}_${s.checkin}`];
+            // Find log record where date falls within this booking's stay window
+            const coKey = (() => {
+              const ci = s.checkin; const co2 = s.checkout;
+              // Check exact checkout date first, then any date in window
+              for (let d = new Date(ci); d <= new Date(co2); d.setDate(d.getDate() + 1)) {
+                const ds = d.toISOString().slice(0, 10);
+                const k = `${s.roomNum}_${ds}`;
+                if (coStatus[k]) return k;
+              }
+              return null;
+            })();
+            const co     = coKey ? coStatus[coKey] : undefined;
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
