@@ -359,6 +359,7 @@ export default function BookingInvoiceTodo() {
   const [search, setSearch] = useState('');
   const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
   const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
+  const [debugRaw, setDebugRaw] = useState<string>('');
 
   const refreshDocs = useCallback(async () => {
     setDocs(await fetchAllDocsIndex());
@@ -393,6 +394,15 @@ export default function BookingInvoiceTodo() {
         setError(`GAS response keys: [${keys.join(', ')}] — booking=${JSON.stringify(json.booking ?? json.bookings)?.substring(0,80)}`);
         setLoading(false); return;
       }
+      // Debug: capture matchKeys for target guests
+      const targets = ['laschet','rekom','rodrigues','saragba','nelson'];
+      const invSample = (json.invoice || []).filter((x: InvoiceRaw) =>
+        targets.some((t: string) => (x.guest||').toLowerCase().includes(t))
+      ).map((x: InvoiceRaw) => ({ guest: x.guest, room: x.room, checkin: x.checkin, invoiceKey: x.invoiceKey, matchKeys: x.matchKeys }));
+      const bkSample = (json.booking || []).filter((x: BookingRaw) =>
+        targets.some((t: string) => (x.guest||').toLowerCase().includes(t))
+      ).map((x: BookingRaw) => ({ guest: x.guest, room: x.room, checkin: x.checkin, resId: x.resId, matchKeys: x.matchKeys }));
+      setDebugRaw(JSON.stringify({ inv: invSample, bk: bkSample }, null, 2));
       setData(enrichData(json));
     } catch (e) {
       setError('โหลดข้อมูลไม่สำเร็จ: ' + String(e));
@@ -471,6 +481,15 @@ export default function BookingInvoiceTodo() {
           🔄 รีเฟรช
         </button>
       </div>
+
+      {/* Debug panel */}
+      {debugRaw && (
+        <details className="mb-4 text-xs border rounded-xl p-3 bg-yellow-50 border-yellow-300">
+          <summary className="font-bold text-yellow-800 cursor-pointer">🐛 Debug: matchKeys (คลิกเพื่อดู)</summary>
+          <pre className="mt-2 overflow-auto max-h-64 text-gray-700 whitespace-pre-wrap">{debugRaw}</pre>
+          <button onClick={() => setDebugRaw('')} className="mt-2 text-xs text-red-500 underline">ปิด debug</button>
+        </details>
+      )}
 
       {/* Name search */}
       <div className="relative mb-4">
