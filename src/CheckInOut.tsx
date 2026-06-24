@@ -45,14 +45,18 @@ interface DocFile {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function toLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDate(new Date());
 }
 
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return toLocalDate(d);
 }
 
 function diffDays(a: string, b: string): number {
