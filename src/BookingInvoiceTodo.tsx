@@ -182,7 +182,12 @@ function isCancelledOrNoShow(room: string): boolean {
 // ชื่อสั้นๆ ที่พบบ่อย (lee, kim, ana, tom, john ฯลฯ — 3-4 ตัวอักษร) ไม่ควรเชื่อเป็นหลักฐานเดี่ยวๆ
 // เพราะแขกคนละคนใช้ชื่อซ้ำกันได้บ่อย ต้องมี room ยืนยันด้วยถึงจะเชื่อ
 function hasSpecificNameToken(overlap: string[]): boolean {
-  return overlap.some(k => k.startsWith('n:') && k.split('|')[0].length >= 'n:'.length + 5);
+  return overlap.some(k => {
+    if (k.startsWith('n6:')) return true;                                         // GAS 6-char prefix
+    if (k.startsWith('n:') && !k.includes('|')) return k.length >= 7;            // GAS full-name key
+    if (k.startsWith('n:') && k.includes('|')) return k.split('|')[0].length >= 'n:'.length + 5; // React key
+    return false;
+  });
 }
 function roomNumStr(room: string): string {
   const m = room.match(/\b(\d{3})\b/);
@@ -208,13 +213,13 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     const isCxl = c.room && isCancelledOrNoShow(c.room);
     if (isCxl) {
       const preCheck = c.matchKeys.filter(k => mySet.has(k));
-      const hasNameOrConf = preCheck.some(k => k.startsWith('n:') || k.startsWith('conf:'));
+      const hasNameOrConf = preCheck.some(k => k.startsWith('n:') || k.startsWith('n6:') || k.startsWith('conf:'));
       if (!hasNameOrConf) continue;
     }
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) continue;
     const hasConf = overlap.some(k => k.startsWith('conf:'));
-    const hasName = overlap.some(k => k.startsWith('n:'));
+    const hasName = overlap.some(k => k.startsWith('n:') || k.startsWith('n6:'));
     const hasCr   = overlap.some(k => k.startsWith('cr:'));
     const cRoomNum = roomNumStr(c.room || '');
     const roomOk = itemRoomNums.size === 0 || !cRoomNum || itemRoomNums.has(cRoomNum);
