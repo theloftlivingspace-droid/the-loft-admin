@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 const GAS_API = '/api/gas-proxy?app=checkinout';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
+const RAW_CHECKOUT_GID = '0'; // Raw_Checkout_Log is the first/default sheet
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -320,17 +321,38 @@ export default function CheckInOut() {
           const csv = await cr.text();
           const rows = csv.trim().split('\n').map(r => r.split(',').map(c => c.replace(/^"|"$/g, '').trim()));
           const h = rows[0];
+          // Raw_Checkout_Log columns:
+          // UID(0) Date(1) Time(2) Inspector(3) Room(4) OTA(5) Guest(6)
+          // Status(7) Ready(8) Issues(9) Damages(10) Charge(11) ChargeNote(12)
+          // ElecUnit(13) ElecTHB(14) LateCheckout(15) Repairs(16) ExtraNote(17)
+          // DriveLinks(18) Timestamp(19) JSON(20)
+          const iUID       = h.indexOf('UID');
+          const iDate      = h.indexOf('Date');
+          const iInspector = h.indexOf('Inspector');
+          const iRoom      = h.indexOf('Room');
+          const iStatus    = h.indexOf('Status');
+          const iReady     = h.indexOf('Ready');
+          const iIssues    = h.indexOf('Issues');
+
+          // Build map: key = roomNum, keep latest record per room (last row wins)
           const map: Record<string, CheckoutStatus> = {};
           for (const row of rows.slice(1)) {
-            const rm = roomNum(row[h.indexOf('ห้อง')] || row[0] || '');
+            const rawRoom = iRoom >= 0 ? row[iRoom] : row[4];
+            const rm = roomNum(rawRoom || '');
             if (!rm) continue;
+            const status = iStatus >= 0 ? (row[iStatus] || '') : '';
+            const ready  = iReady  >= 0 ? (row[iReady]  || '') : '';
+            // inspected = status is normal/clean/minor (not empty, not major/block)
+            // OR ready field contains 'พร้อม'
+            const inspected = (status !== '' && !['major','block',''].includes(status.toLowerCase()))
+              || ready.includes('พร้อม');
             map[rm] = {
               room: rm,
-              inspected: (row[h.indexOf('ตรวจสอบ')] || '').toLowerCase().includes('ผ่าน') || (row[h.indexOf('สถานะ')] || '').toLowerCase().includes('ผ่าน'),
-              inspectedBy: row[h.indexOf('ผู้ตรวจ')] || '',
-              cleanedBy:   row[h.indexOf('ผู้ทำความสะอาด')] || row[h.indexOf('แม่บ้าน')] || '',
-              issues:      row[h.indexOf('ปัญหา')] || row[h.indexOf('หมายเหตุ')] || '',
-              date:        row[h.indexOf('วันที่')] || '',
+              inspected,
+              inspectedBy: iInspector >= 0 ? (row[iInspector] || '') : '',
+              cleanedBy:   '',
+              issues:      iIssues >= 0 ? (row[iIssues] || '') : '',
+              date:        iDate >= 0 ? (row[iDate] || '') : '',
             };
           }
           setCoStatus(map);
@@ -567,3 +589,4 @@ export default function CheckInOut() {
     </div>
   );
 }
+
