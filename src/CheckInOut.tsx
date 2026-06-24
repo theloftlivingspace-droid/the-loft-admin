@@ -322,7 +322,29 @@ export default function CheckInOut() {
         const cr = await fetch(csvUrl);
         if (cr.ok) {
           const csv = await cr.text();
-          const rows = csv.trim().split('\n').map(r => r.split(',').map(c => c.replace(/^"|"$/g, '').trim()));
+          // Proper CSV parser - handles quoted fields with commas inside
+          const parseCSV = (text: string): string[][] => {
+            const result: string[][] = [];
+            const lines = text.split(/\r?\n/);
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              const row: string[] = [];
+              let cur = ''; let inQ = false;
+              for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                  if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+                  else inQ = !inQ;
+                } else if (ch === ',' && !inQ) {
+                  row.push(cur.trim()); cur = '';
+                } else { cur += ch; }
+              }
+              row.push(cur.trim());
+              result.push(row);
+            }
+            return result;
+          };
+          const rows = parseCSV(csv);
           const h = rows[0];
           // Raw_Checkout_Log columns:
           // UID(0) Date(1) Time(2) Inspector(3) Room(4) OTA(5) Guest(6)
