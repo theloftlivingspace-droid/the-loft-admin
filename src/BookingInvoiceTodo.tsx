@@ -17,7 +17,7 @@ interface DocFile {
 // (see CheckInOut tab for the upload UI). This fetches the full index in one call.
 async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
   try {
-    const res = await fetch(`${GAS_API}?action=getAllDocs`);
+    const res = await fetch(`${GAS_API}&action=getAllDocs`);
     const json = await res.json();
     return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
   } catch {
@@ -374,8 +374,14 @@ export default function BookingInvoiceTodo() {
   const loadData = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${GAS_API}?action=getData`);
+      const res = await fetch(`${GAS_API}&action=getData`);
       const json = await res.json();
+      // Debug: show shape if empty
+      if (!Array.isArray(json.booking) && !Array.isArray(json.bookings)) {
+        const keys = Object.keys(json);
+        setError(`GAS response keys: [${keys.join(', ')}] — booking=${JSON.stringify(json.booking ?? json.bookings)?.substring(0,80)}`);
+        setLoading(false); return;
+      }
       setData(enrichData(json));
     } catch (e) {
       setError('โหลดข้อมูลไม่สำเร็จ: ' + String(e));
@@ -388,7 +394,7 @@ export default function BookingInvoiceTodo() {
     if (!data) return;
     setTogglingId(resId);
     setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done } : x) } : d);
-    try { await fetch(`${GAS_API}?action=setBookingDone&id=${encodeURIComponent(resId)}&done=${done}`); }
+    try { await fetch(`${GAS_API}&action=setBookingDone&id=${encodeURIComponent(resId)}&done=${done}`); }
     catch { setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
     setTogglingId('');
   };
@@ -397,7 +403,7 @@ export default function BookingInvoiceTodo() {
     if (!data) return;
     setTogglingId(invoiceKey);
     setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done } : x) } : d);
-    try { await fetch(`${GAS_API}?action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`); }
+    try { await fetch(`${GAS_API}&action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`); }
     catch { setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
     setTogglingId('');
   };
