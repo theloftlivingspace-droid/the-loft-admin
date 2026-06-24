@@ -263,17 +263,41 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
   const maxScore = Math.max(...scored.map(x => x.score));
   const top = scored.filter(x => x.score >= maxScore - 5);
 
-  // Same-guest repeat stays: keep only closest checkin
+  // Same-guest repeat stays: collapse ONLY when invoices belong to DIFFERENT stays
+  // (i.e. their checkins differ by >14 days from each other).
+  // If all matched invoices share the same approximate checkin (same stay, split payouts),
+  // keep them all so multi-payout bookings show every invoice button.
   if (top.length > 1) {
     const firstNames = new Set(top.map(x => (x.c.guest || '').toLowerCase().split(/[\s,]+/)[0]));
     if (firstNames.size === 1) {
-      const best = top.reduce((a, b) =>
-        daysDiff(item.checkin, a.c.checkin) <= daysDiff(item.checkin, b.c.checkin) ? a : b
-      );
-      return [best.c];
+      // Check if all checkins are within 14 days of each other (same stay)
+      const checkins = top.map(x => x.c.checkin || '');
+      const allSameStay = checkins.every(ci => daysDiff(checkins[0], ci) <= 14);
+      if (!allSameStay) {
+        // Different stays — keep only the one closest to the booking's checkin
+        const best = top.reduce((a, b) =>
+          daysDiff(item.checkin, a.c.checkin) <= daysDiff(item.checkin, b.c.checkin) ? a : b
+        );
+        return [best.c];
+      }
+      // Same stay (split payouts) — fall through and return all of them
     }
   }
-  return top.map(x => x.c);
+  // Dedup by net: same net = same payout recorded twice (EXT ghost rows).
+  // Keep the highest-scored match; within ties, prefer shorter invoiceKey (non-EXT).
+  const seenNet = new Map<number, { score: number; c: T }>();
+  for (const x of top) {
+    const net = parseFloat(String((x.c as Record<string, unknown>)['net'] ?? 0));
+    const existing = seenNet.get(net);
+    if (!existing || x.score > existing.score) {
+      seenNet.set(net, x);
+    } else if (x.score === existing.score) {
+      const xKey = String((x.c as Record<string, unknown>)['invoiceKey'] ?? '');
+      const eKey = String((existing.c as Record<string, unknown>)['invoiceKey'] ?? '');
+      if (xKey.length < eKey.length) seenNet.set(net, x);
+    }
+  }
+  return Array.from(seenNet.values()).map(x => x.c);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -397,10 +421,10 @@ export default function BookingInvoiceTodo() {
       // Debug: capture matchKeys for target guests
       const targets = ['laschet','rekom','rodrigues','saragba','nelson'];
       const invSample = (json.invoice || []).filter((x: InvoiceRaw) =>
-        targets.some((t: string) => (x.guest||').toLowerCase().includes(t))
+        targets.some((t: string) => (x.guest||'').toLowerCase().includes(t))
       ).map((x: InvoiceRaw) => ({ guest: x.guest, room: x.room, checkin: x.checkin, invoiceKey: x.invoiceKey, matchKeys: x.matchKeys }));
       const bkSample = (json.booking || []).filter((x: BookingRaw) =>
-        targets.some((t: string) => (x.guest||').toLowerCase().includes(t))
+        targets.some((t: string) => (x.guest||'').toLowerCase().includes(t))
       ).map((x: BookingRaw) => ({ guest: x.guest, room: x.room, checkin: x.checkin, resId: x.resId, matchKeys: x.matchKeys }));
       setDebugRaw(JSON.stringify({ inv: invSample, bk: bkSample }, null, 2));
       setData(enrichData(json));
