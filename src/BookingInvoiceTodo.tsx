@@ -13,8 +13,6 @@ interface DocFile {
   uploadedAt: string;
 }
 
-// Docs are stored in Google Drive under folders named "{room}_{checkin}_{resId}"
-// (see CheckInOut tab for the upload UI). This fetches the full index in one call.
 async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
   try {
     const res = await fetch(`${GAS_API}&action=getAllDocs`);
@@ -47,6 +45,7 @@ interface InvoiceRaw {
   splitIndex?: number; splitTotal?: number;
   ota: string; status: string; detectedDate?: string; detectedToday?: boolean;
   done?: boolean; matchKeys?: string[];
+  confList?: string[];
   // old GAS format
   date?: string;
 }
@@ -60,67 +59,75 @@ interface DashboardData {
   invoice: InvoiceItem[];
 }
 
-// ─── Frontend Matching ────────────────────────────────────────────────────────
-// Keys ต้องตรงกับ format ที่ GAS makeMatchKeys_ สร้าง:
-//   n:NAMEPART|YYYY-MM-DD   (name part + ci date ±2 days)
-//   cr:YYYY-MM-DD|ROOM      (checkin date ±2 days + room number)
+// ─── Key format helpers (must match GAS BookingInvoiceTodo.gs exactly) ────────
+//
+// GAS produces these key formats:
+//   conf:HMXXXXXX          — Airbnb conf code
+//   cr:YYYY-MM-DD:ROOM     — checkin date + room number (colon separator)
+//   n6:XXXXXX              — 6-char normalized name prefix per token
+//   n:FULLNORMNAME         — full normalized name (no spaces/punctuation)
+//
+// TSX previously used '|' as separator in cr: keys — WRONG. Must use ':'.
+// TSX previously built 'n:PART|DATE' keys — totally different format from GAS.
+// Fix: always trust GAS-supplied matchKeys; only rebuild as fallback using
+// the correct GAS format.
 
-function normDate(s: string): string {
-  if (!s) return '';
-  return String(s).substring(0, 10);
+function normName(s: string): string {
+  return (s || '').toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function nameTokens(fullName: string): string[] {
+  return (fullName || '').replace(/,/g, ' ').trim()
+    .split(/\s+/).filter(t => t.length > 1);
+}
+
+function namePrefixes(fullName: string): string[] {
+  return nameTokens(fullName).map(t => {
+    const n = normName(t);
+    return 'n6:' + n.substring(0, 6);
+  }).filter(k => k.length > 4);
 }
 
 function extractRoomNum(r: string): string {
-  const m = String(r || '').match(/\b(\d{3})\b/);
-  return m ? m[1] : String(r || '').replace(/[^0-9]/g, '').substring(0, 3);
+  const m = String(r || '').match(/(\d{3})/);
+  return m ? m[1] : '';
 }
 
-function ciDates(ci: string): string[] {
-  const dates = [ci];
-  if (!ci || ci.length < 10) return dates;
-  try {
-    const d = new Date(ci + 'T00:00:00Z');
-    for (let delta = -2; delta <= 2; delta++) {
-      if (delta === 0) continue;
-      const d2 = new Date(d.getTime() + delta * 86400000);
-      dates.push(d2.toISOString().substring(0, 10));
-    }
-  } catch (_) {}
-  return dates;
+function extractConfFromResId(resId: string): string | null {
+  const m = String(resId || '').match(/ABB-([A-Za-z0-9]{6,})-\d{8}/);
+  if (m) {
+    const candidate = m[1].toUpperCase();
+    if (/^HM[A-Z0-9]{6,}/.test(candidate)) return candidate;
+  }
+  return null;
 }
 
-function allNameParts(raw: string): string[] {
-  return String(raw || '').trim()
-    .split(/[\s,\/\\]+/)
-    .map(p => p.toLowerCase().replace(/[^a-z0-9ก-๙]/g, ''))
-    .filter(p => p.length >= 3);
-}
-
-// สร้าง keys แบบเดียวกับ GAS makeMatchKeys_ — ใช้ทั้งฝั่ง booking และ invoice
-function buildMatchKeys(guest: string, checkin: string, room: string): string[] {
-  const parts = allNameParts(guest);
-  const rn    = extractRoomNum(room);
-  const ci    = normDate(checkin);
-  const dates = ciDates(ci);
+// Build matchKeys in GAS format — used only as fallback when GAS didn't supply them
+function buildBookingMatchKeysFallback(b: BookingRaw): string[] {
   const keys: string[] = [];
-  parts.forEach(p => dates.forEach(dt => keys.push('n:' + p + '|' + dt)));
-  if (rn) dates.forEach(dt => keys.push('cr:' + dt + '|' + rn));
+  const conf = extractConfFromResId(b.resId);
+  if (conf) keys.push('conf:' + conf);
+  const roomNum = extractRoomNum(b.room);
+  if (roomNum && b.checkin) keys.push('cr:' + b.checkin + ':' + roomNum);
+  namePrefixes(b.guest).forEach(px => keys.push(px));
+  const nn = normName(b.guest.replace(/,/g, ' '));
+  if (nn.length >= 4) keys.push('n:' + nn);
   return keys;
 }
 
-function buildBookingKeys(b: BookingRaw): string[] {
-  return buildMatchKeys(b.guest, b.checkin, b.room);
-}
-
-function buildInvoiceKeys(inv: InvoiceRaw): string[] {
-  // invoice อาจมีหลาย guest/room (comma-separated)
-  const guests = String(inv.guest || '').split(',');
-  const rooms  = String(inv.room  || '').split(',');
+function buildInvoiceMatchKeysFallback(inv: InvoiceRaw): string[] {
   const keys: string[] = [];
-  guests.forEach((g, i) => {
-    const r = rooms[i] || rooms[0] || '';
-    buildMatchKeys(g.trim(), inv.checkin, r).forEach(k => keys.push(k));
+  (inv.confList || []).forEach(c => {
+    if (c && /^HM[A-Z0-9]{6,}/.test(c)) keys.push('conf:' + c);
   });
+  const roomNum = extractRoomNum(inv.room);
+  if (roomNum && inv.checkin)  keys.push('cr:' + inv.checkin  + ':' + roomNum);
+  if (roomNum && inv.checkout) keys.push('cr:' + inv.checkout + ':' + roomNum);
+  namePrefixes(inv.guest).forEach(px => keys.push(px));
+  const nn = normName(inv.guest);
+  if (nn.length >= 4) keys.push('n:' + nn);
   return keys;
 }
 
@@ -133,17 +140,21 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
     ...b,
     done: b.done ?? false,
     isNewToday: b.isNewToday ?? false,
-    matchKeys: b.matchKeys?.length ? b.matchKeys : buildBookingKeys(b),
+    // Trust GAS matchKeys; only rebuild if absent
+    matchKeys: (b.matchKeys && b.matchKeys.length > 0) ? b.matchKeys : buildBookingMatchKeysFallback(b),
   }));
 
-  // Deduplicate by invoiceKey (GAS already handles multi-guest splitting via bookingId#confCode)
+  // Deduplicate by invoiceKey — GAS assigns unique keys:
+  //   multi-room splits: "SCB-...:0", "SCB-...:1", etc.
+  //   single rows: bookingId itself
+  // So dedup on invoiceKey is correct and will NOT collapse split rows.
   const seen = new Set<string>();
   const invoice: InvoiceItem[] = [];
   invoicesRaw.forEach(inv => {
     const iKey = inv.invoiceKey || inv.bookingId || '';
     if (!iKey || seen.has(iKey)) return;
     seen.add(iKey);
-    const detectedDate = normDate(inv.detectedDate || inv.date || today);
+    const detectedDate = (inv.detectedDate || inv.date || today).substring(0, 10);
     const detectedToday = detectedDate === today || inv.detectedToday === true;
     const item: InvoiceItem = {
       ...inv,
@@ -152,7 +163,8 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
       detectedToday,
       done: inv.done ?? false,
       isSplitFromMulti: inv.isSplitFromMulti ?? false,
-      matchKeys: inv.matchKeys?.length ? inv.matchKeys : buildInvoiceKeys(inv),
+      // Trust GAS matchKeys; only rebuild if absent
+      matchKeys: (inv.matchKeys && inv.matchKeys.length > 0) ? inv.matchKeys : buildInvoiceMatchKeysFallback(inv),
     };
     invoice.push(item);
   });
@@ -160,13 +172,21 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
   return { today, booking, invoice };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-// Returns only the counterpart items whose matchKeys actually intersect with `item`'s matchKeys.
-// Includes a sanity check: if the ONLY overlapping keys are room+date (`cr:`) keys, we double-check
-// the real checkin dates are within 2 days of each other. This guards against invoices whose
-// checkin/checkout span is abnormally wide (e.g. unmatched SCB transfers spanning 30+ nights),
-// which would otherwise generate a wide date range of `cr:` keys and collide with unrelated bookings
-// in the same room.
+// ─── Matching ─────────────────────────────────────────────────────────────────
+//
+// Since GAS and TSX now share the same key format, matching is a simple
+// set intersection. Scoring prioritises conf: > n6:/n: > cr: to avoid
+// false positives from room+date coincidences alone.
+//
+// Guards:
+//  - cancelled/no-show rooms: only match if conf: or n6:/n: key overlaps
+//  - cr:-only match: require date ranges to actually overlap
+
+function isCancelledOrNoShow(room: string): boolean {
+  const r = (room || '').toLowerCase();
+  return r.includes('cancel') || r.includes('no show') || r.includes('noshow') || r.includes('ยกเลิก');
+}
+
 function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bCheckout: string): boolean {
   const a1 = new Date(aCheckin).getTime();
   const a2 = new Date(aCheckout).getTime();
@@ -175,29 +195,18 @@ function rangesOverlap(aCheckin: string, aCheckout: string, bCheckin: string, bC
   if ([a1, a2, b1, b2].some(isNaN)) return false;
   return a1 < b2 && b1 < a2;
 }
-function isCancelledOrNoShow(room: string): boolean {
-  const r = room.toLowerCase();
-  return r.includes('cancel') || r.includes('no show') || r.includes('noshow') || r.includes('ยกเลิก');
-}
-// ชื่อสั้นๆ ที่พบบ่อย (lee, kim, ana, tom, john ฯลฯ — 3-4 ตัวอักษร) ไม่ควรเชื่อเป็นหลักฐานเดี่ยวๆ
-// เพราะแขกคนละคนใช้ชื่อซ้ำกันได้บ่อย ต้องมี room ยืนยันด้วยถึงจะเชื่อ
-function hasSpecificNameToken(overlap: string[]): boolean {
-  return overlap.some(k => {
-    if (k.startsWith('n6:')) return true;                                         // GAS 6-char prefix
-    if (k.startsWith('n:') && !k.includes('|')) return k.length >= 7;            // GAS full-name key
-    if (k.startsWith('n:') && k.includes('|')) return k.split('|')[0].length >= 'n:'.length + 5; // React key
-    return false;
-  });
-}
-function roomNumStr(room: string): string {
-  const m = room.match(/\b(\d{3})\b/);
-  return m ? m[1] : '';
-}
-function daysDiffNum(a: string, b: string): number {
+
+function daysDiff(a: string, b: string): number {
   const da = new Date(a).getTime(), db = new Date(b).getTime();
   if (isNaN(da) || isNaN(db)) return 999;
   return Math.abs(da - db) / 86400000;
 }
+
+function roomNumStr(room: string): string {
+  const m = (room || '').match(/\b(\d{3})\b/);
+  return m ? m[1] : '';
+}
+
 function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string; guest?: string }>(
   item: { matchKeys: string[]; checkin: string; checkout: string; room?: string },
   candidates: T[]
@@ -206,63 +215,68 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
   const itemRoomNums = new Set(
     (item.room || '').split(',').map(r => roomNumStr(r.trim())).filter(Boolean)
   );
+
   const scored: Array<{ score: number; c: T }> = [];
+
   for (const c of candidates) {
-    // cancel/noshow rooms: block ถ้า match แค่ cr: (room+date) เท่านั้น
-    // แต่ถ้ามี name match (n:) หรือ conf: → อนุญาต เพราะ Airbnb จ่ายจริง
     const isCxl = c.room && isCancelledOrNoShow(c.room);
-    if (isCxl) {
-      const preCheck = c.matchKeys.filter(k => mySet.has(k));
-      const hasNameOrConf = preCheck.some(k => k.startsWith('n:') || k.startsWith('n6:') || k.startsWith('conf:'));
-      if (!hasNameOrConf) continue;
-    }
     const overlap = c.matchKeys.filter(k => mySet.has(k));
     if (overlap.length === 0) continue;
+
     const hasConf = overlap.some(k => k.startsWith('conf:'));
-    const hasName = overlap.some(k => k.startsWith('n:') || k.startsWith('n6:'));
+    const hasName = overlap.some(k => k.startsWith('n6:') || k.startsWith('n:'));
     const hasCr   = overlap.some(k => k.startsWith('cr:'));
+
+    // Cancelled rooms: must have conf or name match, not just room+date
+    if (isCxl && !hasConf && !hasName) continue;
+
     const cRoomNum = roomNumStr(c.room || '');
     const roomOk = itemRoomNums.size === 0 || !cRoomNum || itemRoomNums.has(cRoomNum);
-    const ciDiff = daysDiffNum(item.checkin || '', c.checkin || '');
+    const ciDiff = daysDiff(item.checkin || '', c.checkin || '');
+
     let score = 0;
-    if (hasConf)  score += 100;
-    if (hasName)  score += 20;
-    if (roomOk)   score += 10;
-    if (hasCr)    score += 2;
+    if (hasConf) score += 100;
+    if (hasName) score += 20;
+    if (roomOk)  score += 10;
+    if (hasCr)   score += 2;
     score += Math.max(0, 5 - ciDiff);
-    if (hasConf) {
-      scored.push({ score, c });
-    } else if (hasName) {
-      // ป้องกัน false positive จากชื่อสั้นๆ ที่ซ้ำกันได้บ่อย (Lee, Kim, John...):
-      // ต้องมี token ที่ยาว/เฉพาะเจาะจงพอ หรือไม่ก็ต้องมี room ยืนยันตรงกัน ถึงจะเชื่อ
-      const trustworthy = hasSpecificNameToken(overlap) || (cRoomNum && roomOk && itemRoomNums.size > 0);
-      if (!trustworthy) continue;
+
+    if (hasConf || hasName) {
+      // conf or name match: trust it (with optional room sanity check)
       if (itemRoomNums.size > 0 && cRoomNum && !roomOk) {
-        if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout))
+        // room mismatch — only accept if date ranges overlap (e.g. extension payout)
+        if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
           scored.push({ score, c });
+        }
       } else {
         scored.push({ score, c });
       }
     } else if (hasCr) {
-      if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout))
+      // room+date only: require overlapping stay to avoid false positives
+      if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
         scored.push({ score, c });
+      }
     }
   }
+
   if (scored.length === 0) return [];
   const maxScore = Math.max(...scored.map(x => x.score));
   const top = scored.filter(x => x.score >= maxScore - 5);
-  // Same-guest repeat stays: keep only the one with closest checkin
+
+  // Same-guest repeat stays: keep only closest checkin
   if (top.length > 1) {
     const firstNames = new Set(top.map(x => (x.c.guest || '').toLowerCase().split(/[\s,]+/)[0]));
     if (firstNames.size === 1) {
       const best = top.reduce((a, b) =>
-        daysDiffNum(item.checkin, a.c.checkin) <= daysDiffNum(item.checkin, b.c.checkin) ? a : b
+        daysDiff(item.checkin, a.c.checkin) <= daysDiff(item.checkin, b.c.checkin) ? a : b
       );
       return [best.c];
     }
   }
   return top.map(x => x.c);
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatNum(n: string | number | undefined): string {
   const v = parseFloat(String(n ?? '').replace(/,/g, ''));
   if (isNaN(v)) return String(n ?? '');
@@ -356,8 +370,6 @@ export default function BookingInvoiceTodo() {
     return () => window.removeEventListener('focus', refreshDocs);
   }, [refreshDocs]);
 
-  // Drive folders are named "{room}_{checkin}_{resId}" — match on resId first,
-  // then fall back to room+checkin (covers stays without a resId).
   function findDocsForBooking(item: { resId: string; guest: string; checkin: string; room: string }): DocFile[] {
     const rm = (item.room.match(/\d{3}/) || [''])[0];
     const exactKey = `${rm}_${item.checkin}_${item.resId || 'noid'}`;
@@ -376,7 +388,6 @@ export default function BookingInvoiceTodo() {
     try {
       const res = await fetch(`${GAS_API}&action=getData`);
       const json = await res.json();
-      // Debug: show shape if empty
       if (!Array.isArray(json.booking) && !Array.isArray(json.bookings)) {
         const keys = Object.keys(json);
         setError(`GAS response keys: [${keys.join(', ')}] — booking=${JSON.stringify(json.booking ?? json.bookings)?.substring(0,80)}`);
