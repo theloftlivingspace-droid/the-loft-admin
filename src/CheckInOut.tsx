@@ -334,25 +334,26 @@ export default function CheckInOut() {
           const iReady     = h.indexOf('Ready');
           const iIssues    = h.indexOf('Issues');
 
-          // Build map: key = roomNum, keep latest record per room (last row wins)
+          // Build map: key = roomNum_checkoutDate, match per booking
           const map: Record<string, CheckoutStatus> = {};
           for (const row of rows.slice(1)) {
             const rawRoom = iRoom >= 0 ? row[iRoom] : row[4];
             const rm = roomNum(rawRoom || '');
             if (!rm) continue;
+            const date   = iDate >= 0 ? (row[iDate] || '') : '';
             const status = iStatus >= 0 ? (row[iStatus] || '') : '';
             const ready  = iReady  >= 0 ? (row[iReady]  || '') : '';
-            // inspected = status is normal/clean/minor (not empty, not major/block)
-            // OR ready field contains 'พร้อม'
             const inspected = (status !== '' && !['major','block',''].includes(status.toLowerCase()))
               || ready.includes('พร้อม');
-            map[rm] = {
+            // Store by room_date key so we match per checkout booking
+            const key = `${rm}_${date}`;
+            map[key] = {
               room: rm,
               inspected,
               inspectedBy: iInspector >= 0 ? (row[iInspector] || '') : '',
               cleanedBy:   '',
               issues:      iIssues >= 0 ? (row[iIssues] || '') : '',
-              date:        iDate >= 0 ? (row[iDate] || '') : '',
+              date,
             };
           }
           setCoStatus(map);
@@ -471,7 +472,7 @@ export default function CheckInOut() {
         <div className="space-y-3">
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
-            const co     = coStatus[s.roomNum];
+            const co     = coStatus[`${s.roomNum}_${s.checkout}`] || coStatus[`${s.roomNum}_${s.checkin}`];
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
