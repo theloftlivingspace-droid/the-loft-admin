@@ -481,10 +481,15 @@ export default function CheckInOut() {
             const cfg    = STATUS_CONFIG[s.status];
             // Find log record where date falls within this booking's stay window
             const coKey = (() => {
-              const ci = s.checkin; const co2 = s.checkout;
-              // Check exact checkout date first, then any date in window
-              for (let d = new Date(ci); d <= new Date(co2); d.setDate(d.getDate() + 1)) {
-                const ds = d.toISOString().slice(0, 10);
+              // Parse date string as local date (avoid UTC offset issues)
+              const parseLocal = (s2: string) => {
+                const [y,m,d2] = s2.split('-').map(Number);
+                return new Date(y, m-1, d2);
+              };
+              const ciD = parseLocal(s.checkin);
+              const coD = parseLocal(s.checkout);
+              for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
+                const ds = toLocalDate(d);
                 const k = `${s.roomNum}_${ds}`;
                 if (coStatus[k]) return k;
               }
