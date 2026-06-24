@@ -7,7 +7,6 @@ import { useState, useEffect, useRef } from 'react';
 const GAS_API = '/api/gas-proxy?app=checkinout';
 const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
-const RAW_CHECKOUT_GID = '0'; // Raw_Checkout_Log is the first/default sheet
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -326,7 +325,6 @@ export default function CheckInOut() {
           // Status(7) Ready(8) Issues(9) Damages(10) Charge(11) ChargeNote(12)
           // ElecUnit(13) ElecTHB(14) LateCheckout(15) Repairs(16) ExtraNote(17)
           // DriveLinks(18) Timestamp(19) JSON(20)
-          const iUID       = h.indexOf('UID');
           const iDate      = h.indexOf('Date');
           const iInspector = h.indexOf('Inspector');
           const iRoom      = h.indexOf('Room');
