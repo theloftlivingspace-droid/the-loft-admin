@@ -603,8 +603,7 @@ export default function CheckInOut() {
                       <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
                         ${co?.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                         : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
-                        <span>{co?.inspected ? '🟢' : '🟡'}</span>
-                        <span>{co?.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
+                        <span className="text-base">{co?.inspected ? '🟢' : '🟡'}</span>
                       </div>
                     )}
 
@@ -614,8 +613,7 @@ export default function CheckInOut() {
                         ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
                                               : 'bg-white text-gray-400 border border-gray-200'}`}>
-                        <span>{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
-                        <span>{roomReady === true ? 'พร้อม' : roomReady === false ? 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
+                        <span className="text-base">{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
                       </div>
                     )}
                   </div>
@@ -634,6 +632,17 @@ export default function CheckInOut() {
           })}
         </div>
       )}
+
+      {/* Legend */}
+      <div className="mt-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-500">
+        <div className="font-semibold text-gray-600 mb-1.5">หมายเหตุ</div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <span>🟢 ตรวจห้องผ่าน / ห้องพร้อม</span>
+          <span>🟡 ยังไม่ตรวจห้อง</span>
+          <span>🔴 ห้องไม่พร้อม</span>
+          <span>⚪ ไม่ทราบสถานะ</span>
+        </div>
+      </div>
     </div>
   );
 }
