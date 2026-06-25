@@ -369,6 +369,87 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
   );
 }
 
+// ─── OTA colour themes ────────────────────────────────────────────────────────
+function otaTheme(channel: string) {
+  const ch = (channel || '').toLowerCase();
+  if (ch.includes('airbnb'))   return {
+    card:   'bg-rose-50 border-l-4 border-l-rose-400 border-t border-r border-b border-rose-200',
+    room:   'bg-rose-100 border border-rose-300 text-rose-800',
+    badge:  'bg-rose-100 text-rose-800 border border-rose-300',
+    name:   'text-rose-900',
+    dateVal:'text-rose-900',
+    dateSub:'text-rose-700',
+    dateLbl:'text-rose-500',
+    dateBox:'border border-rose-200 rounded-lg overflow-hidden mb-2',
+    nightBg:'bg-rose-100 border-x border-rose-200 text-rose-700',
+    nightNum:'text-rose-900',
+    inv:    'border-rose-400 text-rose-800 hover:bg-rose-100',
+    copy:   'border-rose-300 text-rose-600 hover:bg-rose-100',
+    accent: '#e11d48',
+  };
+  if (ch.includes('booking'))  return {
+    card:   'bg-blue-50 border-l-4 border-l-blue-500 border-t border-r border-b border-blue-200',
+    room:   'bg-blue-100 border border-blue-300 text-blue-800',
+    badge:  'bg-blue-100 text-blue-900 border border-blue-300',
+    name:   'text-blue-950',
+    dateVal:'text-blue-950',
+    dateSub:'text-blue-700',
+    dateLbl:'text-blue-500',
+    dateBox:'border border-blue-200 rounded-lg overflow-hidden mb-2',
+    nightBg:'bg-blue-100 border-x border-blue-200 text-blue-700',
+    nightNum:'text-blue-950',
+    inv:    'border-blue-500 text-blue-800 hover:bg-blue-100',
+    copy:   'border-blue-300 text-blue-600 hover:bg-blue-100',
+    accent: '#1d4ed8',
+  };
+  if (ch.includes('expedia'))  return {
+    card:   'bg-amber-50 border-l-4 border-l-amber-400 border-t border-r border-b border-amber-200',
+    room:   'bg-amber-100 border border-amber-300 text-amber-900',
+    badge:  'bg-amber-100 text-amber-900 border border-amber-300',
+    name:   'text-amber-950',
+    dateVal:'text-amber-950',
+    dateSub:'text-amber-700',
+    dateLbl:'text-amber-500',
+    dateBox:'border border-amber-200 rounded-lg overflow-hidden mb-2',
+    nightBg:'bg-amber-100 border-x border-amber-200 text-amber-700',
+    nightNum:'text-amber-950',
+    inv:    'border-amber-500 text-amber-800 hover:bg-amber-100',
+    copy:   'border-amber-300 text-amber-700 hover:bg-amber-100',
+    accent: '#b45309',
+  };
+  if (ch.includes('trip'))     return {
+    card:   'bg-green-50 border-l-4 border-l-green-500 border-t border-r border-b border-green-200',
+    room:   'bg-green-100 border border-green-300 text-green-900',
+    badge:  'bg-green-100 text-green-900 border border-green-300',
+    name:   'text-green-950',
+    dateVal:'text-green-950',
+    dateSub:'text-green-700',
+    dateLbl:'text-green-500',
+    dateBox:'border border-green-200 rounded-lg overflow-hidden mb-2',
+    nightBg:'bg-green-100 border-x border-green-200 text-green-700',
+    nightNum:'text-green-950',
+    inv:    'border-green-500 text-green-800 hover:bg-green-100',
+    copy:   'border-green-300 text-green-700 hover:bg-green-100',
+    accent: '#16a34a',
+  };
+  // default (direct / unknown)
+  return {
+    card:   'bg-white border border-gray-200',
+    room:   'bg-gray-100 border border-gray-200 text-gray-700',
+    badge:  'bg-gray-100 text-gray-600 border border-gray-200',
+    name:   'text-gray-900',
+    dateVal:'text-gray-900',
+    dateSub:'text-gray-500',
+    dateLbl:'text-gray-400',
+    dateBox:'border border-gray-100 rounded-lg overflow-hidden mb-2',
+    nightBg:'bg-gray-50 border-x border-gray-100 text-gray-500',
+    nightNum:'text-gray-900',
+    inv:    'border-blue-400 text-blue-700 hover:bg-blue-50',
+    copy:   'border-gray-300 text-gray-400 hover:bg-gray-50',
+    accent: '#2563eb',
+  };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BookingInvoiceTodo() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -383,6 +464,7 @@ export default function BookingInvoiceTodo() {
   const [search, setSearch] = useState('');
   const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
   const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
+  const [copiedId, setCopiedId] = useState<string>('');
 
   const refreshDocs = useCallback(async () => {
     setDocs(await fetchAllDocsIndex());
@@ -545,37 +627,37 @@ export default function BookingInvoiceTodo() {
                 const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
                 const itemDocs = findDocsForBooking(item);
+                const th = otaTheme(item.channel);
+                const isCopied = copiedId === item.resId;
                 return (
                   <div key={item.resId} data-itemid={item.resId}
-                    className={`rounded-2xl border mb-3 transition-all overflow-hidden
-                      ${item.isNewToday && !item.done ? 'bg-amber-50 border-amber-300' : ''}
-                      ${item.done ? 'opacity-50 bg-green-50 border-green-200' : 'bg-white border-gray-200'}
-                      ${isHl ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-50' : ''}`}>
-                    {/* Card body */}
-                    <div className="px-3 py-2">
-                      {/* Row 1: checkbox + room badge + guest + resId */}
-                      <div className="flex items-center gap-2 mb-2">
+                    className={`rounded-xl mb-2 transition-all overflow-hidden
+                      ${item.done ? 'opacity-40 saturate-50' : th.card}
+                      ${isHl ? 'ring-2 ring-blue-400' : ''}`}>
+                    <div className="px-2.5 py-2">
+                      {/* Row 1: checkbox + room pill + name + channel + new + copy */}
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" checked={item.done} disabled={togglingId === item.resId}
                           onChange={e => toggleBookingDone(item.resId, e.target.checked)}
-                          className="w-4 h-4 accent-blue-600 flex-shrink-0 cursor-pointer" />
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex flex-col items-center justify-center">
-                          <span className="text-sm font-bold text-blue-700 leading-none">
-                            {(item.room || '').match(/\b(\d{3})\b/)?.[1] || item.room}
-                          </span>
-                          <span className="text-[8px] text-blue-400 tracking-wide uppercase leading-none mt-0.5">
-                            {(item.room || '').replace(/\d{3}/, '').trim().split(' ')[0] || ''}
-                          </span>
+                          style={{ accentColor: th.accent }}
+                          className="w-3.5 h-3.5 flex-shrink-0 cursor-pointer" />
+                        <div className={`flex-shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold ${th.room}`}>
+                          {(item.room || '').match(/\b(\d{3})\b/)?.[1] || item.room}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-gray-900 text-sm leading-tight truncate">{item.guest}</div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0 rounded-full">{item.channel}</span>
-                            {item.isNewToday && !item.done && <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 rounded-full font-bold">ใหม่</span>}
-                          </div>
-                        </div>
-                        <button onClick={() => { copyToClipboard(copyVal); showToast('คัดลอกแล้ว: ' + copyVal); }}
-                          className="text-[10px] border rounded px-1.5 py-0.5 hover:bg-gray-100 transition text-gray-400 flex-shrink-0">
-                          📋
+                        <span className={`flex-1 min-w-0 text-[13px] font-semibold truncate ${th.name}`}>{item.guest}</span>
+                        <span className={`text-[10px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
+                        {item.isNewToday && !item.done && (
+                          <span className="text-[10px] bg-yellow-200 text-yellow-900 rounded-full px-1.5 py-px font-bold flex-shrink-0">ใหม่</span>
+                        )}
+                        <button
+                          onClick={() => {
+                            copyToClipboard(copyVal);
+                            setCopiedId(item.resId);
+                            setTimeout(() => setCopiedId(''), 2000);
+                          }}
+                          className={`flex-shrink-0 text-[10px] border rounded px-1.5 py-px transition font-medium whitespace-nowrap
+                            ${isCopied ? 'bg-green-100 border-green-400 text-green-700' : th.copy}`}>
+                          {isCopied ? '✓ copied!' : '📋 copy'}
                         </button>
                       </div>
                       {/* Row 2: date block */}
@@ -588,36 +670,36 @@ export default function BookingInvoiceTodo() {
                         const co = fmtD(item.checkout);
                         const nights = Math.round((new Date(item.checkout).getTime() - new Date(item.checkin).getTime()) / 86400000);
                         return (
-                          <div className="flex border border-gray-100 rounded-lg overflow-hidden mb-2">
+                          <div className={`flex mt-1.5 ${th.dateBox}`}>
                             <div className="flex-1 px-2 py-1">
-                              <div className="text-[8px] text-gray-400 uppercase tracking-widest">เช็คอิน</div>
-                              <div className="text-base font-semibold text-gray-900 leading-none">{ci.day}</div>
-                              <div className="text-[10px] text-gray-500">{ci.month} '{ci.year}</div>
+                              <div className={`text-[8px] uppercase tracking-widest ${th.dateLbl}`}>เช็คอิน</div>
+                              <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{ci.day}</div>
+                              <div className={`text-[10px] ${th.dateSub}`}>{ci.month} '{ci.year}</div>
                             </div>
-                            <div className="flex items-center justify-center px-2 bg-gray-50 text-[10px] text-gray-400 font-medium border-x border-gray-100 text-center leading-tight">
-                              {nights}<br/>คืน
+                            <div className={`flex items-center justify-center px-2 text-[10px] font-medium text-center leading-tight ${th.nightBg}`}>
+                              <span className={`font-semibold ${th.nightNum}`}>{nights}</span>&nbsp;คืน
                             </div>
                             <div className="flex-1 px-2 py-1">
-                              <div className="text-[8px] text-gray-400 uppercase tracking-widest">เช็คเอาท์</div>
-                              <div className="text-base font-semibold text-gray-900 leading-none">{co.day}</div>
-                              <div className="text-[10px] text-gray-500">{co.month} '{co.year}</div>
+                              <div className={`text-[8px] uppercase tracking-widest ${th.dateLbl}`}>เช็คเอาท์</div>
+                              <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{co.day}</div>
+                              <div className={`text-[10px] ${th.dateSub}`}>{co.month} '{co.year}</div>
                             </div>
                           </div>
                         );
                       })()}
                       {/* Row 3: tags */}
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1 mt-1.5">
                         {itemDocs.length > 0 && (
                           <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-[10px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1.5 py-0.5 hover:bg-indigo-50 transition">
+                            className="text-[10px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1.5 py-px hover:bg-indigo-50 transition">
                             🗂 ({itemDocs.length})
                           </button>
                         )}
                         {matchedInvoices.length === 0
-                          ? <span className="text-[10px] border rounded px-1.5 py-0.5 text-gray-400">🧾 ไม่มี Invoice</span>
+                          ? <span className="text-[10px] border rounded px-1.5 py-px text-gray-400">🧾 ไม่มี Invoice</span>
                           : matchedInvoices.map(inv => (
                               <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
-                                className="text-[10px] border border-blue-400 text-blue-700 font-semibold rounded px-1.5 py-0.5 hover:bg-blue-50 transition">
+                                className={`text-[10px] border font-semibold rounded px-1.5 py-px transition ${th.inv}`}>
                                 🧾 ฿{formatNum(inv.net)}
                               </button>
                             ))
@@ -698,4 +780,5 @@ export default function BookingInvoiceTodo() {
     </div>
   );
 }
+
 
