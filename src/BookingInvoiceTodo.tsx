@@ -551,91 +551,78 @@ export default function BookingInvoiceTodo() {
                       ${item.isNewToday && !item.done ? 'bg-amber-50 border-amber-300' : ''}
                       ${item.done ? 'opacity-50 bg-green-50 border-green-200' : 'bg-white border-gray-200'}
                       ${isHl ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-50' : ''}`}>
-                    {/* Card header */}
-                    <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
+                    {/* Card body */}
+                    <div className="px-3 py-2">
+                      {/* Row 1: checkbox + room badge + guest + resId */}
+                      <div className="flex items-center gap-2 mb-2">
                         <input type="checkbox" checked={item.done} disabled={togglingId === item.resId}
                           onChange={e => toggleBookingDone(item.resId, e.target.checked)}
-                          className="w-5 h-5 accent-blue-600 flex-shrink-0 cursor-pointer" />
-                        {item.isNewToday && !item.done && (
-                          <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">ใหม่วันนี้</span>
-                        )}
-                        {item.done && (
-                          <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">✓ เสร็จแล้ว</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-gray-400 font-mono">{item.resId}</span>
-                        <button onClick={() => { copyToClipboard(copyVal); showToast('คัดลอกแล้ว: ' + copyVal); }}
-                          className="text-xs border rounded-lg px-2 py-0.5 hover:bg-gray-100 transition text-gray-400">
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                    {/* Card body */}
-                    <div className="px-4 pt-3 pb-3">
-                      {/* Room badge + Guest */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center">
-                          <span className="text-xl font-bold text-blue-700 leading-none">
+                          className="w-4 h-4 accent-blue-600 flex-shrink-0 cursor-pointer" />
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex flex-col items-center justify-center">
+                          <span className="text-sm font-bold text-blue-700 leading-none">
                             {(item.room || '').match(/\b(\d{3})\b/)?.[1] || item.room}
                           </span>
-                          <span className="text-[9px] text-blue-400 mt-0.5 tracking-wide uppercase">
-                            {(item.room || '').replace(/\d{3}/, '').trim().split(' ')[0] || 'ROOM'}
+                          <span className="text-[8px] text-blue-400 tracking-wide uppercase leading-none mt-0.5">
+                            {(item.room || '').replace(/\d{3}/, '').trim().split(' ')[0] || ''}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-gray-900 text-base leading-tight">{item.guest}</div>
-                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{item.channel}</span>
+                          <div className="font-semibold text-gray-900 text-sm leading-tight truncate">{item.guest}</div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0 rounded-full">{item.channel}</span>
+                            {item.isNewToday && !item.done && <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 rounded-full font-bold">ใหม่</span>}
                           </div>
                         </div>
+                        <button onClick={() => { copyToClipboard(copyVal); showToast('คัดลอกแล้ว: ' + copyVal); }}
+                          className="text-[10px] border rounded px-1.5 py-0.5 hover:bg-gray-100 transition text-gray-400 flex-shrink-0">
+                          📋
+                        </button>
                       </div>
-                      {/* Date block */}
+                      {/* Row 2: date block */}
                       {(() => {
                         const fmtD = (iso: string) => {
                           const d = new Date(iso);
-                          return { day: d.getDate(), month: d.toLocaleDateString('th-TH', { month: 'short' }), year: d.getFullYear() };
+                          return { day: d.getDate(), month: d.toLocaleDateString('th-TH', { month: 'short' }), year: String(d.getFullYear()).slice(2) };
                         };
                         const ci = fmtD(item.checkin);
                         const co = fmtD(item.checkout);
                         const nights = Math.round((new Date(item.checkout).getTime() - new Date(item.checkin).getTime()) / 86400000);
                         return (
-                          <div className="flex border border-gray-100 rounded-xl overflow-hidden mb-3">
-                            <div className="flex-1 px-3 py-2">
-                              <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คอิน</div>
-                              <div className="text-xl font-semibold text-gray-900 leading-none">{ci.day}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">{ci.month} {ci.year}</div>
+                          <div className="flex border border-gray-100 rounded-lg overflow-hidden mb-2">
+                            <div className="flex-1 px-2 py-1">
+                              <div className="text-[8px] text-gray-400 uppercase tracking-widest">เช็คอิน</div>
+                              <div className="text-base font-semibold text-gray-900 leading-none">{ci.day}</div>
+                              <div className="text-[10px] text-gray-500">{ci.month} '{ci.year}</div>
                             </div>
-                            <div className="flex items-center justify-center px-3 bg-gray-50 text-[11px] text-gray-400 font-medium border-x border-gray-100 text-center">
+                            <div className="flex items-center justify-center px-2 bg-gray-50 text-[10px] text-gray-400 font-medium border-x border-gray-100 text-center leading-tight">
                               {nights}<br/>คืน
                             </div>
-                            <div className="flex-1 px-3 py-2">
-                              <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คเอาท์</div>
-                              <div className="text-xl font-semibold text-gray-900 leading-none">{co.day}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">{co.month} {co.year}</div>
+                            <div className="flex-1 px-2 py-1">
+                              <div className="text-[8px] text-gray-400 uppercase tracking-widest">เช็คเอาท์</div>
+                              <div className="text-base font-semibold text-gray-900 leading-none">{co.day}</div>
+                              <div className="text-[10px] text-gray-500">{co.month} '{co.year}</div>
                             </div>
                           </div>
                         );
                       })()}
-                      {/* Tags row */}
-                      <div className="flex flex-wrap gap-2">
+                      {/* Row 3: tags */}
+                      <div className="flex flex-wrap gap-1.5">
                         {itemDocs.length > 0 && (
                           <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-xs border border-indigo-300 text-indigo-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-indigo-50 transition flex items-center gap-1">
-                            🗂 เอกสาร ({itemDocs.length})
+                            className="text-[10px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1.5 py-0.5 hover:bg-indigo-50 transition">
+                            🗂 ({itemDocs.length})
                           </button>
                         )}
                         {matchedInvoices.length === 0
-                          ? <span className="text-xs border rounded-lg px-2 py-0.5 text-gray-400">🧾 ไม่มี Invoice</span>
+                          ? <span className="text-[10px] border rounded px-1.5 py-0.5 text-gray-400">🧾 ไม่มี Invoice</span>
                           : matchedInvoices.map(inv => (
                               <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
-                                className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
-                                🧾 NET ฿{formatNum(inv.net)}
+                                className="text-[10px] border border-blue-400 text-blue-700 font-semibold rounded px-1.5 py-0.5 hover:bg-blue-50 transition">
+                                🧾 ฿{formatNum(inv.net)}
                               </button>
                             ))
                         }
-                        {item.note && <span className="text-xs text-gray-400 italic">📝 {item.note}</span>}
+                        {item.note && <span className="text-[10px] text-gray-400 italic">📝 {item.note}</span>}
                       </div>
                     </div>
                   </div>
