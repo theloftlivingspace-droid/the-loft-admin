@@ -602,8 +602,8 @@ export default function CheckInOut() {
                     {(s.status === 'checking-out-today' || s.status === 'checked-in') && (
                       <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
                         ${co?.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                        <span>{co?.inspected ? '✅' : '❌'}</span>
+                                        : 'bg-white text-gray-400 border border-gray-200'}`}>
+                        <span>{co?.inspected ? '✅' : '⚪'}</span>
                         <span>{co?.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
                       </div>
                     )}
@@ -612,8 +612,9 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
                         ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                              : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                        <span>{roomReady === true ? '✅' : '❌'}</span>
+                        : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
+                                              : 'bg-white text-gray-400 border border-gray-200'}`}>
+                        <span>{roomReady === true ? '✅' : roomReady === false ? '❌' : '⚪'}</span>
                         <span>{roomReady === true ? 'พร้อม' : roomReady === false ? 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
                       </div>
                     )}
