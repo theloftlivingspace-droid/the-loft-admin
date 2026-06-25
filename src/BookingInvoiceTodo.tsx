@@ -380,7 +380,7 @@ function otaTheme(channel: string) {
     dateVal:'text-rose-900',
     dateSub:'text-rose-700',
     dateLbl:'text-rose-500',
-    dateBox:'border border-rose-200 rounded-lg overflow-hidden mb-2',
+    dateBox:'border border-rose-200 rounded-lg overflow-hidden mb-1',
     nightBg:'bg-rose-100 border-x border-rose-200 text-rose-700',
     nightNum:'text-rose-900',
     inv:    'border-rose-400 text-rose-800 hover:bg-rose-100',
@@ -395,7 +395,7 @@ function otaTheme(channel: string) {
     dateVal:'text-blue-950',
     dateSub:'text-blue-700',
     dateLbl:'text-blue-500',
-    dateBox:'border border-blue-200 rounded-lg overflow-hidden mb-2',
+    dateBox:'border border-blue-200 rounded-lg overflow-hidden mb-1',
     nightBg:'bg-blue-100 border-x border-blue-200 text-blue-700',
     nightNum:'text-blue-950',
     inv:    'border-blue-500 text-blue-800 hover:bg-blue-100',
@@ -410,7 +410,7 @@ function otaTheme(channel: string) {
     dateVal:'text-amber-950',
     dateSub:'text-amber-700',
     dateLbl:'text-amber-500',
-    dateBox:'border border-amber-200 rounded-lg overflow-hidden mb-2',
+    dateBox:'border border-amber-200 rounded-lg overflow-hidden mb-1',
     nightBg:'bg-amber-100 border-x border-amber-200 text-amber-700',
     nightNum:'text-amber-950',
     inv:    'border-amber-500 text-amber-800 hover:bg-amber-100',
@@ -425,7 +425,7 @@ function otaTheme(channel: string) {
     dateVal:'text-green-950',
     dateSub:'text-green-700',
     dateLbl:'text-green-500',
-    dateBox:'border border-green-200 rounded-lg overflow-hidden mb-2',
+    dateBox:'border border-green-200 rounded-lg overflow-hidden mb-1',
     nightBg:'bg-green-100 border-x border-green-200 text-green-700',
     nightNum:'text-green-950',
     inv:    'border-green-500 text-green-800 hover:bg-green-100',
@@ -441,7 +441,7 @@ function otaTheme(channel: string) {
     dateVal:'text-gray-900',
     dateSub:'text-gray-500',
     dateLbl:'text-gray-400',
-    dateBox:'border border-gray-100 rounded-lg overflow-hidden mb-2',
+    dateBox:'border border-gray-100 rounded-lg overflow-hidden mb-1',
     nightBg:'bg-gray-50 border-x border-gray-100 text-gray-500',
     nightNum:'text-gray-900',
     inv:    'border-blue-400 text-blue-700 hover:bg-blue-50',
@@ -634,20 +634,20 @@ export default function BookingInvoiceTodo() {
                     className={`rounded-xl mb-2 transition-all overflow-hidden
                       ${item.done ? 'opacity-40 saturate-50' : th.card}
                       ${isHl ? 'ring-2 ring-blue-400' : ''}`}>
-                    <div className="px-2.5 py-2">
+                    <div className="px-2 py-1.5">
                       {/* Row 1: checkbox + room pill + name + channel + new + copy */}
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <input type="checkbox" checked={item.done} disabled={togglingId === item.resId}
                           onChange={e => toggleBookingDone(item.resId, e.target.checked)}
                           style={{ accentColor: th.accent }}
                           className="w-3.5 h-3.5 flex-shrink-0 cursor-pointer" />
-                        <div className={`flex-shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold ${th.room}`}>
+                        <div className={`flex-shrink-0 rounded-md px-1.5 py-0.5 text-sm font-semibold ${th.room}`}>
                           {(item.room || '').match(/\b(\d{3})\b/)?.[1] || item.room}
                         </div>
-                        <span className={`flex-1 min-w-0 text-[13px] font-semibold truncate ${th.name}`}>{item.guest}</span>
-                        <span className={`text-[10px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
+                        <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
+                        <span className={`text-[13px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
                         {item.isNewToday && !item.done && (
-                          <span className="text-[10px] bg-yellow-200 text-yellow-900 rounded-full px-1.5 py-px font-bold flex-shrink-0">ใหม่</span>
+                          <span className="text-[13px] bg-yellow-200 text-yellow-900 rounded-full px-1 py-px font-bold flex-shrink-0">ใหม่</span>
                         )}
                         <button
                           onClick={() => {
@@ -655,7 +655,7 @@ export default function BookingInvoiceTodo() {
                             setCopiedId(item.resId);
                             setTimeout(() => setCopiedId(''), 2000);
                           }}
-                          className={`flex-shrink-0 text-[10px] border rounded px-1.5 py-px transition font-medium whitespace-nowrap
+                          className={`flex-shrink-0 text-[13px] border rounded px-1.5 py-px transition font-medium whitespace-nowrap
                             ${isCopied ? 'bg-green-100 border-green-400 text-green-700' : th.copy}`}>
                           {isCopied ? '✓ copied!' : '📋 copy'}
                         </button>
@@ -670,17 +670,17 @@ export default function BookingInvoiceTodo() {
                         const co = fmtD(item.checkout);
                         const nights = Math.round((new Date(item.checkout).getTime() - new Date(item.checkin).getTime()) / 86400000);
                         return (
-                          <div className={`flex mt-1.5 ${th.dateBox}`}>
+                          <div className={`flex mt-1 ${th.dateBox}`}>
                             <div className="flex-1 px-2 py-1">
-                              <div className={`text-[8px] uppercase tracking-widest ${th.dateLbl}`}>เช็คอิน</div>
-                              <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{ci.day}</div>
-                              <div className={`text-[10px] ${th.dateSub}`}>{ci.month} '{ci.year}</div>
+                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คอิน</div>
+                              <div className={`text-base font-semibold leading-none ${th.dateVal}`}>{ci.day}</div>
+                              <div className={`text-[13px] ${th.dateSub}`}>{ci.month} '{ci.year}</div>
                             </div>
-                            <div className={`flex items-center justify-center px-2 text-[10px] font-medium text-center leading-tight ${th.nightBg}`}>
+                            <div className={`flex items-center justify-center px-2 text-[13px] font-medium text-center leading-tight ${th.nightBg}`}>
                               <span className={`font-semibold ${th.nightNum}`}>{nights}</span>&nbsp;คืน
                             </div>
                             <div className="flex-1 px-2 py-1">
-                              <div className={`text-[8px] uppercase tracking-widest ${th.dateLbl}`}>เช็คเอาท์</div>
+                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คเอาท์</div>
                               <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{co.day}</div>
                               <div className={`text-[10px] ${th.dateSub}`}>{co.month} '{co.year}</div>
                             </div>
@@ -688,23 +688,23 @@ export default function BookingInvoiceTodo() {
                         );
                       })()}
                       {/* Row 3: tags */}
-                      <div className="flex flex-wrap gap-1 mt-1.5">
+                      <div className="flex flex-wrap gap-1 mt-1">
                         {itemDocs.length > 0 && (
                           <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-[10px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1.5 py-px hover:bg-indigo-50 transition">
+                            className="text-[13px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1 py-px hover:bg-indigo-50 transition">
                             🗂 ({itemDocs.length})
                           </button>
                         )}
                         {matchedInvoices.length === 0
-                          ? <span className="text-[10px] border rounded px-1.5 py-px text-gray-400">🧾 ไม่มี Invoice</span>
+                          ? <span className="text-[13px] border rounded px-1 py-px text-gray-400">🧾 ไม่มี Invoice</span>
                           : matchedInvoices.map(inv => (
                               <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
-                                className={`text-[10px] border font-semibold rounded px-1.5 py-px transition ${th.inv}`}>
+                                className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
                                 🧾 ฿{formatNum(inv.net)}
                               </button>
                             ))
                         }
-                        {item.note && <span className="text-[10px] text-gray-400 italic">📝 {item.note}</span>}
+                        {item.note && <span className="text-[13px] text-gray-400 italic">📝 {item.note}</span>}
                       </div>
                     </div>
                   </div>
@@ -780,5 +780,6 @@ export default function BookingInvoiceTodo() {
     </div>
   );
 }
+
 
 
