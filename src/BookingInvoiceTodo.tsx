@@ -373,60 +373,60 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
 function otaTheme(channel: string) {
   const ch = (channel || '').toLowerCase();
   if (ch.includes('airbnb'))   return {
-    card:   'bg-rose-50 border-l-4 border-l-rose-400 border-t border-r border-b border-rose-200',
-    room:   'bg-rose-100 border border-rose-300 text-rose-800',
-    badge:  'bg-rose-100 text-rose-800 border border-rose-300',
+    card:   'bg-white border-l-4 border-l-rose-300 border-t border-r border-b border-rose-100',
+    room:   'bg-rose-50 border border-rose-200 text-rose-700',
+    badge:  'bg-rose-50 text-rose-700 border border-rose-200',
     name:   'text-rose-900',
     dateVal:'text-rose-900',
     dateSub:'text-rose-700',
     dateLbl:'text-rose-500',
-    dateBox:'border border-rose-200 rounded-lg overflow-hidden mb-1',
-    nightBg:'bg-rose-100 border-x border-rose-200 text-rose-700',
+    dateBox:'border border-rose-100 rounded-lg overflow-hidden mb-1',
+    nightBg:'bg-rose-50/60 border-x border-rose-100 text-rose-600',
     nightNum:'text-rose-900',
     inv:    'border-rose-400 text-rose-800 hover:bg-rose-100',
     copy:   'border-rose-300 text-rose-600 hover:bg-rose-100',
     accent: '#e11d48',
   };
   if (ch.includes('booking'))  return {
-    card:   'bg-blue-50 border-l-4 border-l-blue-500 border-t border-r border-b border-blue-200',
-    room:   'bg-blue-100 border border-blue-300 text-blue-800',
-    badge:  'bg-blue-100 text-blue-900 border border-blue-300',
+    card:   'bg-white border-l-4 border-l-blue-400 border-t border-r border-b border-blue-100',
+    room:   'bg-blue-50 border border-blue-200 text-blue-700',
+    badge:  'bg-blue-50 text-blue-800 border border-blue-200',
     name:   'text-blue-950',
     dateVal:'text-blue-950',
     dateSub:'text-blue-700',
     dateLbl:'text-blue-500',
-    dateBox:'border border-blue-200 rounded-lg overflow-hidden mb-1',
-    nightBg:'bg-blue-100 border-x border-blue-200 text-blue-700',
+    dateBox:'border border-blue-100 rounded-lg overflow-hidden mb-1',
+    nightBg:'bg-blue-50/60 border-x border-blue-100 text-blue-600',
     nightNum:'text-blue-950',
     inv:    'border-blue-500 text-blue-800 hover:bg-blue-100',
     copy:   'border-blue-300 text-blue-600 hover:bg-blue-100',
     accent: '#1d4ed8',
   };
   if (ch.includes('expedia'))  return {
-    card:   'bg-amber-50 border-l-4 border-l-amber-400 border-t border-r border-b border-amber-200',
-    room:   'bg-amber-100 border border-amber-300 text-amber-900',
-    badge:  'bg-amber-100 text-amber-900 border border-amber-300',
+    card:   'bg-white border-l-4 border-l-amber-300 border-t border-r border-b border-amber-100',
+    room:   'bg-amber-50 border border-amber-200 text-amber-800',
+    badge:  'bg-amber-50 text-amber-800 border border-amber-200',
     name:   'text-amber-950',
     dateVal:'text-amber-950',
     dateSub:'text-amber-700',
     dateLbl:'text-amber-500',
-    dateBox:'border border-amber-200 rounded-lg overflow-hidden mb-1',
-    nightBg:'bg-amber-100 border-x border-amber-200 text-amber-700',
+    dateBox:'border border-amber-100 rounded-lg overflow-hidden mb-1',
+    nightBg:'bg-amber-50/60 border-x border-amber-100 text-amber-600',
     nightNum:'text-amber-950',
     inv:    'border-amber-500 text-amber-800 hover:bg-amber-100',
     copy:   'border-amber-300 text-amber-700 hover:bg-amber-100',
     accent: '#b45309',
   };
   if (ch.includes('trip'))     return {
-    card:   'bg-green-50 border-l-4 border-l-green-500 border-t border-r border-b border-green-200',
-    room:   'bg-green-100 border border-green-300 text-green-900',
-    badge:  'bg-green-100 text-green-900 border border-green-300',
+    card:   'bg-white border-l-4 border-l-green-400 border-t border-r border-b border-green-100',
+    room:   'bg-green-50 border border-green-200 text-green-800',
+    badge:  'bg-green-50 text-green-800 border border-green-200',
     name:   'text-green-950',
     dateVal:'text-green-950',
     dateSub:'text-green-700',
     dateLbl:'text-green-500',
-    dateBox:'border border-green-200 rounded-lg overflow-hidden mb-1',
-    nightBg:'bg-green-100 border-x border-green-200 text-green-700',
+    dateBox:'border border-green-100 rounded-lg overflow-hidden mb-1',
+    nightBg:'bg-green-50/60 border-x border-green-100 text-green-600',
     nightNum:'text-green-950',
     inv:    'border-green-500 text-green-800 hover:bg-green-100',
     copy:   'border-green-300 text-green-700 hover:bg-green-100',
@@ -631,10 +631,10 @@ export default function BookingInvoiceTodo() {
                 const isCopied = copiedId === item.resId;
                 return (
                   <div key={item.resId} data-itemid={item.resId}
-                    className={`rounded-xl mb-2 transition-all overflow-hidden
+                    className={`rounded-xl mb-1.5 transition-all overflow-hidden
                       ${item.done ? 'opacity-40 saturate-50' : th.card}
                       ${isHl ? 'ring-2 ring-blue-400' : ''}`}>
-                    <div className="px-2 py-1.5">
+                    <div className="px-2 py-1">
                       {/* Row 1: checkbox + room pill + name + channel + new + copy */}
                       <div className="flex items-center gap-1">
                         <input type="checkbox" checked={item.done} disabled={togglingId === item.resId}
@@ -670,16 +670,16 @@ export default function BookingInvoiceTodo() {
                         const co = fmtD(item.checkout);
                         const nights = Math.round((new Date(item.checkout).getTime() - new Date(item.checkin).getTime()) / 86400000);
                         return (
-                          <div className={`flex mt-1 ${th.dateBox}`}>
-                            <div className="flex-1 px-2 py-1">
+                          <div className={`flex mt-0.5 ${th.dateBox}`}>
+                            <div className="flex-1 px-1.5 py-0.5">
                               <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คอิน</div>
                               <div className={`text-base font-semibold leading-none ${th.dateVal}`}>{ci.day}</div>
                               <div className={`text-[13px] ${th.dateSub}`}>{ci.month} '{ci.year}</div>
                             </div>
-                            <div className={`flex items-center justify-center px-2 text-[13px] font-medium text-center leading-tight ${th.nightBg}`}>
+                            <div className={`flex items-center justify-center px-1.5 text-[13px] font-medium text-center leading-tight ${th.nightBg}`}>
                               <span className={`font-semibold ${th.nightNum}`}>{nights}</span>&nbsp;คืน
                             </div>
-                            <div className="flex-1 px-2 py-1">
+                            <div className="flex-1 px-1.5 py-0.5">
                               <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คเอาท์</div>
                               <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{co.day}</div>
                               <div className={`text-[10px] ${th.dateSub}`}>{co.month} '{co.year}</div>
@@ -688,7 +688,7 @@ export default function BookingInvoiceTodo() {
                         );
                       })()}
                       {/* Row 3: tags */}
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-1 mt-0.5">
                         {itemDocs.length > 0 && (
                           <button onClick={() => setViewerDocs(itemDocs)}
                             className="text-[13px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1 py-px hover:bg-indigo-50 transition">
@@ -780,6 +780,7 @@ export default function BookingInvoiceTodo() {
     </div>
   );
 }
+
 
 
 
