@@ -385,6 +385,8 @@ export default function CheckInOut() {
             const key = `${log.room}_${log.date}`;
             map[key] = log;
           }
+          // Debug: log map keys vs stay roomNums
+          console.log('[CO] map keys:', Object.keys(map).slice(0,10));
           setCoStatus(map);
         }
       } catch (_) { /* optional */ }
@@ -501,6 +503,8 @@ export default function CheckInOut() {
         <div className="space-y-3">
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
+            // Debug stay roomNum
+            console.log('[STAY]', s.roomNum, s.checkin, s.checkout);
             // Find log record where date falls within this booking's stay window
             const coKey = (() => {
               // Parse date string as local date (avoid UTC offset issues)
