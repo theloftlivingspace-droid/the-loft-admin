@@ -550,71 +550,98 @@ export default function CheckInOut() {
                 </div>
 
                 {/* Body */}
-                <div className="px-4 py-3 flex items-start gap-3">
-                  {/* Room badge */}
-                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-50 border border-blue-100
-                    flex flex-col items-center justify-center">
-                    <span className="text-lg font-bold text-blue-700 leading-none">{s.roomNum}</span>
-                    <span className="text-[10px] text-blue-400 mt-0.5">
-                      {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
-                    </span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-800 text-sm truncate">{s.guest}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${channelColor(s.channel)}`}>
-                        {channelIcon(s.channel)} {s.channel}
+                <div className="px-4 pt-3 pb-1">
+                  {/* Room + Guest row */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* Room badge */}
+                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100
+                      flex flex-col items-center justify-center">
+                      <span className="text-2xl font-semibold text-blue-700 leading-none">{s.roomNum}</span>
+                      <span className="text-[10px] text-blue-400 mt-1 tracking-wide uppercase">
+                        {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
                       </span>
-                      <span className="text-xs text-gray-400">{s.nights} คืน</span>
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">📅 {s.checkin}</span>
-                      <span className="text-gray-300">→</span>
-                      <span className="bg-gray-50 border rounded-lg px-2 py-0.5">{s.checkout}</span>
-                    </div>
-                    {s.note && (
-                      <p className="mt-1.5 text-xs text-gray-400 italic truncate">📝 {s.note}</p>
-                    )}
 
-                    {/* Upload + doc list */}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <button
-                        disabled={isUploading}
-                        onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
-                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
-                        {isUploading ? '⏳ กำลังอัปโหลด…' : '📎 อัปโหลดเอกสาร'}
-                      </button>
-                      {!docsLoading && cardDocs.length > 0 && (
-                        <button
-                          onClick={() => setViewerKey(cardKey)}
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
-                          🗂 ดูเอกสาร ({cardDocs.length})
-                        </button>
+                    {/* Guest + channel */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 text-base leading-tight truncate">{s.guest}</div>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span className={`inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium ${channelColor(s.channel)}`}>
+                          {channelIcon(s.channel)} {s.channel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right status badge */}
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                      {(s.status === 'checking-out-today' || s.status === 'checked-in') && (
+                        <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
+                          ${co?.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+                          <span className="text-base">{co?.inspected ? '🟢' : '🟡'}</span>
+                        </div>
+                      )}
+                      {s.status === 'arriving-today' && (
+                        <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
+                          ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
+                                                : 'bg-white text-gray-400 border border-gray-200'}`}>
+                          <span className="text-base">{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Right badges */}
-                  <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
-                    {/* Checkout status badge for checked-in / checking-out */}
-                    {(s.status === 'checking-out-today' || s.status === 'checked-in') && (
-                      <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                        ${co?.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
-                        <span className="text-base">{co?.inspected ? '🟢' : '🟡'}</span>
+                  {/* Date block */}
+                  {(() => {
+                    const fmtDate = (iso: string) => {
+                      const d = new Date(iso);
+                      return {
+                        day: d.getDate(),
+                        month: d.toLocaleDateString('th-TH', { month: 'short' }),
+                        year: d.getFullYear(),
+                      };
+                    };
+                    const ci = fmtDate(s.checkin);
+                    const co2 = fmtDate(s.checkout);
+                    const isCheckoutToday = s.status === 'checking-out-today';
+                    return (
+                      <div className="flex border border-gray-100 rounded-xl overflow-hidden mb-2">
+                        <div className="flex-1 px-3 py-2">
+                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คอิน</div>
+                          <div className="text-xl font-semibold text-gray-900 leading-none">{ci.day}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{ci.month} {ci.year}</div>
+                        </div>
+                        <div className="flex items-center justify-center px-3 bg-gray-50 text-[11px] text-gray-400 font-medium border-x border-gray-100">
+                          {s.nights}<br/>คืน
+                        </div>
+                        <div className="flex-1 px-3 py-2">
+                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คเอาท์</div>
+                          <div className={`text-xl font-semibold leading-none ${isCheckoutToday ? 'text-orange-600' : 'text-gray-900'}`}>{co2.day}</div>
+                          <div className={`text-xs mt-0.5 ${isCheckoutToday ? 'text-orange-400' : 'text-gray-500'}`}>{co2.month} {co2.year}</div>
+                        </div>
                       </div>
-                    )}
+                    );
+                  })()}
 
-                    {/* Room ready badge for arriving-today */}
-                    {s.status === 'arriving-today' && (
-                      <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                        ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
-                                              : 'bg-white text-gray-400 border border-gray-200'}`}>
-                        <span className="text-base">{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
-                      </div>
+                  {s.note && (
+                    <p className="mb-2 text-xs text-gray-400 italic truncate">📝 {s.note}</p>
+                  )}
+
+                  {/* Upload + doc list */}
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <button
+                      disabled={isUploading}
+                      onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
+                      {isUploading ? '⏳ กำลังอัปโหลด…' : '📎 อัปโหลดเอกสาร'}
+                    </button>
+                    {!docsLoading && cardDocs.length > 0 && (
+                      <button
+                        onClick={() => setViewerKey(cardKey)}
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
+                        🗂 ดูเอกสาร ({cardDocs.length})
+                      </button>
                     )}
                   </div>
                 </div>
