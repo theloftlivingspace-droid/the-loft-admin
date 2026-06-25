@@ -612,9 +612,8 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
                         ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
-                                              : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
-                        <span>{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
+                                              : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                        <span>{roomReady === true ? '✅' : '❌'}</span>
                         <span>{roomReady === true ? 'พร้อม' : roomReady === false ? 'ไม่พร้อม' : 'ไม่ทราบ'}</span>
                       </div>
                     )}
