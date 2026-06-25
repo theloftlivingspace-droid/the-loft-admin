@@ -208,11 +208,45 @@ export default function CheckInOut() {
   const [docsLoading, setDocsLoading] = useState(true);
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string } | null>(null);
+  const [noteText, setNoteText]         = useState('');
+  const [noteSaving, setNoteSaving]     = useState(false);
+  const [toast, setToast]               = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadCtxRef = useRef<{ key: string; room: string; checkin: string; resId: string } | null>(null);
 
   function folderKey(room: string, checkin: string, resId: string): string {
     return `${room}_${checkin}_${resId || 'noid'}`;
+  }
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500); }
+
+  function openNoteModal(s: Stay) {
+    setNoteModal({ resId: s.resId, room: s.roomNum, guest: s.guest, checkin: s.checkin, checkout: s.checkout, current: s.note });
+    setNoteText(s.note || '');
+  }
+
+  async function saveNote() {
+    if (!noteModal) return;
+    setNoteSaving(true);
+    const { resId, room, guest, checkin, checkout } = noteModal;
+    try {
+      await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(noteText)}`);
+    } catch { showToast('บันทึก GAS ไม่สำเร็จ'); setNoteSaving(false); return; }
+    setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: noteText } : x));
+    if (noteText.trim()) {
+      try {
+        await fetch('/api/maid-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: noteText }),
+        });
+      } catch { /* non-critical */ }
+    }
+    setNoteSaving(false);
+    setNoteModal(null);
+    showToast('บันทึก Note แล้ว' + (noteText.trim() ? ' + แจ้ง LINE' : ''));
+  }
   }
 
   async function refreshDocs() {
@@ -624,9 +658,14 @@ export default function CheckInOut() {
                     );
                   })()}
 
-                  {s.note && (
-                    <p className="mb-2 text-xs text-gray-400 italic truncate">📝 {s.note}</p>
-                  )}
+                  {/* Note */}
+                  <div className="mb-2 flex items-center gap-2">
+                    {s.note && <p className="flex-1 text-xs text-gray-400 italic truncate">📝 {s.note}</p>}
+                    <button onClick={() => openNoteModal(s)}
+                      className="text-[11px] border border-yellow-300 text-yellow-700 font-semibold rounded-lg px-2 py-1 hover:bg-yellow-50 transition whitespace-nowrap">
+                      {s.note ? '✏️ แก้ Note' : '📝 เพิ่ม Note'}
+                    </button>
+                  </div>
 
                   {/* Upload + doc list */}
                   <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -670,6 +709,39 @@ export default function CheckInOut() {
           <span>⚪ ไม่ทราบสถานะ</span>
         </div>
       </div>
+
+      {noteModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <p className="font-bold text-sm mb-1">📝 Note — ห้อง {noteModal.room}</p>
+            <p className="text-xs text-gray-500 mb-3">{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
+            <textarea
+              className="w-full border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              rows={4}
+              placeholder="พิมพ์หมายเหตุ... (จะส่งไป LINE group แม่บ้านด้วย)"
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setNoteModal(null)}
+                className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
+                ยกเลิก
+              </button>
+              <button onClick={saveNote} disabled={noteSaving}
+                className="flex-1 bg-yellow-400 hover:bg-yellow-500 rounded-lg py-2 text-sm font-bold transition disabled:opacity-50">
+                {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
