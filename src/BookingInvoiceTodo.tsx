@@ -465,9 +465,6 @@ export default function BookingInvoiceTodo() {
   const [docs, setDocs] = useState<Record<string, DocFile[]>>({});
   const [viewerDocs, setViewerDocs] = useState<DocFile[] | null>(null);
   const [copiedId, setCopiedId] = useState<string>('');
-  const [noteModal, setNoteModal] = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string } | null>(null);
-  const [noteText, setNoteText] = useState('');
-  const [noteSaving, setNoteSaving] = useState(false);
 
   const refreshDocs = useCallback(async () => {
     setDocs(await fetchAllDocsIndex());
@@ -530,36 +527,6 @@ export default function BookingInvoiceTodo() {
     try { await fetch(`${GAS_API}&action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`); }
     catch { setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
     setTogglingId('');
-  };
-
-  const openNoteModal = (item: BookingItem) => {
-    setNoteModal({ resId: item.resId, room: item.room, guest: item.guest, checkin: item.checkin, checkout: item.checkout, current: item.note });
-    setNoteText(item.note || '');
-  };
-
-  const saveNote = async () => {
-    if (!noteModal) return;
-    setNoteSaving(true);
-    const { resId, room, guest, checkin, checkout } = noteModal;
-    // 1. Save to GAS Sheet1
-    try {
-      await fetch(`${GAS_API}&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(noteText)}`);
-    } catch { showToast('บันทึก GAS ไม่สำเร็จ'); setNoteSaving(false); return; }
-    // 2. Optimistic update local state
-    setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, note: noteText } : x) } : d);
-    // 3. Push to LINE group if note non-empty
-    if (noteText.trim()) {
-      try {
-        await fetch('/api/maid-note', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: noteText }),
-        });
-      } catch { /* LINE push failure is non-critical */ }
-    }
-    setNoteSaving(false);
-    setNoteModal(null);
-    showToast('บันทึก Note แล้ว' + (noteText.trim() ? ' + แจ้ง LINE' : ''));
   };
 
   const jumpTo = (tab: 'booking' | 'invoice', id: string) => {
@@ -742,10 +709,6 @@ export default function BookingInvoiceTodo() {
                             ))
                         }
                         {item.note && <span className="text-[13px] text-gray-400 italic">📝 {item.note}</span>}
-                        <button onClick={() => openNoteModal(item)}
-                          className="text-[13px] border border-yellow-300 text-yellow-700 font-semibold rounded px-1 py-px hover:bg-yellow-50 transition">
-                          {item.note ? '✏️ แก้ Note' : '📝 เพิ่ม Note'}
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -810,33 +773,6 @@ export default function BookingInvoiceTodo() {
                 );
               })
           }
-        </div>
-      )}
-
-      {noteModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <p className="font-bold text-sm mb-1">📝 Note — ห้อง {noteModal.room}</p>
-            <p className="text-xs text-gray-500 mb-3">{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
-            <textarea
-              className="w-full border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              rows={4}
-              placeholder="พิมพ์หมายเหตุ... (จะส่งไป LINE group แม่บ้านด้วย)"
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              autoFocus
-            />
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => setNoteModal(null)}
-                className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
-                ยกเลิก
-              </button>
-              <button onClick={saveNote} disabled={noteSaving}
-                className="flex-1 bg-yellow-400 hover:bg-yellow-500 rounded-lg py-2 text-sm font-bold transition disabled:opacity-50">
-                {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
