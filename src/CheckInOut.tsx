@@ -599,12 +599,12 @@ export default function CheckInOut() {
                   {/* Right badges */}
                   <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                     {/* Checkout status badge for checked-in / checking-out */}
-                    {(s.status === 'checking-out-today' || s.status === 'checked-in') && co && (
+                    {(s.status === 'checking-out-today' || s.status === 'checked-in') && (
                       <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                        ${co.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                       : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                        <span>{co.inspected ? '✅' : '❌'}</span>
-                        <span>{co.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
+                        ${co?.inspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                        <span>{co?.inspected ? '✅' : '❌'}</span>
+                        <span>{co?.inspected ? 'ผ่าน' : 'ยังไม่ตรวจ'}</span>
                       </div>
                     )}
 
