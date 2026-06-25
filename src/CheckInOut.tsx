@@ -501,16 +501,18 @@ export default function CheckInOut() {
         <div className="space-y-3">
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
-            // Find log record where date falls within this booking's stay window
+            // Find log: date within stay window OR up to 3 days before checkin
             const coKey = (() => {
-              // Parse date string as local date (avoid UTC offset issues)
               const parseLocal = (s2: string) => {
                 const [y,m,d2] = s2.split('-').map(Number);
                 return new Date(y, m-1, d2);
               };
               const ciD = parseLocal(s.checkin);
               const coD = parseLocal(s.checkout);
-              for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
+              // Scan from 3 days before checkin up to checkout
+              const scanStart = new Date(ciD);
+              scanStart.setDate(scanStart.getDate() - 3);
+              for (let d = new Date(scanStart); d <= coD; d.setDate(d.getDate() + 1)) {
                 const ds = toLocalDate(d);
                 const k = `${s.roomNum}_${ds}`;
                 if (coStatus[k]) return k;
