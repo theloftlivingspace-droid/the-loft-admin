@@ -247,7 +247,6 @@ export default function CheckInOut() {
     setNoteModal(null);
     showToast('บันทึก Note แล้ว' + (noteText.trim() ? ' + แจ้ง LINE' : ''));
   }
-  }
 
   async function refreshDocs() {
     setDocsLoading(true);
