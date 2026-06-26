@@ -757,12 +757,14 @@ export default function CheckInOut() {
                 {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
               </button>
             </div>
-            {debugLog.length > 0 && (
-              <div className="mt-3 bg-gray-100 rounded p-2 text-xs font-mono space-y-1 max-h-32 overflow-y-auto">
-                {debugLog.map((l, i) => <div key={i} className="text-gray-700">{l}</div>)}
-              </div>
-            )}
           </div>
+        </div>
+      )}
+
+      {debugLog.length > 0 && (
+        <div className="fixed bottom-20 left-4 bg-black/80 text-green-400 text-xs font-mono p-3 rounded-lg z-50 max-w-sm space-y-1 cursor-pointer" onClick={() => setDebugLog([])}>
+          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+          <div className="text-gray-500 mt-1">tap to clear</div>
         </div>
       )}
 
