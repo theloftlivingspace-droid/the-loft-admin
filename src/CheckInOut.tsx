@@ -230,25 +230,27 @@ export default function CheckInOut() {
     if (!noteModal) return;
     setNoteSaving(true);
     const { resId, room, guest, checkin, checkout } = noteModal;
+    const text = noteText; // capture before any state change
     try {
       // 1. Write to GAS Sheet1
-      const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(noteText)}`);
-      const j = await r.json().catch(() => ({}));
-      if (j.ok === false) throw new Error(j.error || 'GAS error');
+      const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
+      let j: { ok?: boolean; error?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON response */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
 
-      // 2. Optimistic update + close modal
-      setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: noteText } : x));
+      // 2. Close modal + update UI
       setNoteModal(null);
       setNoteText('');
+      setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
 
-      // 3. Push LINE (non-blocking)
-      if (noteText.trim()) {
+      // 3. Push LINE (fire-and-forget)
+      if (text.trim()) {
         fetch('/api/maid-note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: noteText }),
+          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
         })
-          .then(r => r.json().catch(() => ({})))
+          .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
           .then(j => {
             if (j.ok === false) showToast('Note บันทึกแล้ว ⚠️ LINE: ' + (j.error || 'error'));
             else showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
@@ -258,7 +260,7 @@ export default function CheckInOut() {
         showToast('บันทึก Note แล้ว ✅');
       }
     } catch (e) {
-      showToast('บันทึก GAS ไม่สำเร็จ: ' + String(e));
+      showToast('❌ บันทึกไม่สำเร็จ: ' + String(e));
     } finally {
       setNoteSaving(false);
     }
