@@ -745,7 +745,10 @@ export default function CheckInOut() {
                 className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
                 ยกเลิก
               </button>
-              <button onClick={saveNote} disabled={noteSaving}
+              <button onClick={async () => {
+                  alert(`saveNote called\nnoteModal=${JSON.stringify(noteModal)}\nnoteText="${noteText}"`);
+                  await saveNote();
+                }} disabled={noteSaving}
                 className="flex-1 bg-yellow-400 hover:bg-yellow-500 rounded-lg py-2 text-sm font-bold transition disabled:opacity-50">
                 {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
               </button>
