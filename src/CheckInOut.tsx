@@ -209,6 +209,8 @@ export default function CheckInOut() {
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string } | null>(null);
+  const [debugLog, setDebugLog]         = useState<string[]>([]);
+  function addLog(msg: string) { setDebugLog(prev => [...prev.slice(-6), msg]); }
   const [noteText, setNoteText]         = useState('');
   const [noteSaving, setNoteSaving]     = useState(false);
   const [toast, setToast]               = useState('');
@@ -231,11 +233,18 @@ export default function CheckInOut() {
     setNoteSaving(true);
     const { resId, room, guest, checkin, checkout } = noteModal;
     const text = noteText; // capture before any state change
+    showToast(`⏳ กำลังส่ง... resId=${resId}`);
+    addLog(`→ fetch setNote id=${resId}`);
     try {
       // 1. Write to GAS Sheet1
       const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
+      showToast(`📡 GAS status=${r.status}`);
+      addLog(`← status=${r.status}`);
       let j: { ok?: boolean; error?: string } = {};
-      try { j = await r.json(); } catch { /* non-JSON response */ }
+      let rawText = '';
+      try { rawText = await r.text(); j = JSON.parse(rawText); } catch { /* non-JSON */ }
+      showToast(`📦 GAS reply: ${rawText.slice(0, 80)}`);
+      addLog(`← body: ${rawText.slice(0, 120)}`);
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
 
       // 2. Close modal + update UI
@@ -750,6 +759,11 @@ export default function CheckInOut() {
                 {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
               </button>
             </div>
+            {debugLog.length > 0 && (
+              <div className="mt-3 bg-gray-100 rounded p-2 text-xs font-mono space-y-1 max-h-32 overflow-y-auto">
+                {debugLog.map((l, i) => <div key={i} className="text-gray-700">{l}</div>)}
+              </div>
+            )}
           </div>
         </div>
       )}
