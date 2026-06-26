@@ -230,22 +230,33 @@ export default function CheckInOut() {
     if (!noteModal) return;
     setNoteSaving(true);
     const { resId, room, guest, checkin, checkout } = noteModal;
+    // 1. Write to GAS Sheet1
     try {
-      await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(noteText)}`);
-    } catch { showToast('บันทึก GAS ไม่สำเร็จ'); setNoteSaving(false); return; }
+      const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(noteText)}`);
+      const j = await r.json().catch(() => ({}));
+      if (j.ok === false) throw new Error(j.error || 'GAS error');
+    } catch (e) { showToast('บันทึก GAS ไม่สำเร็จ: ' + String(e)); setNoteSaving(false); return; }
+    // 2. Optimistic update stays
     setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: noteText } : x));
+    setNoteModal(null);
+    // 3. Push LINE
     if (noteText.trim()) {
       try {
-        await fetch('/api/maid-note', {
+        const r = await fetch('/api/maid-note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resId, room, guest, checkin, checkout, note: noteText }),
         });
-      } catch { /* non-critical */ }
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+        showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
+      } catch (e) {
+        showToast('บันทึก Note แล้ว ✅ แต่ LINE ไม่สำเร็จ: ' + String(e));
+      }
+    } else {
+      showToast('บันทึก Note แล้ว ✅');
     }
     setNoteSaving(false);
-    setNoteModal(null);
-    showToast('บันทึก Note แล้ว' + (noteText.trim() ? ' + แจ้ง LINE' : ''));
   }
 
   async function refreshDocs() {
