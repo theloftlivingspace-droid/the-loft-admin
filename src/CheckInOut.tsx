@@ -209,8 +209,6 @@ export default function CheckInOut() {
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string } | null>(null);
-  const [debugLog, setDebugLog]         = useState<string[]>([]);
-  function addLog(msg: string) { setDebugLog(prev => [...prev.slice(-6), msg]); }
   const [noteText, setNoteText]         = useState('');
   const [noteSaving, setNoteSaving]     = useState(false);
   const [toast, setToast]               = useState('');
@@ -233,18 +231,12 @@ export default function CheckInOut() {
     setNoteSaving(true);
     const { resId, room, guest, checkin, checkout } = noteModal;
     const text = noteText; // capture before any state change
-    showToast(`⏳ กำลังส่ง... resId=${resId}`);
-    addLog(`→ fetch setNote id=${resId}`);
     try {
       // 1. Write to GAS Sheet1
       const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
-      showToast(`📡 GAS status=${r.status}`);
-      addLog(`← status=${r.status}`);
       let j: { ok?: boolean; error?: string } = {};
       let rawText = '';
       try { rawText = await r.text(); j = JSON.parse(rawText); } catch { /* non-JSON */ }
-      showToast(`📦 GAS reply: ${rawText.slice(0, 80)}`);
-      addLog(`← body: ${rawText.slice(0, 120)}`);
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
 
       // 2. Close modal + update UI
@@ -252,16 +244,14 @@ export default function CheckInOut() {
       setNoteText('');
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
 
-      addLog(`text="${text}" len=${text.length}`);
       // 3. Push LINE
       fetch('/api/maid-note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
         })
-        .then(r => { addLog(`LINE status=${r.status}`); return r.json().catch(() => ({} as { ok?: boolean; error?: string })); })
+        .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
           .then(j => {
-            addLog(`LINE reply: ${JSON.stringify(j).slice(0,80)}`);
             if (j.ok === false) showToast('Note บันทึกแล้ว ⚠️ LINE: ' + (j.error || 'error'));
             else showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
           })
@@ -758,13 +748,6 @@ export default function CheckInOut() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {debugLog.length > 0 && (
-        <div className="fixed bottom-20 left-4 bg-black/80 text-green-400 text-xs font-mono p-3 rounded-lg z-50 max-w-sm space-y-1 cursor-pointer" onClick={() => setDebugLog([])}>
-          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
-          <div className="text-gray-500 mt-1">tap to clear</div>
         </div>
       )}
 
