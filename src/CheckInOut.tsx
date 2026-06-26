@@ -252,9 +252,9 @@ export default function CheckInOut() {
       setNoteText('');
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
 
-      // 3. Push LINE (fire-and-forget)
-      if (text.trim()) {
-        fetch('/api/maid-note', {
+      addLog(`text="${text}" len=${text.length}`);
+      // 3. Push LINE
+      fetch('/api/maid-note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
@@ -266,9 +266,6 @@ export default function CheckInOut() {
             else showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
           })
           .catch(e => showToast('Note บันทึกแล้ว ⚠️ LINE: ' + String(e)));
-      } else {
-        showToast('บันทึก Note แล้ว ✅');
-      }
     } catch (e) {
       showToast('❌ บันทึกไม่สำเร็จ: ' + String(e));
     } finally {
