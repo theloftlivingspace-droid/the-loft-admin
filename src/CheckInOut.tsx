@@ -259,8 +259,9 @@ export default function CheckInOut() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
         })
-          .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
+        .then(r => { addLog(`LINE status=${r.status}`); return r.json().catch(() => ({} as { ok?: boolean; error?: string })); })
           .then(j => {
+            addLog(`LINE reply: ${JSON.stringify(j).slice(0,80)}`);
             if (j.ok === false) showToast('Note บันทึกแล้ว ⚠️ LINE: ' + (j.error || 'error'));
             else showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
           })
