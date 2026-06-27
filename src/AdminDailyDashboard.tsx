@@ -430,35 +430,33 @@ export default function AdminDailyDashboard() {
       <div className="max-w-6xl mx-auto h-full bg-white/95 backdrop-blur rounded-[32px] shadow-2xl border border-blue-100 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-blue-950">
-              {isAdmin ? 'Admin Management Dashboard' : 'Daily Admin Dashboard'}
-            </h1>
-            <p className="text-gray-500 mt-1 text-sm">
-              {isAdmin ? 'บัญชีผู้ดูแลระบบ — ตรวจสอบรายงานของพนักงานทั้งหมดได้' : 'ระบบเช็คงานและสรุปรายงานประจำวันพนักงานธุรการ'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className={`hidden md:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium
-              ${isOfficeNetwork ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
-              <span className={`w-2 h-2 rounded-full ${isOfficeNetwork ? 'bg-green-500' : 'bg-amber-400'}`} />
-              {isOfficeNetwork ? '🏢 ออฟฟิศ' : '🌐 ออนไลน์'}
-              <span className="text-gray-400 font-normal">({clientIP})</span>
+        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-gray-100">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-blue-950">
+                {isAdmin ? 'Admin Management Dashboard' : 'Daily Admin Dashboard'}
+              </h1>
+              <p className="text-gray-500 mt-1 text-sm">
+                {isAdmin ? 'บัญชีผู้ดูแลระบบ — ตรวจสอบรายงานของพนักงานทั้งหมดได้' : 'ระบบเช็คงานและสรุปรายงานประจำวันพนักงานธุรการ'}
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-500 mb-1">วันที่รายงาน</p>
-              <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="border rounded-xl px-3 py-2 text-sm" />
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className={`hidden md:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium
+                ${isOfficeNetwork ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                <span className={`w-2 h-2 rounded-full ${isOfficeNetwork ? 'bg-green-500' : 'bg-amber-400'}`} />
+                {isOfficeNetwork ? '🏢 ออฟฟิศ' : '🌐 ออนไลน์'}
+                <span className="text-gray-400 font-normal">({clientIP})</span>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 mb-1">วันที่รายงาน</p>
+                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="border rounded-xl px-3 py-2 text-sm" />
+              </div>
+              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-2xl border bg-white hover:bg-gray-50 transition shadow-sm text-sm">
+                🚪 Logout
+              </button>
             </div>
-            <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-2xl border bg-white hover:bg-gray-50 transition shadow-sm text-sm">
-              🚪 Logout
-            </button>
           </div>
         </div>
-
-          </div>{/* end header inner */}
-        </div>{/* end header shrink-0 */}
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
         {/* Desktop tabs (md and up) */}
