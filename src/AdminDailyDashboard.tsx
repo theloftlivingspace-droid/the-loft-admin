@@ -788,9 +788,11 @@ export default function AdminDailyDashboard() {
           </button>
         </div>
 
-        </div> /* end dashboard tab */}
+        </div>
+      }{/* end dashboard tab */}
 
-      </div>
+      </div>{/* end inner card */}
+    </div>{/* end outer wrapper */}
 
       {/* Modal — แสดงสรุปอัตโนมัติ */}
       {selectedReport && (
