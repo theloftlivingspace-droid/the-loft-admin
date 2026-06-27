@@ -426,10 +426,11 @@ export default function AdminDailyDashboard() {
   const isAdmin = currentUser?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-slate-900 to-amber-50 p-4 md:p-6">
-      <div className="max-w-6xl mx-auto bg-white/95 backdrop-blur rounded-[32px] shadow-2xl border border-blue-100 p-6 md:p-8">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-950 via-slate-900 to-amber-50 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto h-full bg-white/95 backdrop-blur rounded-[32px] shadow-2xl border border-blue-100 flex flex-col overflow-hidden">
 
         {/* Header */}
+        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8 pb-0">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-blue-950">
@@ -456,10 +457,11 @@ export default function AdminDailyDashboard() {
           </div>
         </div>
 
+        </div>
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
         {/* Desktop tabs (md and up) */}
-        <div className="hidden md:flex border-b mb-6 -mx-1 overflow-x-auto">
+        <div className="flex-shrink-0 hidden md:flex border-b px-6 md:px-8 -mx-0 overflow-x-auto">
           {([
             { key: 'dashboard',    label: '📊 Dashboard' },
             { key: 'todo',         label: '📋 Booking' },
@@ -497,6 +499,8 @@ export default function AdminDailyDashboard() {
         {/* Spacer so content doesn't hide behind fixed bottom bar on mobile */}
         <div className="h-16 md:hidden" />
 
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-6 md:pb-8 pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
