@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import BookingInvoiceTodo from './BookingInvoiceTodo';
 import CheckInOut from './CheckInOut';
-import DailyPricing from './DailyPricing';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // IP prefix โหลดจาก Supabase settings table
@@ -67,20 +66,20 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS = [
-  'ตอบข้อความลูกค้า',
-  'อัปเดตราคา รายวัน',
-  'ลงทะเบียนแขก Check-in',
-  'ตรวจสอบรายการ Check-out',
-  'ลงทะเบียน TM30',
-  'บันทึกการจองเพิ่ม',
-  'สร้างใบแจ้งหนี้ / ใบเสร็จ',
-  'ตรวจสอบสต๊อก',
-  'ตรวจสอบทะเบียนรถ',
-  'เตรียมเอกสาร',
-  'สแกน / จัดเก็บไฟล์',
-  'สรุปรายงานประจำวัน',
-  'ตรวจสอบงานค้าง',
+const TASKS: { label: string; url?: string }[] = [
+  { label: 'ตอบข้อความลูกค้า' },
+  { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
+  { label: 'ลงทะเบียนแขก Check-in' },
+  { label: 'ตรวจสอบรายการ Check-out' },
+  { label: 'ลงทะเบียน TM30' },
+  { label: 'บันทึกการจองเพิ่ม' },
+  { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ' },
+  { label: 'ตรวจสอบสต๊อก' },
+  { label: 'ตรวจสอบทะเบียนรถ' },
+  { label: 'เตรียมเอกสาร' },
+  { label: 'สแกน / จัดเก็บไฟล์' },
+  { label: 'สรุปรายงานประจำวัน' },
+  { label: 'ตรวจสอบงานค้าง' },
 ];
 
 // ─── Auto-summary generator ───────────────────────────────────────────────────
@@ -102,10 +101,10 @@ function generateSummary(data: {
   // Checklist
   TASKS.forEach((task, i) => {
     const s = data.taskStatus[i] || '';
-    if (s === 'เสร็จแล้ว')              done.push(`✅ ${task}`);
-    else if (s === 'กำลังดำเนินการ')    pending.push(`🔄 ${task} (กำลังดำเนินการ)`);
-    else if (s === 'รอติดตาม')          pending.push(`⏳ ${task} (รอติดตาม)`);
-    else if (s === 'มีปัญหา')           issues.push(`⚠️ ${task}`);
+    if (s === 'เสร็จแล้ว')              done.push(`✅ ${task.label}`);
+    else if (s === 'กำลังดำเนินการ')    pending.push(`🔄 ${task.label} (กำลังดำเนินการ)`);
+    else if (s === 'รอติดตาม')          pending.push(`⏳ ${task.label} (รอติดตาม)`);
+    else if (s === 'มีปัญหา')           issues.push(`⚠️ ${task.label}`);
   });
 
   // Check-in
@@ -209,7 +208,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'pricing'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout'>('dashboard');
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -462,7 +461,7 @@ export default function AdminDailyDashboard() {
               { key: 'dashboard', label: '📊 Dashboard' },
               { key: 'todo',      label: '📋 Booking & Invoice To-Do' },
               { key: 'checkinout', label: '🏨 Check-in / Check-out' },
-              { key: 'pricing',   label: '💰 Daily Pricing' },
+
             ] as const).map(t => (
               <button key={t.key} onClick={() => setAdminTab(t.key)}
                 className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors
@@ -522,9 +521,6 @@ export default function AdminDailyDashboard() {
         {adminTab === 'checkinout' && (
           <CheckInOut />
         )}
-        {adminTab === 'pricing' && (
-          <DailyPricing />
-        )}
 
         {/* Dashboard Tab */}
         {adminTab === 'dashboard' && <div>
@@ -568,7 +564,11 @@ export default function AdminDailyDashboard() {
                   <input type="checkbox" className="w-5 h-5 accent-amber-500"
                     checked={!!taskChecked[i]}
                     onChange={e => setTaskChecked(prev => ({ ...prev, [i]: e.target.checked }))} />
-                  <span className={`text-gray-700 text-sm ${taskChecked[i] ? 'line-through text-gray-400' : ''}`}>{task}</span>
+                  <span className={`text-gray-700 text-sm ${taskChecked[i] ? 'line-through text-gray-400' : ''}`}>
+                    {task.url
+                      ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{task.label}</a>
+                      : task.label}
+                  </span>
                 </div>
                 <select className="border rounded-xl px-3 py-2 text-sm"
                   value={taskStatus[i] || ''}
