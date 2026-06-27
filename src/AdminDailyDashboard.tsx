@@ -66,14 +66,14 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS: { label: string; url?: string }[] = [
+const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo'; tabSection?: string }[] = [
   { label: 'ตอบข้อความลูกค้า' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
-  { label: 'ลงทะเบียนแขก Check-in' },
-  { label: 'ตรวจสอบรายการ Check-out' },
-  { label: 'ลงทะเบียน TM30' },
-  { label: 'บันทึกการจองเพิ่ม' },
-  { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ' },
+  { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
+  { label: 'ตรวจสอบรายการ Check-out', tab: 'checkinout' },
+  { label: 'ลงทะเบียน TM30', url: 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a' },
+  { label: 'บันทึกการจองเพิ่ม', tab: 'todo' },
+  { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo' },
   { label: 'ตรวจสอบสต๊อก' },
   { label: 'ตรวจสอบทะเบียนรถ' },
   { label: 'เตรียมเอกสาร' },
@@ -567,7 +567,9 @@ export default function AdminDailyDashboard() {
                   <span className={`text-gray-700 text-sm ${taskChecked[i] ? 'line-through text-gray-400' : ''}`}>
                     {task.url
                       ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{task.label}</a>
-                      : task.label}
+                      : task.tab
+                        ? <button onClick={() => setAdminTab(task.tab!)} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
+                        : task.label}
                   </span>
                 </div>
                 <select className="border rounded-xl px-3 py-2 text-sm"
