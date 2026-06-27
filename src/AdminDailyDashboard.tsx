@@ -458,7 +458,7 @@ export default function AdminDailyDashboard() {
 
         {/* Tab Switcher */}
         {(
-          <div className="flex border-b mb-6 -mx-1">
+          <div className="flex border-b mb-6 -mx-1 overflow-x-auto">
             {([
               { key: 'dashboard',    label: '📊 Dashboard' },
               { key: 'todo',         label: '📋 Booking' },
@@ -467,7 +467,7 @@ export default function AdminDailyDashboard() {
 
             ] as const).map(t => (
               <button key={t.key} onClick={() => setAdminTab(t.key)}
-                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors
+                className={`flex-shrink-0 whitespace-nowrap px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors
                   ${adminTab === t.key
                     ? 'border-blue-600 text-blue-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
