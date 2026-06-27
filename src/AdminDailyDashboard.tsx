@@ -460,10 +460,10 @@ export default function AdminDailyDashboard() {
         {(
           <div className="flex border-b mb-6 -mx-1">
             {([
-              { key: 'dashboard', label: '📊 Dashboard' },
-              { key: 'todo',      label: '📋 Booking & Invoice To-Do' },
-              { key: 'checkinout', label: '🏨 Check-in / Check-out' },
-              { key: 'stockparking', label: '📦 สต๊อก & ทะเบียนรถ & รับประกัน' },
+              { key: 'dashboard',    label: '📊 Dashboard' },
+              { key: 'todo',         label: '📋 Booking' },
+              { key: 'checkinout',   label: '🏨 Check-in/out' },
+              { key: 'stockparking', label: '📦 สต๊อก' },
 
             ] as const).map(t => (
               <button key={t.key} onClick={() => setAdminTab(t.key)}
