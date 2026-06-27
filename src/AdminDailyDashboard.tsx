@@ -430,8 +430,8 @@ export default function AdminDailyDashboard() {
       <div className="max-w-6xl mx-auto h-full bg-white/95 backdrop-blur rounded-[32px] shadow-2xl border border-blue-100 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8 pb-0">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-blue-950">
               {isAdmin ? 'Admin Management Dashboard' : 'Daily Admin Dashboard'}
@@ -457,11 +457,12 @@ export default function AdminDailyDashboard() {
           </div>
         </div>
 
-        </div>
+          </div>{/* end header inner */}
+        </div>{/* end header shrink-0 */}
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
         {/* Desktop tabs (md and up) */}
-        <div className="flex-shrink-0 hidden md:flex border-b px-6 md:px-8 -mx-0 overflow-x-auto">
+        <div className="flex-shrink-0 hidden md:flex border-b px-6 md:px-8 overflow-x-auto">
           {([
             { key: 'dashboard',    label: '📊 Dashboard' },
             { key: 'todo',         label: '📋 Booking' },
