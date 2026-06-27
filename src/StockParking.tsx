@@ -208,18 +208,19 @@ export default function StockParking() {
   return (
     <div>
       {sectionNav([
-        {key:'stock',      label:'สต๊อกของใช้',     emoji:'📦'},
-        {key:'parking-in', label:'ทะเบียนรถ (ในตึก)',emoji:'🚗'},
-        {key:'parking-out',label:'ทะเบียนรถ (นอก)', emoji:'🅿️'},
-        {key:'warranty',   label:'รับประกัน',        emoji:'🛡️'},
+        {key:'stock',      label:'Stock',        emoji:'📦'},
+        {key:'parking-in', label:'Car · In',      emoji:'🚗'},
+        {key:'parking-out',label:'Car · Out',     emoji:'🅿️'},
+        {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
       ])}
 
       {/* ── STOCK ── */}
       {section==='stock' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">สต๊อกของใช้
-              <span className="ml-2 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{stockData.length} รายการ</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+              <span className="truncate">Stock</span>
+              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{stockData.length} รายการ</span>
             </h2>
             <button onClick={()=>setShowStockModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
           </div>
@@ -266,9 +267,10 @@ export default function StockParking() {
       {/* ── PARKING IN ── */}
       {section==='parking-in' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">ทะเบียนรถ — ผู้เช่าในตึก
-              <span className="ml-2 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{parkingIn.length} คัน</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+              <span className="truncate">Car · In-house</span>
+              <span className="ml-1 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingIn.length} คัน</span>
             </h2>
             <button onClick={()=>setShowPIModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
           </div>
@@ -321,9 +323,10 @@ export default function StockParking() {
       {/* ── PARKING OUT ── */}
       {section==='parking-out' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">ทะเบียนรถ — ผู้เช่าภายนอก
-              <span className="ml-2 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{parkingOut.length} คัน</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+              <span className="truncate">Car · Outside</span>
+              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingOut.length} คัน</span>
             </h2>
             <button onClick={()=>setShowPOModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
           </div>
@@ -374,9 +377,10 @@ export default function StockParking() {
       {/* ── WARRANTY ── */}
       {section==='warranty' && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">รับประกันอุปกรณ์
-              <span className="ml-2 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{warrantyData.length} รายการ</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+              <span className="truncate">Warranty</span>
+              <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">{warrantyData.length} รายการ</span>
             </h2>
             <button onClick={()=>setShowWModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
           </div>

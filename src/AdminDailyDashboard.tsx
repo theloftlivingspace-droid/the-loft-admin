@@ -463,7 +463,7 @@ export default function AdminDailyDashboard() {
               { key: 'dashboard',    label: '📊 Dashboard' },
               { key: 'todo',         label: '📋 Booking' },
               { key: 'checkinout',   label: '🏨 Check-in/out' },
-              { key: 'stockparking', label: '📦 สต๊อก' },
+              { key: 'stockparking', label: '📦 Stock' },
 
             ] as const).map(t => (
               <button key={t.key} onClick={() => setAdminTab(t.key)}
