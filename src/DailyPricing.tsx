@@ -86,11 +86,8 @@ export default function DailyPricing() {
 
   // Alert summary
   const alerts = ROOMS_DATA.map(r => ({ ...r, level: alertLevel(r.occ) }));
-  const urgentUp   = alerts.filter(a => a.level === 'urgent-up');
-  const warnDown   = alerts.filter(a => a.level === 'warn-down');
-  const avgPLToday = Math.round(
-    ROOMS_DATA.map(r => getPlPrice(r.id, todayStr) ?? r.base).reduce((a, b) => a + b, 0) / ROOMS_DATA.length
-  );
+  const urgentUp = alerts.filter(a => a.level === 'urgent-up');
+  const warnDown = alerts.filter(a => a.level === 'warn-down');
 
   const DOW_TH: Record<number, string> = { 0:'อา', 1:'จ', 2:'อ', 3:'พ', 4:'พฤ', 5:'ศ', 6:'ส' };
 
@@ -98,17 +95,11 @@ export default function DailyPricing() {
     <div className="space-y-4">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h2 className="text-base font-bold text-gray-900">💰 Daily Pricing</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {today.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
-        <a href="https://theloftlivingspace-droid.github.io/loft-pricing/" target="_blank" rel="noopener noreferrer"
-          className="text-xs border border-blue-300 text-blue-600 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition font-medium">
-          🔗 เปิด Pricing Dashboard
-        </a>
+      <div>
+        <h2 className="text-base font-bold text-gray-900">💰 Daily Pricing</h2>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {today.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
       </div>
 
       {/* ── Alert Banner ── */}
@@ -143,40 +134,13 @@ export default function DailyPricing() {
         </div>
       )}
 
-      {/* ── KPI Row (ภาพรวมผู้บริหาร) ── */}
-      <div>
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">ภาพรวมผู้บริหาร</div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border bg-white px-3 py-2.5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wide">Season</div>
-            <div className={`mt-1 text-xs font-semibold rounded-full px-2 py-0.5 border w-fit ${SEASON_COLOR[season]}`}>{SEASON_LABEL[season]}</div>
-          </div>
-          <div className="rounded-xl border bg-white px-3 py-2.5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wide">PriceLabs วันนี้ (เฉลี่ย)</div>
-            <div className="text-lg font-bold text-gray-900 mt-0.5">฿{avgPLToday.toLocaleString()}</div>
-            <div className="text-[10px] text-gray-400">{dow}</div>
-          </div>
-          <div className="rounded-xl border bg-white px-3 py-2.5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wide">Revenue รวม</div>
-            <div className="text-lg font-bold text-gray-900 mt-0.5">฿2.09M</div>
-            <div className="text-[10px] text-gray-400">ธ.ค.2024 – พ.ค.2026 · 471 bookings</div>
-          </div>
-          <div className="rounded-xl border bg-white px-3 py-2.5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wide">ADR เฉลี่ย</div>
-            <div className="text-lg font-bold text-gray-900 mt-0.5">฿825</div>
-            <div className="text-[10px] text-gray-400">Expedia สูงสุด ฿1,573</div>
-          </div>
-        </div>
-      </div>
-
       {/* ── ราคาแต่ละ Room Type วันนี้ ── */}
       <div>
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">ราคาแต่ละ Room Type — วันนี้</div>
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">ตั้งราคาใน Little Hotelier — วันนี้</div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ROOMS_DATA.map(r => {
-            const plPrice  = getPlPrice(r.id, todayStr);
             const baseP    = BASE_PRICES[r.id];
-            const stdPrice = weekend ? baseP.weekend : baseP.weekday;
+            const lhPrice  = weekend ? baseP.weekend : baseP.weekday;
             const level    = alertLevel(r.occ);
             const alertCls = level === 'urgent-up' ? 'border-red-200 bg-red-50' :
                              level === 'warn-down'  ? 'border-amber-200 bg-amber-50' :
@@ -184,31 +148,25 @@ export default function DailyPricing() {
             const occColor = level === 'urgent-up' ? 'text-red-600' :
                              level === 'warn-down'  ? 'text-amber-600' : 'text-green-600';
             return (
-              <div key={r.id} className={`rounded-xl border px-3 py-2.5 ${alertCls}`}>
-                <div className="flex items-center justify-between mb-1.5">
+              <div key={r.id} className={`rounded-xl border px-3 py-3 ${alertCls}`}>
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold" style={{ color: r.color }}>{r.id}</span>
+                    <span className="text-sm font-bold" style={{ color: r.color }}>{r.id}</span>
                     <span className="text-[10px] text-gray-400">{r.rooms.join(' / ')}</span>
                   </div>
                   <span className={`text-xs font-semibold ${occColor}`}>Occ {r.occ}%</span>
                 </div>
-                <div className="flex items-end gap-3 flex-wrap">
-                  {plPrice && (
-                    <div>
-                      <div className="text-[9px] text-gray-400 uppercase tracking-wide">PriceLabs</div>
-                      <div className="text-base font-bold text-gray-900">฿{plPrice.toLocaleString()}</div>
-                    </div>
-                  )}
+                <div className="flex items-end gap-4 flex-wrap">
                   <div>
-                    <div className="text-[9px] text-gray-400 uppercase tracking-wide">ราคาตั้ง ({weekend ? 'wknd' : 'wkday'})</div>
-                    <div className="text-base font-bold" style={{ color: r.color }}>฿{stdPrice.toLocaleString()}</div>
+                    <div className="text-[9px] text-gray-400 uppercase tracking-wide">ราคาตั้ง LH ({weekend ? 'wknd' : 'wkday'})</div>
+                    <div className="text-2xl font-bold" style={{ color: r.color }}>฿{lhPrice.toLocaleString()}</div>
                   </div>
                   <div className="ml-auto text-right">
                     <div className="text-[9px] text-gray-400">ADR จริง</div>
-                    <div className="text-xs font-medium text-gray-600">฿{r.realADR.toLocaleString()}</div>
+                    <div className="text-sm font-medium text-gray-600">฿{r.realADR.toLocaleString()}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                   <span className="text-[10px] text-gray-400">Cleaning ฿{baseP.cleaning}</span>
                   <span className="text-gray-200">·</span>
                   <span className="text-[10px] text-gray-400">Extra ฿{baseP.extra3}/คืน</span>
