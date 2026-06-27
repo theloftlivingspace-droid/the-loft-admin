@@ -461,10 +461,8 @@ export default function CheckInOut() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-gray-400">
-      <div className="text-center">
-        <div className="text-3xl mb-3 animate-spin">⏳</div>
-        <p className="text-sm">กำลังโหลดข้อมูลห้องพัก…</p>
-      </div>
+      <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
+      กำลังโหลดข้อมูล...
     </div>
   );
   if (error) return (
@@ -759,4 +757,5 @@ export default function CheckInOut() {
     </div>
   );
 }
+
 
