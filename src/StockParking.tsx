@@ -8,12 +8,6 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
-function excelSerial(n:number){
-  if(!n) return '—';
-  const d=new Date((n-25569)*86400000);
-  return d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'});
-}
-
 export default function StockParking() {
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
