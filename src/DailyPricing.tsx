@@ -27,32 +27,8 @@ function fmtDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-function getSeason(d: Date): string {
-  const m = d.getMonth(); // 0-based
-  if ([10, 11].includes(m)) return 'high';
-  if ([3, 4, 5, 6, 7, 8].includes(m)) return 'low';
-  return 'normal';
-}
 
-const SEASON_LABEL: Record<string, string> = {
-  low:    '🌧 Low Season',
-  normal: '🌤 Normal Season',
-  high:   '❄️ High Season',
-  peak:   '🔥 Peak',
-};
-const SEASON_COLOR: Record<string, string> = {
-  low:    'bg-blue-50 text-blue-700 border-blue-200',
-  normal: 'bg-amber-50 text-amber-700 border-amber-200',
-  high:   'bg-green-50 text-green-700 border-green-200',
-  peak:   'bg-red-50 text-red-700 border-red-200',
-};
 
-function getDow(d: Date): string {
-  const day = d.getDay(); // 0=Sun,6=Sat
-  if (day === 5) return 'ศุกร์';
-  if (day === 6 || day === 0) return 'เสาร์–อาทิตย์';
-  return 'จ–พฤ';
-}
 
 function isWeekend(d: Date): boolean {
   const day = d.getDay();
@@ -72,9 +48,6 @@ function alertLevel(occ: number): 'urgent-up' | 'warn-down' | 'ok' {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DailyPricing() {
   const [today] = useState(() => new Date());
-  const todayStr = fmtDate(today);
-  const season   = getSeason(today);
-  const dow      = getDow(today);
   const weekend  = isWeekend(today);
 
   // Next 7 days
