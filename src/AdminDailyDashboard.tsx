@@ -430,10 +430,11 @@ export default function AdminDailyDashboard() {
       <div className="max-w-6xl mx-auto h-full bg-white/95 backdrop-blur rounded-[32px] shadow-2xl border border-blue-100 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex-shrink-0 px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b border-gray-100">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex-shrink-0 px-4 md:px-8 pt-3 md:pt-8 pb-3 md:pb-4 border-b border-gray-100">
+          {/* Desktop header — full */}
+          <div className="hidden md:flex md:items-start md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-blue-950">
+              <h1 className="text-3xl font-bold text-blue-950">
                 {isAdmin ? 'Admin Management Dashboard' : 'Daily Admin Dashboard'}
               </h1>
               <p className="text-gray-500 mt-1 text-sm">
@@ -441,7 +442,7 @@ export default function AdminDailyDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <div className={`hidden md:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium
+              <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium
                 ${isOfficeNetwork ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
                 <span className={`w-2 h-2 rounded-full ${isOfficeNetwork ? 'bg-green-500' : 'bg-amber-400'}`} />
                 {isOfficeNetwork ? '🏢 ออฟฟิศ' : '🌐 ออนไลน์'}
@@ -453,6 +454,18 @@ export default function AdminDailyDashboard() {
               </div>
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-2xl border bg-white hover:bg-gray-50 transition shadow-sm text-sm">
                 🚪 Logout
+              </button>
+            </div>
+          </div>
+          {/* Mobile header — compact single row */}
+          <div className="flex md:hidden items-center justify-between gap-2">
+            <h1 className="text-base font-bold text-blue-950 leading-tight">
+              {isAdmin ? '📊 Admin Dashboard' : '📋 Daily Dashboard'}
+            </h1>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="border rounded-lg px-2 py-1 text-xs" />
+              <button onClick={handleLogout} className="flex items-center gap-1 px-2 py-1 rounded-lg border bg-white text-xs text-gray-600">
+                🚪
               </button>
             </div>
           </div>
@@ -480,10 +493,10 @@ export default function AdminDailyDashboard() {
         {/* Mobile bottom tab bar (below md) — fixed at bottom of screen */}
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex">
           {([
-            { key: 'dashboard',    icon: '📊', label: 'หลัก' },
+            { key: 'dashboard',    icon: '📊', label: 'Dashboard' },
             { key: 'todo',         icon: '📋', label: 'Booking' },
-            { key: 'checkinout',   icon: '🏨', label: 'CI/CO' },
-            { key: 'stockparking', icon: '📦', label: 'สต๊อก' },
+            { key: 'checkinout',   icon: '🏨', label: 'Check-in/out' },
+            { key: 'stockparking', icon: '📦', label: 'Stock' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setAdminTab(t.key)}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors
