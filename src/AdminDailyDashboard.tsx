@@ -66,14 +66,14 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo'; tabSection?: string }[] = [
+const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo'; todoTab?: 'booking' | 'invoice' }[] = [
   { label: 'ตอบข้อความลูกค้า' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
   { label: 'ตรวจสอบรายการ Check-out', tab: 'checkinout' },
   { label: 'ลงทะเบียน TM30', url: 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a' },
-  { label: 'บันทึกการจองเพิ่ม', tab: 'todo' },
-  { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo' },
+  { label: 'บันทึกการจองเพิ่ม', tab: 'todo', todoTab: 'booking' },
+  { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo', todoTab: 'invoice' },
   { label: 'ตรวจสอบสต๊อก' },
   { label: 'ตรวจสอบทะเบียนรถ' },
   { label: 'เตรียมเอกสาร' },
@@ -209,6 +209,7 @@ export default function AdminDailyDashboard() {
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout'>('dashboard');
+  const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -516,7 +517,7 @@ export default function AdminDailyDashboard() {
 
         {/* To-Do Tab */}
         {adminTab === 'todo' && (
-          <BookingInvoiceTodo />
+          <BookingInvoiceTodo key={todoInitialTab} initialTab={todoInitialTab} />
         )}
         {adminTab === 'checkinout' && (
           <CheckInOut />
@@ -568,7 +569,7 @@ export default function AdminDailyDashboard() {
                     {task.url
                       ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{task.label}</a>
                       : task.tab
-                        ? <button onClick={() => setAdminTab(task.tab!)} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
+                        ? <button onClick={() => { if (task.todoTab) setTodoInitialTab(task.todoTab); setAdminTab(task.tab!); }} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
                         : task.label}
                   </span>
                 </div>

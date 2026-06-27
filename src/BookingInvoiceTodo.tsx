@@ -451,11 +451,11 @@ function otaTheme(channel: string) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function BookingInvoiceTodo() {
+export default function BookingInvoiceTodo({ initialTab }: { initialTab?: 'booking' | 'invoice' } = {}) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'booking' | 'invoice'>('booking');
+  const [activeTab, setActiveTab] = useState<'booking' | 'invoice'>(initialTab ?? 'booking');
   const [showDoneBooking, setShowDoneBooking] = useState(true);
   const [showDoneInvoice, setShowDoneInvoice] = useState(true);
   const [toast, setToast] = useState('');
