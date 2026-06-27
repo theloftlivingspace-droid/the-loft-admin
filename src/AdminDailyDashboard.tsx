@@ -456,26 +456,46 @@ export default function AdminDailyDashboard() {
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        {(
-          <div className="flex border-b mb-6 -mx-1 overflow-x-auto">
-            {([
-              { key: 'dashboard',    label: '📊 Dashboard' },
-              { key: 'todo',         label: '📋 Booking' },
-              { key: 'checkinout',   label: '🏨 Check-in/out' },
-              { key: 'stockparking', label: '📦 Stock' },
+        {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
-            ] as const).map(t => (
-              <button key={t.key} onClick={() => setAdminTab(t.key)}
-                className={`flex-shrink-0 whitespace-nowrap px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors
-                  ${adminTab === t.key
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Desktop tabs (md and up) */}
+        <div className="hidden md:flex border-b mb-6 -mx-1 overflow-x-auto">
+          {([
+            { key: 'dashboard',    label: '📊 Dashboard' },
+            { key: 'todo',         label: '📋 Booking' },
+            { key: 'checkinout',   label: '🏨 Check-in/out' },
+            { key: 'stockparking', label: '📦 Stock' },
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setAdminTab(t.key)}
+              className={`flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold border-b-2 transition-colors
+                ${adminTab === t.key
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile bottom tab bar (below md) — fixed at bottom of screen */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex">
+          {([
+            { key: 'dashboard',    icon: '📊', label: 'หลัก' },
+            { key: 'todo',         icon: '📋', label: 'Booking' },
+            { key: 'checkinout',   icon: '🏨', label: 'CI/CO' },
+            { key: 'stockparking', icon: '📦', label: 'สต๊อก' },
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setAdminTab(t.key)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors
+                ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>
+              <span className="text-xl leading-none">{t.icon}</span>
+              <span className={`text-[10px] font-medium ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>{t.label}</span>
+              {adminTab === t.key && <span className="absolute bottom-0 w-10 h-0.5 bg-blue-600 rounded-t-full" />}
+            </button>
+          ))}
+        </div>
+
+        {/* Spacer so content doesn't hide behind fixed bottom bar on mobile */}
+        <div className="h-16 md:hidden" />
 
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
