@@ -1,199 +1,120 @@
-// DailyPricing.tsx — Room-type card grid with tab bar, OTA badges, occupancy bar
+// DailyPricing.tsx — ported from loft-pricing/index.html (pricing tab)
+// Logic: PriceLabs prices + OCC rules + CH_MULT — exact same engine as loft-pricing
 import { useState } from 'react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-type DayTab = 'weekday' | 'friday' | 'weekend' | 'peak';
+// ── PriceLabs daily prices (ported from loft-pricing) ─────────────────────────
+const PL_PRICES: Record<string, Record<string, number>> = {"Luxury":{"2026-05-02":598,"2026-05-03":592,"2026-05-04":629,"2026-05-05":672,"2026-05-06":666,"2026-05-07":704,"2026-05-08":718,"2026-05-09":729,"2026-05-10":739,"2026-05-11":800,"2026-05-12":785,"2026-05-13":804,"2026-05-14":798,"2026-05-15":777,"2026-05-16":777,"2026-05-17":612,"2026-05-18":613,"2026-05-19":612,"2026-05-20":618,"2026-05-21":632,"2026-05-22":613,"2026-05-23":632,"2026-05-24":613,"2026-05-25":613,"2026-05-26":594,"2026-05-27":594,"2026-05-28":594,"2026-05-29":613,"2026-05-30":632,"2026-05-31":651,"2026-06-01":658,"2026-06-02":678,"2026-06-03":679,"2026-06-04":679,"2026-06-05":665,"2026-06-06":660,"2026-06-07":620,"2026-06-08":619,"2026-06-09":639,"2026-06-10":619,"2026-06-11":620,"2026-06-12":661,"2026-06-13":700,"2026-06-14":660,"2026-06-15":673,"2026-06-16":659,"2026-06-17":688,"2026-06-18":688,"2026-06-19":680,"2026-06-20":680,"2026-06-21":680,"2026-06-22":680,"2026-06-23":660,"2026-06-24":680,"2026-06-25":680,"2026-06-26":700,"2026-06-27":720,"2026-06-28":700,"2026-06-29":700,"2026-06-30":700,"2026-07-01":755,"2026-07-02":779,"2026-07-03":782,"2026-07-04":806,"2026-07-05":764,"2026-07-06":788,"2026-07-07":767,"2026-07-08":791,"2026-07-09":793,"2026-07-10":841,"2026-07-11":843,"2026-07-12":822,"2026-07-13":801,"2026-07-14":811,"2026-07-15":805,"2026-07-16":807,"2026-07-17":809,"2026-07-18":811,"2026-07-19":812,"2026-07-20":791,"2026-07-21":793,"2026-07-22":795,"2026-07-23":797,"2026-07-24":825,"2026-07-25":824,"2026-07-26":826,"2026-07-27":828,"2026-07-28":877,"2026-07-29":855,"2026-07-30":857},"Retro":{"2026-05-02":608,"2026-05-03":602,"2026-05-04":640,"2026-05-05":683,"2026-05-06":678,"2026-05-07":717,"2026-05-08":731,"2026-05-09":742,"2026-05-10":752,"2026-05-11":814,"2026-05-12":799,"2026-05-13":819,"2026-05-14":812,"2026-05-15":791,"2026-05-16":791,"2026-05-17":623,"2026-05-18":623,"2026-05-19":623,"2026-05-20":629,"2026-05-21":643,"2026-05-22":624,"2026-05-23":644,"2026-05-24":624,"2026-05-25":624,"2026-05-26":604,"2026-05-27":604,"2026-05-28":604,"2026-05-29":624,"2026-05-30":643,"2026-05-31":663,"2026-06-01":670,"2026-06-02":691,"2026-06-03":691,"2026-06-04":691,"2026-06-05":677,"2026-06-06":671,"2026-06-07":631,"2026-06-08":630,"2026-06-09":651,"2026-06-10":630,"2026-06-11":631,"2026-06-12":672,"2026-06-13":713,"2026-06-14":672,"2026-06-15":684,"2026-06-16":671,"2026-06-17":701,"2026-06-18":700,"2026-06-19":692,"2026-06-20":692,"2026-06-21":692,"2026-06-22":692,"2026-06-23":671,"2026-06-24":692,"2026-06-25":692,"2026-06-26":713,"2026-06-27":733,"2026-06-28":712,"2026-06-29":713,"2026-06-30":713,"2026-07-01":769,"2026-07-02":793,"2026-07-03":796,"2026-07-04":820,"2026-07-05":777,"2026-07-06":802,"2026-07-07":780,"2026-07-08":805,"2026-07-09":807,"2026-07-10":856,"2026-07-11":858,"2026-07-12":836,"2026-07-13":815,"2026-07-14":825,"2026-07-15":819,"2026-07-16":821,"2026-07-17":823,"2026-07-18":825,"2026-07-19":827,"2026-07-20":805,"2026-07-21":807,"2026-07-22":809,"2026-07-23":811,"2026-07-24":840,"2026-07-25":839,"2026-07-26":841,"2026-07-27":843,"2026-07-28":892,"2026-07-29":870,"2026-07-30":872},"Elegance":{"2026-05-02":589,"2026-05-03":574,"2026-05-04":619,"2026-05-05":661,"2026-05-06":656,"2026-05-07":693,"2026-05-08":707,"2026-05-09":718,"2026-05-10":728,"2026-05-11":788,"2026-05-12":773,"2026-05-13":792,"2026-05-14":786,"2026-05-15":765,"2026-05-16":766,"2026-05-17":622,"2026-05-18":622,"2026-05-19":621,"2026-05-20":628,"2026-05-21":642,"2026-05-22":623,"2026-05-23":642,"2026-05-24":622,"2026-05-25":622,"2026-05-26":603,"2026-05-27":603,"2026-05-28":603,"2026-05-29":623,"2026-05-30":642,"2026-05-31":661,"2026-06-01":668,"2026-06-02":689,"2026-06-03":689,"2026-06-04":690,"2026-06-05":675,"2026-06-06":670,"2026-06-07":629,"2026-06-08":629,"2026-06-09":649,"2026-06-10":629,"2026-06-11":630,"2026-06-12":671,"2026-06-13":711,"2026-06-14":670,"2026-06-15":683,"2026-06-16":670,"2026-06-17":699,"2026-06-18":699,"2026-06-19":690,"2026-06-20":691,"2026-06-21":690,"2026-06-22":690,"2026-06-23":670,"2026-06-24":690,"2026-06-25":690,"2026-06-26":711,"2026-06-27":731,"2026-06-28":711,"2026-06-29":711,"2026-06-30":711,"2026-07-01":767,"2026-07-02":791,"2026-07-03":794,"2026-07-04":818,"2026-07-05":775,"2026-07-06":800,"2026-07-07":778,"2026-07-08":803,"2026-07-09":805,"2026-07-10":854,"2026-07-11":856,"2026-07-12":834,"2026-07-13":813,"2026-07-14":823,"2026-07-15":817,"2026-07-16":819,"2026-07-17":821,"2026-07-18":823,"2026-07-19":825,"2026-07-20":803,"2026-07-21":805,"2026-07-22":807,"2026-07-23":809,"2026-07-24":838,"2026-07-25":837,"2026-07-26":839,"2026-07-27":841,"2026-07-28":890,"2026-07-29":868,"2026-07-30":870},"Allure":{"2026-05-02":500,"2026-05-03":500,"2026-05-04":500,"2026-05-05":505,"2026-05-06":501,"2026-05-07":512,"2026-05-08":540,"2026-05-09":548,"2026-05-10":556,"2026-05-11":598,"2026-05-12":588,"2026-05-13":602,"2026-05-14":598,"2026-05-15":581,"2026-05-16":585,"2026-05-17":519,"2026-05-18":525,"2026-05-19":524,"2026-05-20":521,"2026-05-21":524,"2026-05-22":525,"2026-05-23":525,"2026-05-24":525,"2026-05-25":525,"2026-05-26":509,"2026-05-27":509,"2026-05-28":509,"2026-05-29":525,"2026-05-30":541,"2026-05-31":558,"2026-06-01":564,"2026-06-02":581,"2026-06-03":581,"2026-06-04":581,"2026-06-05":552,"2026-06-06":565,"2026-06-07":531,"2026-06-08":531,"2026-06-09":531,"2026-06-10":531,"2026-06-11":531,"2026-06-12":566,"2026-06-13":583,"2026-06-14":565,"2026-06-15":576,"2026-06-16":547,"2026-06-17":581,"2026-06-18":581,"2026-06-19":565,"2026-06-20":582,"2026-06-21":565,"2026-06-22":565,"2026-06-23":565,"2026-06-24":582,"2026-06-25":582,"2026-06-26":600,"2026-06-27":617,"2026-06-28":600,"2026-06-29":599,"2026-06-30":583,"2026-07-01":647,"2026-07-02":668,"2026-07-03":670,"2026-07-04":671,"2026-07-05":654,"2026-07-06":675,"2026-07-07":656,"2026-07-08":677,"2026-07-09":679,"2026-07-10":701,"2026-07-11":702,"2026-07-12":699,"2026-07-13":686,"2026-07-14":694,"2026-07-15":669,"2026-07-16":671,"2026-07-17":673,"2026-07-18":694,"2026-07-19":696,"2026-07-20":657,"2026-07-21":659,"2026-07-22":660,"2026-07-23":682,"2026-07-24":704,"2026-07-25":705,"2026-07-26":706,"2026-07-27":708,"2026-07-28":750,"2026-07-29":732,"2026-07-30":733},"Legacy":{"2026-05-02":511,"2026-05-03":506,"2026-05-04":537,"2026-05-05":574,"2026-05-06":569,"2026-05-07":602,"2026-05-08":614,"2026-05-09":623,"2026-05-10":632,"2026-05-11":684,"2026-05-12":671,"2026-05-13":688,"2026-05-14":683,"2026-05-15":665,"2026-05-16":665,"2026-05-17":640,"2026-05-18":640,"2026-05-19":639,"2026-05-20":646,"2026-05-21":660,"2026-05-22":641,"2026-05-23":661,"2026-05-24":640,"2026-05-25":640,"2026-05-26":620,"2026-05-27":620,"2026-05-28":621,"2026-05-29":641,"2026-05-30":660,"2026-05-31":680,"2026-06-01":688,"2026-06-02":709,"2026-06-03":709,"2026-06-04":710,"2026-06-05":695,"2026-06-06":689,"2026-06-07":647,"2026-06-08":647,"2026-06-09":668,"2026-06-10":647,"2026-06-11":648,"2026-06-12":690,"2026-06-13":732,"2026-06-14":690,"2026-06-15":703,"2026-06-16":689,"2026-06-17":719,"2026-06-18":719,"2026-06-19":710,"2026-06-20":711,"2026-06-21":711,"2026-06-22":710,"2026-06-23":689,"2026-06-24":710,"2026-06-25":710,"2026-06-26":732,"2026-06-27":753,"2026-06-28":731,"2026-06-29":732,"2026-06-30":732,"2026-07-01":789,"2026-07-02":814,"2026-07-03":817,"2026-07-04":842,"2026-07-05":798,"2026-07-06":823,"2026-07-07":801,"2026-07-08":827,"2026-07-09":829,"2026-07-10":879,"2026-07-11":881,"2026-07-12":859,"2026-07-13":837,"2026-07-14":847,"2026-07-15":841,"2026-07-16":843,"2026-07-17":845,"2026-07-18":847,"2026-07-19":849,"2026-07-20":827,"2026-07-21":829,"2026-07-22":831,"2026-07-23":833,"2026-07-24":862,"2026-07-25":861,"2026-07-26":863,"2026-07-27":865,"2026-07-28":916,"2026-07-29":894,"2026-07-30":896},"Radiance":{"2026-05-02":530,"2026-05-03":530,"2026-05-04":530,"2026-05-05":535,"2026-05-06":531,"2026-05-07":543,"2026-05-08":572,"2026-05-09":581,"2026-05-10":589,"2026-05-11":634,"2026-05-12":623,"2026-05-13":638,"2026-05-14":634,"2026-05-15":616,"2026-05-16":620,"2026-05-17":550,"2026-05-18":557,"2026-05-19":556,"2026-05-20":552,"2026-05-21":555,"2026-05-22":557,"2026-05-23":557,"2026-05-24":557,"2026-05-25":557,"2026-05-26":540,"2026-05-27":540,"2026-05-28":540,"2026-05-29":557,"2026-05-30":573,"2026-05-31":591,"2026-06-01":598,"2026-06-02":616,"2026-06-03":616,"2026-06-04":616,"2026-06-05":585,"2026-06-06":599,"2026-06-07":563,"2026-06-08":563,"2026-06-09":563,"2026-06-10":563,"2026-06-11":563,"2026-06-12":600,"2026-06-13":618,"2026-06-14":599,"2026-06-15":610,"2026-06-16":580,"2026-06-17":616,"2026-06-18":616,"2026-06-19":599,"2026-06-20":617,"2026-06-21":599,"2026-06-22":599,"2026-06-23":599,"2026-06-24":617,"2026-06-25":617,"2026-06-26":636,"2026-06-27":654,"2026-06-28":636,"2026-06-29":635,"2026-06-30":618,"2026-07-01":686,"2026-07-02":708,"2026-07-03":710,"2026-07-04":711,"2026-07-05":693,"2026-07-06":716,"2026-07-07":695,"2026-07-08":717,"2026-07-09":720,"2026-07-10":743,"2026-07-11":744,"2026-07-12":741,"2026-07-13":727,"2026-07-14":736,"2026-07-15":709,"2026-07-16":711,"2026-07-17":713,"2026-07-18":736,"2026-07-19":738,"2026-07-20":696,"2026-07-21":699,"2026-07-22":700,"2026-07-23":723,"2026-07-24":746,"2026-07-25":747,"2026-07-26":748,"2026-07-27":751,"2026-07-28":795,"2026-07-29":776,"2026-07-30":777}};
 
-interface RoomConfig {
-  id: string;
-  color: string;            // border / accent color
-  border: string;           // Tailwind border color class
-  airbnbAvgApr: number;     // Airbnb เม.ย. avg for comparison
-  closeArrival?: boolean;
-  occ: number;              // occupancy %
-  prices: {
-    weekday:  OTAPrices & GuestPrices;
-    friday:   OTAPrices & GuestPrices;
-    weekend:  OTAPrices & GuestPrices;
-    peak:     OTAPrices & GuestPrices;
-  };
-}
-
-interface OTAPrices {
-  airbnb:   number;
-  booking:  number;
-  expedia:  number;
-}
-
-interface GuestPrices {
-  g2: number;
-  g3: number | null;
-  g4: number | null;
-}
-
-// ── Room Config Data ──────────────────────────────────────────────────────────
-const ROOMS: RoomConfig[] = [
-  {
-    id: 'Luxury',
-    color: '#6B4FBB',
-    border: 'border-purple-300',
-    airbnbAvgApr: 557,
-    occ: 0,
-    prices: {
-      weekday: { airbnb: 350, booking: 400, expedia: 500, g2: 400, g3: 550, g4: 650 },
-      friday:  { airbnb: 400, booking: 450, expedia: 550, g2: 450, g3: 600, g4: 700 },
-      weekend: { airbnb: 500, booking: 550, expedia: 650, g2: 550, g3: 700, g4: 800 },
-      peak:    { airbnb: 700, booking: 750, expedia: 850, g2: 750, g3: 900, g4: 1000 },
-    },
-  },
-  {
-    id: 'Retro',
-    color: '#C87C1A',
-    border: 'border-amber-400',
-    airbnbAvgApr: 667,
-    occ: 43,
-    prices: {
-      weekday: { airbnb: 650, booking: 700, expedia: 850, g2: 700, g3: 900,  g4: 1100 },
-      friday:  { airbnb: 700, booking: 750, expedia: 900, g2: 750, g3: 950,  g4: 1150 },
-      weekend: { airbnb: 800, booking: 850, expedia: 1000, g2: 850, g3: 1050, g4: 1250 },
-      peak:    { airbnb: 900, booking: 950, expedia: 1100, g2: 950, g3: 1150, g4: 1350 },
-    },
-  },
-  {
-    id: 'Allure',
-    color: '#2B62B8',
-    border: 'border-blue-400',
-    airbnbAvgApr: 677,
-    occ: 86,
-    closeArrival: true,
-    prices: {
-      weekday: { airbnb: 700, booking: 800, expedia: 950,  g2: 800,  g3: 1050, g4: null },
-      friday:  { airbnb: 750, booking: 850, expedia: 1000, g2: 850,  g3: 1100, g4: null },
-      weekend: { airbnb: 850, booking: 950, expedia: 1100, g2: 950,  g3: 1200, g4: null },
-      peak:    { airbnb: 950, booking: 1050, expedia: 1200, g2: 1050, g3: 1300, g4: null },
-    },
-  },
-  {
-    id: 'Elegance',
-    color: '#2E8B57',
-    border: 'border-green-400',
-    airbnbAvgApr: 637,
-    occ: 57,
-    prices: {
-      weekday: { airbnb: 700, booking: 750, expedia: 900,  g2: 750,  g3: 1000, g4: null },
-      friday:  { airbnb: 750, booking: 800, expedia: 950,  g2: 800,  g3: 1050, g4: null },
-      weekend: { airbnb: 850, booking: 900, expedia: 1050, g2: 900,  g3: 1150, g4: null },
-      peak:    { airbnb: 950, booking: 1000, expedia: 1150, g2: 1000, g3: 1250, g4: null },
-    },
-  },
-  {
-    id: 'Legacy',
-    color: '#7B5CB8',
-    border: 'border-violet-400',
-    airbnbAvgApr: 703,
-    occ: 50,
-    prices: {
-      weekday: { airbnb: 650, booking: 700, expedia: 850, g2: 700, g3: 900, g4: null },
-      friday:  { airbnb: 700, booking: 750, expedia: 900, g2: 750, g3: 950, g4: null },
-      weekend: { airbnb: 800, booking: 850, expedia: 1000, g2: 850, g3: 1050, g4: null },
-      peak:    { airbnb: 900, booking: 950, expedia: 1100, g2: 950, g3: 1150, g4: null },
-    },
-  },
-  {
-    id: 'Radiance',
-    color: '#B94040',
-    border: 'border-red-400',
-    airbnbAvgApr: 850,
-    occ: 64,
-    prices: {
-      weekday: { airbnb: 600, booking: 650, expedia: 800, g2: 650, g3: 850, g4: null },
-      friday:  { airbnb: 650, booking: 700, expedia: 850, g2: 700, g3: 900, g4: null },
-      weekend: { airbnb: 750, booking: 800, expedia: 950, g2: 800, g3: 1000, g4: null },
-      peak:    { airbnb: 850, booking: 900, expedia: 1050, g2: 900, g3: 1100, g4: null },
-    },
-  },
+// ── ROOMS_DATA (ported from loft-pricing) ─────────────────────────────────────
+const ROOMS_DATA = [
+  { id:'Luxury',   base:867, min:450, max:1800, liveADR:557, occ:100, maxG:4, color:'#534AB7' },
+  { id:'Retro',    base:865, min:400, max:1500, liveADR:667, occ:86,  maxG:4, color:'#C8731A' },
+  { id:'Allure',   base:907, min:500, max:1400, liveADR:677, occ:71,  maxG:3, color:'#2B5FA8' },
+  { id:'Elegance', base:871, min:360, max:1300, liveADR:637, occ:57,  maxG:3, color:'#2E8B57' },
+  { id:'Legacy',   base:882, min:360, max:1300, liveADR:703, occ:50,  maxG:3, color:'#7B5CB8' },
+  { id:'Radiance', base:851, min:380, max:1350, liveADR:850, occ:64,  maxG:3, color:'#B94040' },
 ];
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-function OccBar({ occ, color }: { occ: number; color: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${occ}%`, backgroundColor: color }}
-        />
-      </div>
-      <span className="text-xs text-gray-500 w-8 text-right">{occ}%</span>
-    </div>
-  );
+// ── OCC Rules (ported from loft-pricing) ─────────────────────────────────────
+const PL_OCC_RULES = [
+  { max:10,  mult:0.55, action:'dn',   label:'ลดราคา 45%' },
+  { max:20,  mult:0.65, action:'dn',   label:'ลดราคา 35%' },
+  { max:35,  mult:0.78, action:'dn',   label:'ลดราคา 22%' },
+  { max:50,  mult:0.88, action:'dn',   label:'ลดราคา 12%' },
+  { max:65,  mult:0.95, action:'dn',   label:'ลดราคา 5%'  },
+  { max:75,  mult:1.00, action:'hold', label:'คงราคา'      },
+  { max:85,  mult:1.10, action:'up',   label:'เพิ่ม 10%'  },
+  { max:92,  mult:1.20, action:'up',   label:'เพิ่ม 20%'  },
+  { max:101, mult:1.35, action:'peak', label:'Peak +35%'  },
+];
+
+// ── Channel multipliers (ported from loft-pricing) ────────────────────────────
+const CH_MULT = { Airbnb: 0.9, Booking: 1.0, Expedia: 1.2 };
+
+// ── DOW multipliers ───────────────────────────────────────────────────────────
+const DOW_MULT: Record<string, number> = { weekday:1.0, fri:1.15, weekend:1.3, peak:1.6 };
+
+type DowKey = 'weekday' | 'fri' | 'weekend' | 'peak';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getSeason(): string {
+  const m = new Date().getMonth(), d = new Date().getDate();
+  const songkran = m === 3 && d >= 13 && d <= 14;
+  const newyear  = (m === 11 && d >= 30) || (m === 0 && d <= 2);
+  if (songkran || newyear) return 'peak';
+  if (m >= 10 || m <= 1) return 'high';
+  if (m >= 4 && m <= 8)  return 'low';
+  return 'normal';
 }
 
-function OTABadge({ label, price, color }: { label: string; price: number; color: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[9px] font-bold tracking-wide" style={{ color }}>{label}</span>
-      <span className="text-sm font-bold text-gray-800">฿{price.toLocaleString()}</span>
-    </div>
-  );
+const SEASON_MULT: Record<string, number> = { low:0.85, normal:1.0, high:1.25, peak:1.5 };
+
+function getOccRule(occ: number) {
+  return PL_OCC_RULES.find(r => occ <= r.max) ?? PL_OCC_RULES[PL_OCC_RULES.length - 1];
 }
 
-function PriceCell({ label, price }: { label: string; price: number | null }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="text-[9px] text-gray-400">{label}</span>
-      <span className="text-xs font-semibold text-gray-700">
-        {price !== null ? `฿${price.toLocaleString()}` : '—'}
-      </span>
-    </div>
-  );
+function getPlPrice(type: string, dateStr: string): number | null {
+  return PL_PRICES[type]?.[dateStr] ?? null;
 }
 
-function BadgeDiscount({ pct, increase }: { pct: number; increase?: boolean }) {
-  if (increase) {
-    return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-red-300 text-red-600 bg-red-50">
-        เพิ่ม {pct}%
-      </span>
-    );
+function calcPrice(roomId: string, base: number, occ: number, dow: DowKey): number {
+  const season = getSeason();
+  const today  = new Date();
+
+  // PriceLabs direct lookup (same logic as loft-pricing)
+  if (dow !== 'peak') {
+    const daysToNextMon = (8 - today.getDay()) % 7 || 7;
+    const nextMon = new Date(today);
+    nextMon.setDate(today.getDate() + daysToNextMon);
+    const lookupDate = new Date(nextMon);
+    if (dow === 'weekday') lookupDate.setDate(nextMon.getDate() + 2); // Wed
+    else if (dow === 'fri') lookupDate.setDate(nextMon.getDate() + 4);
+    else if (dow === 'weekend') lookupDate.setDate(nextMon.getDate() + 5); // Sat
+    const dateStr = lookupDate.toISOString().split('T')[0];
+    const plPrice = getPlPrice(roomId, dateStr);
+    if (plPrice) {
+      const occRule = getOccRule(occ);
+      return Math.round(plPrice * occRule.mult / 50) * 50;
+    }
   }
-  return (
-    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-green-300 text-green-700 bg-green-50">
-      ลดราคา {pct}%
-    </span>
-  );
+
+  // Fallback: formula-based
+  const occRule    = getOccRule(occ);
+  const dowMult    = DOW_MULT[dow] ?? 1.0;
+  const seasonMult = SEASON_MULT[season] ?? 1.0;
+  return Math.round(base * dowMult * occRule.mult * seasonMult / 50) * 50;
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+function thb(n: number) { return '฿' + n.toLocaleString(); }
+
+// ── Tab config ────────────────────────────────────────────────────────────────
+const TABS: { key: DowKey; label: string }[] = [
+  { key: 'weekday', label: 'จ–พฤ' },
+  { key: 'fri',     label: 'ศุกร์' },
+  { key: 'weekend', label: 'เสาร์–อาทิตย์' },
+  { key: 'peak',    label: 'Peak day' },
+];
+
+const ACTION_STYLE: Record<string, { bg: string; border: string; text: string }> = {
+  dn:   { bg:'#EBF5EE', border:'#8DC89A', text:'#3A7D44' },
+  hold: { bg:'#F2EFE8', border:'#D5CFC2', text:'#6B6560' },
+  up:   { bg:'#FAEAEA', border:'#D48888', text:'#B94040' },
+  peak: { bg:'#FCEAEA', border:'#D48888', text:'#8B2020' },
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function DailyPricing() {
-  const [tab, setTab] = useState<DayTab>('weekday');
-
-  const tabs: { key: DayTab; label: string }[] = [
-    { key: 'weekday', label: 'จ–พฤ' },
-    { key: 'friday',  label: 'ศุกร์' },
-    { key: 'weekend', label: 'เสาร์–อาทิตย์' },
-    { key: 'peak',    label: 'Peak day' },
-  ];
-
-  // compute discount % vs Airbnb Apr avg
-  function discountPct(room: RoomConfig): { pct: number; increase: boolean } {
-    const airbnbPrice = room.prices[tab].airbnb;
-    const diff = airbnbPrice - room.airbnbAvgApr;
-    const pct  = Math.abs(Math.round((diff / room.airbnbAvgApr) * 100));
-    return { pct, increase: diff > 0 };
-  }
+  const [tab, setTab] = useState<DowKey>('weekday');
 
   return (
     <div className="space-y-4">
 
       {/* Header */}
-      <div>
-        <h2 className="text-base font-bold text-gray-900">💰 Daily Pricing</h2>
-      </div>
+      <h2 className="text-base font-bold text-gray-900">💰 Daily Pricing</h2>
 
       {/* Tab Bar */}
       <div className="flex gap-2 flex-wrap">
-        {tabs.map(t => (
+        {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
@@ -208,58 +129,99 @@ export default function DailyPricing() {
         ))}
       </div>
 
-      {/* Room Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {ROOMS.map(room => {
-          const p = room.prices[tab];
-          const { pct, increase } = discountPct(room);
-          const airbnbDiff = p.airbnb - room.airbnbAvgApr;
+      {/* Room Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {ROOMS_DATA.map(r => {
+          const occ     = r.occ;
+          const price   = calcPrice(r.id, r.base, occ, tab);
+          const occRule = getOccRule(occ);
+          const ac      = ACTION_STYLE[occRule.action] ?? ACTION_STYLE.hold;
+
+          const airbnb  = Math.round(price * CH_MULT.Airbnb  / 50) * 50;
+          const booking = Math.round(price * CH_MULT.Booking  / 50) * 50;
+          const expedia = Math.round(price * CH_MULT.Expedia  / 50) * 50;
+          const p3      = Math.round(price * 1.32 / 50) * 50;
+          const p4      = r.maxG >= 4 ? Math.round(price * 1.6 / 50) * 50 : null;
+
+          const gap     = price - r.liveADR;
+          const occCol  = occ < 50 ? '#2B5FA8' : occ < 70 ? '#3A7D44' : occ < 85 ? '#C8731A' : '#B94040';
+          const closeArrival = occ >= 85;
 
           return (
             <div
-              key={room.id}
-              className={`rounded-2xl border-2 ${room.border} bg-white p-4 flex flex-col gap-2`}
+              key={r.id}
+              style={{ borderTop: `3px solid ${r.color}` }}
+              className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
             >
-              {/* Room name + badge */}
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm" style={{ color: room.color }}>
-                  {room.id}
-                </span>
-                <BadgeDiscount pct={pct} increase={increase} />
-              </div>
+              <div className="p-4 space-y-3">
 
-              {/* Occupancy bar */}
-              <OccBar occ={room.occ} color={room.color} />
-
-              {/* Recommended price */}
-              <div className="text-center">
-                <div className="text-[10px] text-gray-400">ราคาแนะนำ (2 คน)</div>
-                <div className="text-3xl font-bold text-gray-900">฿{p.g2.toLocaleString()}</div>
-                <div className={`text-xs mt-0.5 ${airbnbDiff >= 0 ? 'text-orange-500' : 'text-orange-500'}`}>
-                  Airbnb เม.ย. ฿{room.airbnbAvgApr.toLocaleString()} · {airbnbDiff >= 0 ? '+' : ''}{airbnbDiff}/คืน
+                {/* Room name + action badge */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold" style={{ color: r.color }}>{r.id}</span>
+                  <span
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+                    style={{ background: ac.bg, color: ac.text, borderColor: ac.border }}
+                  >
+                    {occRule.label}
+                  </span>
                 </div>
-              </div>
 
-              {/* OTA badges */}
-              <div className="flex justify-around bg-gray-50 rounded-xl py-2 px-1">
-                <OTABadge label="AIRBNB"  price={p.airbnb}  color="#FF5A5F" />
-                <OTABadge label="BOOKING" price={p.booking} color="#003580" />
-                <OTABadge label="EXPEDIA" price={p.expedia} color="#00355F" />
-              </div>
-
-              {/* Guest count pricing */}
-              <div className="flex justify-around pt-1">
-                <PriceCell label="2 คน" price={p.g2} />
-                <PriceCell label="3 คน" price={p.g3} />
-                <PriceCell label="4 คน" price={p.g4} />
-              </div>
-
-              {/* Close Arrival banner */}
-              {room.closeArrival && (
-                <div className="mt-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-semibold text-center py-1.5">
-                  ⚠ Close Arrival
+                {/* Occ bar */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${occ}%`, backgroundColor: occCol }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold w-9 text-right" style={{ color: occCol }}>{occ}%</span>
                 </div>
-              )}
+
+                {/* Recommended price */}
+                <div className="text-center py-3 bg-gray-50 rounded-xl">
+                  <div className="text-[10px] text-gray-400 mb-1">ราคาแนะนำ (2 คน)</div>
+                  <div className="text-3xl font-bold tracking-tight text-gray-900">{thb(price)}</div>
+                  <div className={`text-xs mt-0.5 ${gap >= 0 ? 'text-orange-500' : 'text-orange-500'}`}>
+                    Airbnb เม.ย. {thb(r.liveADR)} · {gap >= 0 ? '+' : ''}{gap.toLocaleString()}/คืน
+                  </div>
+                </div>
+
+                {/* OTA badges */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="text-center py-1.5 rounded-lg" style={{ background:'#FDF0E3' }}>
+                    <div className="text-[9px] font-bold text-amber-700 mb-0.5">AIRBNB</div>
+                    <div className="text-sm font-bold text-amber-900">{thb(airbnb)}</div>
+                  </div>
+                  <div className="text-center py-1.5 rounded-lg" style={{ background:'#EBF1FC' }}>
+                    <div className="text-[9px] font-bold text-blue-700 mb-0.5">BOOKING</div>
+                    <div className="text-sm font-bold text-blue-800">{thb(booking)}</div>
+                  </div>
+                  <div className="text-center py-1.5 rounded-lg" style={{ background:'#EDEAFC' }}>
+                    <div className="text-[9px] font-bold text-violet-700 mb-0.5">EXPEDIA</div>
+                    <div className="text-sm font-bold text-violet-800">{thb(expedia)}</div>
+                  </div>
+                </div>
+
+                {/* Guest count pricing */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[['2 คน', price], ['3 คน', p3], ['4 คน', p4]].map(([label, val]) => (
+                    <div key={label as string} className="text-center py-1.5 bg-gray-50 rounded-lg">
+                      <div className="text-[9px] text-gray-400">{label as string}</div>
+                      <div className="text-xs font-semibold text-gray-700">
+                        {val !== null ? thb(val as number) : '—'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Close Arrival */}
+                {closeArrival && (
+                  <div className="text-center text-[11px] font-semibold py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    ⚠ Close Arrival
+                  </div>
+                )}
+
+              </div>
             </div>
           );
         })}
