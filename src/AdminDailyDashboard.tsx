@@ -569,24 +569,21 @@ export default function AdminDailyDashboard() {
 
         {/* Quick Links */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          {[
-            { icon: '✅', label: 'Checklist
-งานประจำวัน', tab: 'dashboard', scroll: 'checklist' },
-            { icon: '📦', label: 'ตรวจสอบ
-สต๊อก',        tab: 'stockparking', scroll: '' },
-            { icon: '🚗', label: 'ตรวจสอบ
-ทะเบียนรถ',    tab: 'stockparking', scroll: 'car' },
-          ].map((q, i) => (
+          {([
+            { icon: '✅', line1: 'Checklist', line2: 'งานประจำวัน', tab: 'dashboard' as const, scroll: 'checklist' },
+            { icon: '📦', line1: 'ตรวจสอบ',  line2: 'สต๊อก',       tab: 'stockparking' as const, scroll: '' },
+            { icon: '🚗', line1: 'ตรวจสอบ',  line2: 'ทะเบียนรถ',   tab: 'stockparking' as const, scroll: 'car' },
+          ]).map((q, i) => (
             <button key={i}
               onClick={() => {
-                setAdminTab(q.tab as typeof adminTab);
+                setAdminTab(q.tab);
                 if (q.scroll === 'checklist') {
                   setTimeout(() => document.getElementById('daily-checklist')?.scrollIntoView({ behavior: 'smooth' }), 100);
                 }
               }}
               className="bg-white border border-gray-200 rounded-2xl p-3 flex flex-col items-center gap-1.5 shadow-sm hover:border-blue-300 hover:shadow-md active:scale-95 transition-all text-center">
               <span className="text-2xl">{q.icon}</span>
-              <span className="text-xs font-semibold text-gray-700 leading-tight whitespace-pre-line">{q.label}</span>
+              <span className="text-xs font-semibold text-gray-700 leading-tight">{q.line1}<br/>{q.line2}</span>
             </button>
           ))}
         </div>
