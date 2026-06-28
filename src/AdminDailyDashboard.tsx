@@ -567,7 +567,7 @@ export default function AdminDailyDashboard() {
         {/* Dashboard Tab */}
         {adminTab === 'dashboard' && <div>
 
-        {/* Quick Links */}
+        {/* Quick Links — shortcut buttons */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {([
             { icon: '✅', line1: 'Checklist', line2: 'งานประจำวัน', tab: 'dashboard' as const, scroll: 'checklist' },
