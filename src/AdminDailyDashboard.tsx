@@ -193,6 +193,20 @@ export default function AdminDailyDashboard() {
           setIpPrefixInput(rows[0].value);
         }
       });
+    sbGet('settings', 'key=eq.stock_draft')
+      .then(rows => {
+        if (rows?.[0]?.value) {
+          try {
+            const d = JSON.parse(rows[0].value);
+            if (d.stockItems)     setStockItems(d.stockItems);
+            if (d.stockQty)       setStockQty(d.stockQty);
+            if (d.supplier)       setSupplier(d.supplier);
+            if (d.budget)         setBudget(d.budget);
+            if (d.purchaseStatus) setPurchaseStatus(d.purchaseStatus);
+            if (d.purchaseNote)   setPurchaseNote(d.purchaseNote);
+          } catch { /* ignore */ }
+        }
+      });
   }, []);
 
   // Auth
@@ -278,6 +292,8 @@ export default function AdminDailyDashboard() {
   const [budget, setBudget]                 = useState('');
   const [purchaseStatus, setPurchaseStatus] = useState('');
   const [purchaseNote, setPurchaseNote]     = useState('');
+  const [stockSaving, setStockSaving]       = useState(false);
+  const [stockSaved, setStockSaved]         = useState(false);
 
   // Form — documents
   const [docList, setDocList]               = useState('');
@@ -391,6 +407,16 @@ export default function AdminDailyDashboard() {
     setReports(Array.isArray(updated) ? updated : []);
     setSubmitted(true); setAuthLoading(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveStock = async () => {
+    setStockSaving(true); setStockSaved(false);
+    await sbUpsert("settings", {
+      key: "stock_draft",
+      value: JSON.stringify({ stockItems, stockQty, supplier, budget, purchaseStatus, purchaseNote, date: today }),
+    });
+    setStockSaving(false); setStockSaved(true);
+    setTimeout(() => setStockSaved(false), 3000);
   };
 
   // ─── Loading ───────────────────────────────────────────────────────────────
@@ -853,6 +879,19 @@ export default function AdminDailyDashboard() {
                   <textarea rows={4} value={purchaseNote} onChange={e => setPurchaseNote(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="รายละเอียดเพิ่มเติม" /></div>
               </div>
             </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={handleSaveStock}
+              disabled={stockSaving}
+              className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                stockSaved ? 'bg-green-500 text-white' :
+                stockSaving ? 'bg-gray-300 text-gray-500 cursor-not-allowed' :
+                'bg-amber-400 hover:bg-amber-500 text-gray-900'
+              }`}
+            >
+              {stockSaving ? '⏳ กำลังบันทึก...' : stockSaved ? '✅ บันทึกแล้ว' : '💾 บันทึกสต็อก'}
+            </button>
           </div>
         </div>
 
