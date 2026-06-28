@@ -39,7 +39,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     {id:1, name:'กระดาษทิชชู',    qty:51, unit:'ม้วน', note:'',                          minQty:10},
     {id:2, name:'น้ำดื่ม',         qty:61, unit:'ขวด',  note:'',                          minQty:10},
     {id:16,name:'ยาสระผม+สบู่',   qty:20, unit:'ชุด',  note:'Shampoo+Shower Gel+Soap',  minQty:10},
-    {id:24,name:'ถุงขยะ',          qty:0,  unit:'ถุง',  note:'',                          minQty:10},
+    {id:24,name:'ถุงขยะ',          qty:0,  unit:'ถุง',  note:'',                          minQty:1},
     {id:25,name:'roller',          qty:0,  unit:'ชิ้น', note:'',                          minQty:1},
     {id:3, name:'ไมโครเวฟ',        qty:1,  unit:'อัน',  note:''},
     {id:4, name:'เตารีด',          qty:1,  unit:'อัน',  note:''},
