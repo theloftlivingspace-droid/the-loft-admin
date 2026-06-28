@@ -540,6 +540,13 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     }, 80);
   };
 
+  // Must be before early returns — Rules of Hooks
+  const bookingPending = data ? data.booking.filter(x => !x.done).length : 0;
+  const invoicePending = data ? data.invoice.filter(x => !x.done).length : 0;
+  useEffect(() => {
+    onCountChange?.(bookingPending, invoicePending);
+  }, [bookingPending, invoicePending, onCountChange]);
+
   if (loading) return (
     <div className="flex items-center justify-center py-6 text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
@@ -551,13 +558,6 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       ⚠️ {error}<button onClick={loadData} className="ml-4 underline">ลองใหม่</button>
     </div>
   );
-  // Notify parent whenever counts change (must be before early returns)
-  const bookingPending  = data ? data.booking.filter(x => !x.done).length : 0;
-  const invoicePending  = data ? data.invoice.filter(x => !x.done).length : 0;
-  useEffect(() => {
-    onCountChange?.(bookingPending, invoicePending);
-  }, [bookingPending, invoicePending, onCountChange]);
-
   if (!data) return null;
 
   const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
