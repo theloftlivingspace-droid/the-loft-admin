@@ -491,7 +491,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Mobile bottom tab bar (below md) — fixed at bottom of screen */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex">
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex" style={{paddingBottom:'env(safe-area-inset-bottom)'}}>
           {([
             { key: 'dashboard',    icon: '📊', label: 'Dashboard' },
             { key: 'todo',         icon: '📋', label: 'Booking' },
@@ -499,17 +499,17 @@ export default function AdminDailyDashboard() {
             { key: 'stockparking', icon: '📦', label: 'Stock' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setAdminTab(t.key)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors
+              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors relative
                 ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>
-              <span className="text-xl leading-none">{t.icon}</span>
-              <span className={`text-[10px] font-medium ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>{t.label}</span>
-              {adminTab === t.key && <span className="absolute bottom-0 w-10 h-0.5 bg-blue-600 rounded-t-full" />}
+              <span className="text-2xl leading-none">{t.icon}</span>
+              <span className={`text-[11px] font-semibold leading-tight ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>{t.label}</span>
+              {adminTab === t.key && <span className="absolute bottom-0 inset-x-2 h-0.5 bg-blue-600 rounded-t-full" />}
             </button>
           ))}
         </div>
 
         {/* Spacer so content doesn't hide behind fixed bottom bar on mobile */}
-        <div className="h-12 md:hidden" />
+        <div className="h-16 md:hidden" />
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-1 md:pt-6">
