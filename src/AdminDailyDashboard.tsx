@@ -199,7 +199,7 @@ export default function AdminDailyDashboard() {
   useEffect(() => {
     if (!loggedIn) return;
     const fetchNotif = () => {
-      fetch('/api/gas-proxy?app=todo&action=getDashboard')
+      fetch('/api/gas-proxy?app=todo&action=getData')
         .then(r => r.json())
         .then(j => {
           if (!j.ok) return;
