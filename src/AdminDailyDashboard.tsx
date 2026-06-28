@@ -567,6 +567,30 @@ export default function AdminDailyDashboard() {
         {/* Dashboard Tab */}
         {adminTab === 'dashboard' && <div>
 
+        {/* Quick Links */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {[
+            { icon: '✅', label: 'Checklist
+งานประจำวัน', tab: 'dashboard', scroll: 'checklist' },
+            { icon: '📦', label: 'ตรวจสอบ
+สต๊อก',        tab: 'stockparking', scroll: '' },
+            { icon: '🚗', label: 'ตรวจสอบ
+ทะเบียนรถ',    tab: 'stockparking', scroll: 'car' },
+          ].map((q, i) => (
+            <button key={i}
+              onClick={() => {
+                setAdminTab(q.tab as typeof adminTab);
+                if (q.scroll === 'checklist') {
+                  setTimeout(() => document.getElementById('daily-checklist')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }
+              }}
+              className="bg-white border border-gray-200 rounded-2xl p-3 flex flex-col items-center gap-1.5 shadow-sm hover:border-blue-300 hover:shadow-md active:scale-95 transition-all text-center">
+              <span className="text-2xl">{q.icon}</span>
+              <span className="text-xs font-semibold text-gray-700 leading-tight whitespace-pre-line">{q.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
@@ -597,7 +621,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Checklist */}
-        <div className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-3xl p-6 mb-8 border border-orange-100 shadow-sm">
+        <div id="daily-checklist" className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-3xl p-6 mb-8 border border-orange-100 shadow-sm">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Checklist งานประจำวัน</h2>
           <div className="space-y-3">
             {TASKS.map((task, i) => (
