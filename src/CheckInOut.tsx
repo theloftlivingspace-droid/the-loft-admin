@@ -227,14 +227,13 @@ export default function CheckInOut() {
   const [checkedOutSet,  setCheckedOutSet]  = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ci_checkout') || '[]')); } catch { return new Set(); }
   });
-  const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
-  const [checkoutDate,   setCheckoutDate]   = useState('');
-  const [checkoutSaving, setCheckoutSaving] = useState(false);
+  const [checkoutSaving, setCheckoutSaving] = useState<string | null>(null); // resId being saved
 
-  async function confirmCheckout(s: Stay, newDate: string) {
-    setCheckoutSaving(true);
+  async function doCheckout(s: Stay) {
+    setCheckoutSaving(s.resId);
     try {
-      const isEarly = newDate && newDate < s.checkout;
+      const todayStr = today();
+      const isEarly  = todayStr < s.checkout;
       await fetch(GAS_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -244,19 +243,18 @@ export default function CheckInOut() {
           room: s.roomNum,
           guest: s.guest,
           originalCheckout: s.checkout,
-          newCheckout: newDate || s.checkout,
+          newCheckout: todayStr,
           isEarly,
         }),
       });
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(isEarly ? `🧳 Checkout แล้ว — อัปเดตวันเป็น ${newDate}` : '🧳 Checkout แล้ว');
+      showToast(isEarly ? `🧳 Checkout แล้ว (ก่อนกำหนด — อัปเดต Sheet1)` : '🧳 Checkout แล้ว');
     } catch {
       showToast('❌ บันทึกไม่สำเร็จ');
     } finally {
-      setCheckoutSaving(false);
-      setCheckoutModal(null);
+      setCheckoutSaving(null);
     }
   }
 
@@ -797,9 +795,10 @@ export default function CheckInOut() {
                             ✅ เช็คอินแล้ว
                           </span>
                           <button
-                            onClick={() => { setCheckoutDate(s.checkout); setCheckoutModal(s); }}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-sm">
-                            🧳 Checkout
+                            disabled={checkoutSaving === s.resId}
+                            onClick={() => doCheckout(s)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-sm disabled:opacity-50">
+                            {checkoutSaving === s.resId ? '⏳...' : '🧳 Checkout'}
                           </button>
                         </>
                       )}
@@ -917,42 +916,6 @@ export default function CheckInOut() {
         </div>
       )}
 
-      {/* Checkout modal */}
-      {checkoutModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setCheckoutModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <p className="font-bold text-sm mb-1">🧳 Checkout — ห้อง {checkoutModal.roomNum}</p>
-            <p className="text-xs text-gray-500 mb-4">{checkoutModal.guest}</p>
-            <div className="mb-4">
-              <label className="block text-xs text-gray-500 mb-1.5">วันที่ Checkout (แก้ได้ถ้าออกก่อนกำหนด)</label>
-              <input
-                type="date"
-                value={checkoutDate}
-                max={checkoutModal.checkout}
-                onChange={e => setCheckoutDate(e.target.value)}
-                className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-              />
-              {checkoutDate && checkoutDate < checkoutModal.checkout && (
-                <p className="text-xs text-orange-600 mt-1.5">
-                  ⚠️ ออกก่อนกำหนด {checkoutModal.checkout} — จะอัปเดต Sheet1 ด้วย
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setCheckoutModal(null)}
-                className="flex-1 border rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
-                ยกเลิก
-              </button>
-              <button
-                disabled={checkoutSaving || !checkoutDate}
-                onClick={() => confirmCheckout(checkoutModal, checkoutDate)}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 rounded-xl py-2 text-sm font-bold text-white transition disabled:opacity-50">
-                {checkoutSaving ? 'กำลังบันทึก...' : '🧳 ยืนยัน Checkout'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
