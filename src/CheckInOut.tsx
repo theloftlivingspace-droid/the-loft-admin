@@ -212,6 +212,43 @@ export default function CheckInOut() {
   const [noteText, setNoteText]         = useState('');
   const [noteSaving, setNoteSaving]     = useState(false);
   const [toast, setToast]               = useState('');
+
+  // ── Check-in / No-show / Cancel state (keyed by resId) ──────────────────
+  const [ciDoneSet,    setCiDoneSet]    = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ci_done')   || '[]')); } catch { return new Set(); }
+  });
+  const [cancelledSet, setCancelledSet] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ci_cancel') || '[]')); } catch { return new Set(); }
+  });
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
+  const [cancelSaving,  setCancelSaving]  = useState(false);
+
+  function markCheckedIn(resId: string) {
+    const next = new Set(ciDoneSet).add(resId);
+    setCiDoneSet(next);
+    localStorage.setItem('ci_done', JSON.stringify([...next]));
+    showToast('✅ เช็คอินแล้ว');
+  }
+
+  async function confirmCancel(s: Stay) {
+    setCancelSaving(true);
+    try {
+      await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancelBooking', resId: s.resId, room: s.roomNum, guest: s.guest, checkin: s.checkin, checkout: s.checkout }),
+      });
+      const next = new Set(cancelledSet).add(s.resId);
+      setCancelledSet(next);
+      localStorage.setItem('ci_cancel', JSON.stringify([...next]));
+      showToast('🚫 ยกเลิก booking แล้ว');
+    } catch {
+      showToast('❌ บันทึกไม่สำเร็จ');
+    } finally {
+      setCancelSaving(false);
+      setCancelConfirm(null);
+    }
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadCtxRef = useRef<{ key: string; room: string; checkin: string; resId: string } | null>(null);
 
@@ -571,14 +608,34 @@ export default function CheckInOut() {
             const isUploading = uploadingFor === cardKey;
             const roomReady = co?.inspected ?? null;
 
+            // ── per-card check-in state ──────────────────────────────
+            const isCheckedIn = ciDoneSet.has(s.resId);
+            const isCancelled = cancelledSet.has(s.resId);
+            const isNoShow    = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn;
+
+            const cardBorderCls = isCancelled ? 'border-red-300 bg-red-50'
+                                : isCheckedIn ? 'border-emerald-300 bg-emerald-50'
+                                : isNoShow    ? 'border-red-200 bg-red-50'
+                                              : 'border-gray-100 bg-white';
+            const topBarCls    = isCancelled ? 'bg-red-500'
+                                : isCheckedIn ? 'bg-emerald-500'
+                                : isNoShow    ? 'bg-red-400'
+                                              : cfg.bg;
+            const topBarLabel  = isCancelled ? '🚫 ยกเลิก Booking'
+                                : isCheckedIn ? '✅ เช็คอินแล้ว'
+                                : isNoShow    ? '⚠️ No Show'
+                                              : cfg.label;
+            const topBarText   = (isCancelled || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
+            const dotCls       = (isCancelled || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
+
             return (
               <div key={cardKey}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                className={`rounded-2xl border shadow-sm overflow-hidden ${cardBorderCls}`}>
                 {/* Top bar */}
-                <div className={`${cfg.bg} px-4 py-2 flex items-center justify-between`}>
+                <div className={`${topBarCls} px-4 py-2 flex items-center justify-between`}>
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`}></span>
-                    <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
+                    <span className={`w-2 h-2 rounded-full ${dotCls}`}></span>
+                    <span className={`text-xs font-semibold ${topBarText}`}>{topBarLabel}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {s.status === 'checked-in' && (
@@ -678,6 +735,48 @@ export default function CheckInOut() {
                       {s.note ? '✏️ แก้ Note' : '📝 เพิ่ม Note'}
                     </button>
                   </div>
+
+                  {/* Check-in / No-show / Cancel — arriving-today only */}
+                  {s.status === 'arriving-today' && !isCancelled && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {!isCheckedIn && !isNoShow && (
+                        <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+                          onClick={() => markCheckedIn(s.resId)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm">
+                          ✅ เช็คอิน + TM30
+                        </a>
+                      )}
+                      {isCheckedIn && (
+                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                          ✅ เช็คอินแล้ว
+                        </span>
+                      )}
+                      {isNoShow && (
+                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-100 text-red-700 text-xs font-semibold border border-red-200">
+                          ⚠️ No Show
+                        </span>
+                      )}
+                      {(isNoShow || isCheckedIn) && cancelConfirm !== s.resId && (
+                        <button onClick={() => setCancelConfirm(s.resId)}
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
+                          🚫 Cancel Booking
+                        </button>
+                      )}
+                      {cancelConfirm === s.resId && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
+                          <span className="text-xs text-red-700 font-medium">ยืนยันยกเลิก?</span>
+                          <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
+                            className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
+                            {cancelSaving ? '...' : 'ยืนยัน'}
+                          </button>
+                          <button onClick={() => setCancelConfirm(null)}
+                            className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
+                            ไม่
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Upload + doc list */}
                   <div className="mb-3 flex flex-wrap items-center gap-1.5">
