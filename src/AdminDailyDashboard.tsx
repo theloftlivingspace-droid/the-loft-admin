@@ -71,7 +71,7 @@ const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stock
   { label: 'ตอบข้อความลูกค้า', url: 'https://chat.line.biz/' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
-  { label: 'ตรวจสอบรายการ Check-out', tab: 'checkinout' },
+  { label: 'ตรวจสอบรายการ Check-out', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/checkout-checklist.html' },
   { label: 'ลงทะเบียน TM30', url: 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a' },
   { label: 'บันทึกการจองเพิ่ม', tab: 'todo', todoTab: 'booking' },
   { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo', todoTab: 'invoice' },
