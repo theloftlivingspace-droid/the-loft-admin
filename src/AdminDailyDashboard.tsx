@@ -491,7 +491,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Mobile bottom tab bar (below md) — fixed at bottom of screen */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex" style={{paddingBottom:'env(safe-area-inset-bottom)'}}>
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 flex pb-safe">
           {([
             { key: 'dashboard',    icon: '📊', label: 'Dashboard' },
             { key: 'todo',         icon: '📋', label: 'Booking' },
