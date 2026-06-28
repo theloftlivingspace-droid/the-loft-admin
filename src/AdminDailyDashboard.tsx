@@ -197,6 +197,7 @@ export default function AdminDailyDashboard() {
 
   // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min (v2)
   useEffect(() => {
+    if (!loggedIn) return;
     const fetchNotif = () => {
       fetch('/api/gas-proxy?app=todo&action=getDashboard')
         .then(r => r.json())
@@ -213,7 +214,7 @@ export default function AdminDailyDashboard() {
     fetchNotif();
     const timer = setInterval(fetchNotif, 10 * 60 * 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [loggedIn]);
 
   // Auth
   const [loggedIn, setLoggedIn]             = useState(false);
