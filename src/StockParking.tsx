@@ -203,6 +203,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   }, []);
 
   useEffect(() => {
+    sbLoad('stock_data').then(d => { if (d) setStockData(d); });
     sbLoad('parking_in').then(d => { if (d) setParkingIn(d); });
     sbLoad('parking_out').then(d => { if (d) setParkingOut(d); });
     sbLoad('warranty_data').then(d => { if (d) setWarrantyData(d); });
@@ -229,8 +230,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   // ── Modal wrapper ─────────────────────────────────────────────────────────
   const Modal = ({title,onClose,onSave,children}:{title:string;onClose:()=>void;onSave:()=>void;children:React.ReactNode}) => (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
+      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl my-8 sm:my-0">
         <h3 className="text-base font-semibold mb-4 text-gray-800">{title}</h3>
         <div className="space-y-3">{children}</div>
         <div className="flex gap-2 mt-5 justify-end">
@@ -264,7 +265,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
               <span className="truncate">Stock</span>
               <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{stockData.length} รายการ</span>
             </h2>
-            <button onClick={()=>setShowStockModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+            <div className="flex gap-2">
+              <button onClick={()=>setShowStockModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>doSave('stock_data', stockData)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='stock_data'?'bg-gray-200 text-gray-400':saved==='stock_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                {saving==='stock_data'?'...' : saved==='stock_data'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
