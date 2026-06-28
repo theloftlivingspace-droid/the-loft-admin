@@ -195,7 +195,28 @@ export default function AdminDailyDashboard() {
       });
   }, []);
 
-  // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min (v2)
+  // Auth
+  const [loggedIn, setLoggedIn]             = useState(false);
+  const [username, setUsername]             = useState('');
+  const [password, setPassword]             = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [currentUser, setCurrentUser]       = useState<User | null>(null);
+  const [fullName, setFullName]             = useState('');
+  const [authLoading, setAuthLoading]       = useState(false);
+
+  // Reports
+  const [reports, setReports]               = useState<Report[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [submitted, setSubmitted]           = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking'>('dashboard');
+  const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
+  const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
+  const [notifBooking, setNotifBooking]     = useState(0);
+  const [notifInvoice, setNotifInvoice]     = useState(0);
+  const [notifLowStock, setNotifLowStock]   = useState(0);
+
+  // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min
   useEffect(() => {
     if (!loggedIn) return;
     const fetchNotif = () => {
@@ -217,27 +238,6 @@ export default function AdminDailyDashboard() {
     const timer = setInterval(fetchNotif, 10 * 60 * 1000);
     return () => clearInterval(timer);
   }, [loggedIn]);
-
-  // Auth
-  const [loggedIn, setLoggedIn]             = useState(false);
-  const [username, setUsername]             = useState('');
-  const [password, setPassword]             = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [currentUser, setCurrentUser]       = useState<User | null>(null);
-  const [fullName, setFullName]             = useState('');
-  const [authLoading, setAuthLoading]       = useState(false);
-
-  // Reports
-  const [reports, setReports]               = useState<Report[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  const [submitted, setSubmitted]           = useState(false);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking'>('dashboard');
-  const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
-  const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
-  const [notifBooking, setNotifBooking]     = useState(0);
-  const [notifInvoice, setNotifInvoice]     = useState(0);
-  const [notifLowStock, setNotifLowStock]   = useState(0);
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
