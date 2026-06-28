@@ -541,7 +541,7 @@ export default function BookingInvoiceTodo({ initialTab }: { initialTab?: 'booki
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center py-20 text-gray-400">
+    <div className="flex items-center justify-center py-6 text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
       กำลังโหลดข้อมูล...
     </div>
