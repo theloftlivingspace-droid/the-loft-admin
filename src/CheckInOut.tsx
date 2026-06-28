@@ -854,6 +854,7 @@ export default function CheckInOut() {
         </div>
       )}
     </div>
+  </div>
   );
 }
 
