@@ -630,9 +630,10 @@ export default function AdminDailyDashboard() {
         {adminTab === 'checkinout' && (
           <CheckInOut />
         )}
-        {adminTab === 'stockparking' && (
-          <StockParking key={stockInitialTab} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
-        )}
+        {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
+        <div className={adminTab === 'stockparking' ? '' : 'hidden'}>
+          <StockParking initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
+        </div>
 
         {/* Dashboard Tab */}
         {adminTab === 'dashboard' && <div>

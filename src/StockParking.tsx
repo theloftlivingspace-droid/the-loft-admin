@@ -11,6 +11,7 @@ interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:str
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
+  useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
 
   // ── stock ────────────────────────────────────────────────────────────────
   const [stockData, setStockData] = useState<StockItem[]>([
