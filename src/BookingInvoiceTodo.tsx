@@ -551,17 +551,17 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       ⚠️ {error}<button onClick={loadData} className="ml-4 underline">ลองใหม่</button>
     </div>
   );
-  if (!data) return null;
-
-  const bookingPending  = data.booking.filter(x => !x.done).length;
-  const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
-  const invoicePending  = data.invoice.filter(x => !x.done).length;
-  const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
-
-  // Notify parent whenever counts change
+  // Notify parent whenever counts change (must be before early returns)
+  const bookingPending  = data ? data.booking.filter(x => !x.done).length : 0;
+  const invoicePending  = data ? data.invoice.filter(x => !x.done).length : 0;
   useEffect(() => {
     onCountChange?.(bookingPending, invoicePending);
   }, [bookingPending, invoicePending, onCountChange]);
+
+  if (!data) return null;
+
+  const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
+  const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
   const searchNorm = normNameForSearch(search);
   const visibleBooking = data.booking
