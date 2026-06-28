@@ -67,7 +67,7 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo'; todoTab?: 'booking' | 'invoice' }[] = [
+const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stockparking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'car' }[] = [
   { label: 'ตอบข้อความลูกค้า' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
@@ -75,8 +75,8 @@ const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo'; todoTab
   { label: 'ลงทะเบียน TM30', url: 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a' },
   { label: 'บันทึกการจองเพิ่ม', tab: 'todo', todoTab: 'booking' },
   { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo', todoTab: 'invoice' },
-  { label: 'ตรวจสอบสต๊อก' },
-  { label: 'ตรวจสอบทะเบียนรถ' },
+  { label: 'ตรวจสอบสต๊อก', tab: 'stockparking', stockTab: 'stock' },
+  { label: 'ตรวจสอบทะเบียนรถ', tab: 'stockparking', stockTab: 'car' },
   { label: 'เตรียมเอกสาร' },
   { label: 'สแกน / จัดเก็บไฟล์' },
   { label: 'สรุปรายงานประจำวัน' },
