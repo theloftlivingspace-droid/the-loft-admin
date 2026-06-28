@@ -68,7 +68,7 @@ interface Report {
 }
 
 const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stockparking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'parking-in' | 'parking-out' | 'warranty' }[] = [
-  { label: 'ตอบข้อความลูกค้า' },
+  { label: 'ตอบข้อความลูกค้า', url: 'https://chat.line.biz/' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
   { label: 'ตรวจสอบรายการ Check-out', tab: 'checkinout' },
