@@ -31,6 +31,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
+  useEffect(() => { window.scrollTo(0, 0); }, [section]);
   const [saving, setSaving] = useState('');
   const [saved,  setSaved]  = useState('');
 

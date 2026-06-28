@@ -232,6 +232,11 @@ export default function AdminDailyDashboard() {
   const [notifInvoice, setNotifInvoice]     = useState(0);
   const [notifLowStock, setNotifLowStock]   = useState(0);
 
+  // Scroll to top whenever the active tab changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [adminTab]);
+
   // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min
   useEffect(() => {
     if (!loggedIn) return;
