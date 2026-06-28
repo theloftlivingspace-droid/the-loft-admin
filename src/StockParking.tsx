@@ -168,10 +168,10 @@ export default function StockParking() {
 
   // ── shared styles ─────────────────────────────────────────────────────────
   const sectionNav = (keys: {key:typeof section; label:string; emoji:string}[]) => (
-    <div className="flex gap-2 mb-6 flex-wrap">
+    <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
       {keys.map(k=>(
         <button key={k.key} onClick={()=>setSection(k.key)}
-          className={`px-4 py-2 rounded-2xl text-sm font-medium transition border
+          className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition border
             ${section===k.key
               ? 'bg-blue-900 text-white border-blue-900 shadow'
               : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
