@@ -167,6 +167,11 @@ export default function AdminDailyDashboard() {
   const [ipLoading, setIpLoading] = useState(true);
 
 
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  function scrollToTop() {
+    scrollAreaRef.current?.scrollTo({ top: 0 });
+  }
+
   useEffect(() => {
     const existingLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
     const link: HTMLLinkElement = existingLink ?? document.createElement('link') as HTMLLinkElement;
@@ -586,7 +591,7 @@ export default function AdminDailyDashboard() {
             { key: 'checkinout',   label: '🏨 Check-in/out' },
             { key: 'stockparking', label: '📦 Stock' },
           ] as const).map(t => (
-            <button key={t.key} onClick={() => setAdminTab(t.key)}
+            <button key={t.key} onClick={() => { setAdminTab(t.key); scrollToTop(); }}
               className={`flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold border-b-2 transition-colors
                 ${adminTab === t.key
                   ? 'border-blue-600 text-blue-700'
@@ -604,7 +609,7 @@ export default function AdminDailyDashboard() {
             { key: 'checkinout',   icon: '🏨', label: 'Check-in/out' },
             { key: 'stockparking', icon: '📦', label: 'Stock' },
           ] as const).map(t => (
-            <button key={t.key} onClick={() => setAdminTab(t.key)}
+            <button key={t.key} onClick={() => { setAdminTab(t.key); scrollToTop(); }}
               className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors relative
                 ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>
               <span className="text-2xl leading-none">{t.icon}</span>
@@ -618,7 +623,7 @@ export default function AdminDailyDashboard() {
         <div className="h-16 md:hidden" />
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-0 md:pt-6">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-0 md:pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
