@@ -588,7 +588,7 @@ export default function AdminDailyDashboard() {
 
         {/* To-Do Tab */}
         {adminTab === 'todo' && (
-          <BookingInvoiceTodo key={todoInitialTab} initialTab={todoInitialTab} />
+          <BookingInvoiceTodo key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b, i) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
         {adminTab === 'checkinout' && (
           <CheckInOut />
