@@ -451,7 +451,7 @@ function otaTheme(channel: string) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function BookingInvoiceTodo({ initialTab }: { initialTab?: 'booking' | 'invoice' } = {}) {
+export default function BookingInvoiceTodo({ initialTab, onCountChange }: { initialTab?: 'booking' | 'invoice'; onCountChange?: (booking: number, invoice: number) => void } = {}) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -557,6 +557,11 @@ export default function BookingInvoiceTodo({ initialTab }: { initialTab?: 'booki
   const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
   const invoicePending  = data.invoice.filter(x => !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
+
+  // Notify parent whenever counts change
+  useEffect(() => {
+    onCountChange?.(bookingPending, invoicePending);
+  }, [bookingPending, invoicePending, onCountChange]);
 
   const searchNorm = normNameForSearch(search);
   const visibleBooking = data.booking
