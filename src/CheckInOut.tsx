@@ -223,6 +223,43 @@ export default function CheckInOut() {
   const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
   const [cancelSaving,  setCancelSaving]  = useState(false);
 
+  // ── Early checkout state ─────────────────────────────────────────────────
+  const [checkedOutSet,  setCheckedOutSet]  = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ci_checkout') || '[]')); } catch { return new Set(); }
+  });
+  const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
+  const [checkoutDate,   setCheckoutDate]   = useState('');
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
+
+  async function confirmCheckout(s: Stay, newDate: string) {
+    setCheckoutSaving(true);
+    try {
+      const isEarly = newDate && newDate < s.checkout;
+      await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'earlyCheckout',
+          resId: s.resId,
+          room: s.roomNum,
+          guest: s.guest,
+          originalCheckout: s.checkout,
+          newCheckout: newDate || s.checkout,
+          isEarly,
+        }),
+      });
+      const next = new Set(checkedOutSet).add(s.resId);
+      setCheckedOutSet(next);
+      localStorage.setItem('ci_checkout', JSON.stringify([...next]));
+      showToast(isEarly ? `🧳 Checkout แล้ว — อัปเดตวันเป็น ${newDate}` : '🧳 Checkout แล้ว');
+    } catch {
+      showToast('❌ บันทึกไม่สำเร็จ');
+    } finally {
+      setCheckoutSaving(false);
+      setCheckoutModal(null);
+    }
+  }
+
   function markCheckedIn(resId: string) {
     const next = new Set(ciDoneSet).add(resId);
     setCiDoneSet(next);
@@ -609,26 +646,30 @@ export default function CheckInOut() {
             const roomReady = co?.inspected ?? null;
 
             // ── per-card check-in state ──────────────────────────────
-            const isCheckedIn = ciDoneSet.has(s.resId);
-            const isCancelled = cancelledSet.has(s.resId);
-            const isNoShow    = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn;
+            const isCheckedIn  = ciDoneSet.has(s.resId);
+            const isCancelled  = cancelledSet.has(s.resId);
+            const isCheckedOut = checkedOutSet.has(s.resId);
+            const isNoShow     = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn && !isCheckedOut;
 
-            // สี: cancelled=แดง | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
-            const cardBorderCls = isCancelled              ? 'border-red-300 bg-red-50'
-                                : isCheckedIn              ? 'border-emerald-300 bg-emerald-50'
-                                : isNoShow                 ? 'border-gray-300 bg-gray-100'
-                                : s.status==='arriving-soon' ? 'border-sky-300 bg-sky-50'
+            // สี: cancelled=แดง | checkedOut=ส้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
+            const cardBorderCls = isCancelled               ? 'border-red-300 bg-red-50'
+                                : isCheckedOut              ? 'border-orange-300 bg-orange-50'
+                                : isCheckedIn               ? 'border-emerald-300 bg-emerald-50'
+                                : isNoShow                  ? 'border-gray-300 bg-gray-100'
+                                : s.status==='arriving-soon'? 'border-sky-300 bg-sky-50'
                                                             : 'border-gray-100 bg-white';
-            const topBarCls    = isCancelled ? 'bg-red-500'
-                                : isCheckedIn ? 'bg-emerald-500'
-                                : isNoShow    ? 'bg-gray-400'
-                                              : cfg.bg;
-            const topBarLabel  = isCancelled ? '🚫 ยกเลิก Booking'
-                                : isCheckedIn ? '✅ เช็คอินแล้ว'
-                                : isNoShow    ? '⚠️ No Show'
-                                              : cfg.label;
-            const topBarText   = (isCancelled || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
-            const dotCls       = (isCancelled || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
+            const topBarCls    = isCancelled  ? 'bg-red-500'
+                                : isCheckedOut ? 'bg-orange-500'
+                                : isCheckedIn  ? 'bg-emerald-500'
+                                : isNoShow     ? 'bg-gray-400'
+                                               : cfg.bg;
+            const topBarLabel  = isCancelled  ? '🚫 ยกเลิก Booking'
+                                : isCheckedOut ? '🧳 Checked Out แล้ว'
+                                : isCheckedIn  ? '✅ เช็คอินแล้ว'
+                                : isNoShow     ? '⚠️ No Show'
+                                               : cfg.label;
+            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
+            const dotCls       = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
 
             return (
               <div key={cardKey}
@@ -738,9 +779,10 @@ export default function CheckInOut() {
                     </button>
                   </div>
 
-                  {/* Check-in / No-show / Cancel — arriving-today only */}
-                  {s.status === 'arriving-today' && !isCancelled && (
+                  {/* Check-in / No-show / Checkout / Cancel — arriving-today only */}
+                  {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
                     <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {/* ยังไม่เช็คอิน */}
                       {!isCheckedIn && !isNoShow && (
                         <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
                           onClick={() => markCheckedIn(s.resId)}
@@ -748,35 +790,54 @@ export default function CheckInOut() {
                           ✅ เช็คอิน + TM30
                         </a>
                       )}
+                      {/* เช็คอินแล้ว — badge + ปุ่ม checkout */}
                       {isCheckedIn && (
-                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
-                          ✅ เช็คอินแล้ว
-                        </span>
+                        <>
+                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                            ✅ เช็คอินแล้ว
+                          </span>
+                          <button
+                            onClick={() => { setCheckoutDate(s.checkout); setCheckoutModal(s); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-sm">
+                            🧳 Checkout
+                          </button>
+                        </>
                       )}
+                      {/* No show — badge + ปุ่ม cancel */}
                       {isNoShow && (
-                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-100 text-red-700 text-xs font-semibold border border-red-200">
-                          ⚠️ No Show
-                        </span>
+                        <>
+                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-300">
+                            ⚠️ No Show
+                          </span>
+                          {cancelConfirm !== s.resId && (
+                            <button onClick={() => setCancelConfirm(s.resId)}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
+                              🚫 Cancel Booking
+                            </button>
+                          )}
+                          {cancelConfirm === s.resId && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
+                              <span className="text-xs text-red-700 font-medium">ยืนยันยกเลิก?</span>
+                              <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
+                                className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
+                                {cancelSaving ? '...' : 'ยืนยัน'}
+                              </button>
+                              <button onClick={() => setCancelConfirm(null)}
+                                className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
+                                ไม่
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
-                      {(isNoShow || isCheckedIn) && cancelConfirm !== s.resId && (
-                        <button onClick={() => setCancelConfirm(s.resId)}
-                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
-                          🚫 Cancel Booking
-                        </button>
-                      )}
-                      {cancelConfirm === s.resId && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
-                          <span className="text-xs text-red-700 font-medium">ยืนยันยกเลิก?</span>
-                          <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
-                            className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
-                            {cancelSaving ? '...' : 'ยืนยัน'}
-                          </button>
-                          <button onClick={() => setCancelConfirm(null)}
-                            className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
-                            ไม่
-                          </button>
-                        </div>
-                      )}
+                    </div>
+                  )}
+                  {/* Checked out badge */}
+                  {isCheckedOut && (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
+                        🧳 Checked Out แล้ว
+                      </span>
                     </div>
                   )}
 
@@ -853,6 +914,43 @@ export default function CheckInOut() {
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none">
           {toast}
+        </div>
+      )}
+
+      {/* Checkout modal */}
+      {checkoutModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setCheckoutModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <p className="font-bold text-sm mb-1">🧳 Checkout — ห้อง {checkoutModal.roomNum}</p>
+            <p className="text-xs text-gray-500 mb-4">{checkoutModal.guest}</p>
+            <div className="mb-4">
+              <label className="block text-xs text-gray-500 mb-1.5">วันที่ Checkout (แก้ได้ถ้าออกก่อนกำหนด)</label>
+              <input
+                type="date"
+                value={checkoutDate}
+                max={checkoutModal.checkout}
+                onChange={e => setCheckoutDate(e.target.value)}
+                className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              />
+              {checkoutDate && checkoutDate < checkoutModal.checkout && (
+                <p className="text-xs text-orange-600 mt-1.5">
+                  ⚠️ ออกก่อนกำหนด {checkoutModal.checkout} — จะอัปเดต Sheet1 ด้วย
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setCheckoutModal(null)}
+                className="flex-1 border rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
+                ยกเลิก
+              </button>
+              <button
+                disabled={checkoutSaving || !checkoutDate}
+                onClick={() => confirmCheckout(checkoutModal, checkoutDate)}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 rounded-xl py-2 text-sm font-bold text-white transition disabled:opacity-50">
+                {checkoutSaving ? 'กำลังบันทึก...' : '🧳 ยืนยัน Checkout'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
