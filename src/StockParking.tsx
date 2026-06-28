@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
@@ -8,7 +8,7 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
-export default function StockParking({ initialTab }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty' } = {}) {
+export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
 
@@ -43,6 +43,10 @@ export default function StockParking({ initialTab }: { initialTab?: 'stock'|'par
   const [nextSId, setNextSId] = useState(26);
   const [showStockModal, setShowStockModal] = useState(false);
   const [newStock, setNewStock] = useState({name:'',qty:0,unit:'',note:''});
+
+  // Notify parent when low-stock count changes
+  const lowStockCount = stockData.filter(r => r.minQty !== undefined && r.qty < r.minQty).length;
+  useEffect(() => { onLowStockChange?.(lowStockCount); }, [lowStockCount, onLowStockChange]);
 
   const changeQty = (id:number, delta:number) =>
     setStockData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));

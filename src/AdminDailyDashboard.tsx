@@ -234,6 +234,7 @@ export default function AdminDailyDashboard() {
   const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
   const [notifInvoice, setNotifInvoice]     = useState(0);
+  const [notifLowStock, setNotifLowStock]   = useState(0);
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -485,6 +486,14 @@ export default function AdminDailyDashboard() {
                   <span className="text-amber-500">→</span>
                 </button>
               )}
+              {notifLowStock > 0 && (
+                <button
+                  onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-2xl text-xs font-semibold text-red-700 hover:bg-red-100 transition shadow-sm">
+                  🔴 {notifLowStock} รายการสต๊อกต่ำ
+                  <span className="text-red-400">→</span>
+                </button>
+              )}
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-2xl border bg-white hover:bg-gray-50 transition shadow-sm text-sm">
                 🚪 Logout
               </button>
@@ -511,6 +520,14 @@ export default function AdminDailyDashboard() {
               {notifBooking > 0 && notifInvoice > 0 && <span className="text-amber-300">·</span>}
               {notifInvoice > 0 && <span>🧾 {notifInvoice} invoice รอสร้าง</span>}
               <span className="ml-1 text-amber-500">→</span>
+            </button>
+          )}
+          {notifLowStock > 0 && (
+            <button
+              onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
+              className="md:hidden mt-1 w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 active:scale-95 transition-all">
+              🔴 {notifLowStock} รายการสต๊อกต่ำกว่าขั้นต่ำ
+              <span className="ml-1 text-red-400">→</span>
             </button>
           )}
         </div>
@@ -605,7 +622,7 @@ export default function AdminDailyDashboard() {
           <CheckInOut />
         )}
         {adminTab === 'stockparking' && (
-          <StockParking key={stockInitialTab} initialTab={stockInitialTab} />
+          <StockParking key={stockInitialTab} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
         )}
 
         {/* Dashboard Tab */}
