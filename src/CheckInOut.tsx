@@ -613,11 +613,12 @@ export default function CheckInOut() {
             const isCancelled = cancelledSet.has(s.resId);
             const isNoShow    = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn;
 
-            // สี: cancelled=แดง | checkedIn=เขียว | noShow=เทา | default=เหลือง
-            const cardBorderCls = isCancelled ? 'border-red-300 bg-red-50'
-                                : isCheckedIn ? 'border-emerald-300 bg-emerald-50'
-                                : isNoShow    ? 'border-gray-300 bg-gray-100'
-                                              : 'border-gray-100 bg-white';
+            // สี: cancelled=แดง | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
+            const cardBorderCls = isCancelled              ? 'border-red-300 bg-red-50'
+                                : isCheckedIn              ? 'border-emerald-300 bg-emerald-50'
+                                : isNoShow                 ? 'border-gray-300 bg-gray-100'
+                                : s.status==='arriving-soon' ? 'border-sky-300 bg-sky-50'
+                                                            : 'border-gray-100 bg-white';
             const topBarCls    = isCancelled ? 'bg-red-500'
                                 : isCheckedIn ? 'bg-emerald-500'
                                 : isNoShow    ? 'bg-gray-400'
