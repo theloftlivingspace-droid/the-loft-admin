@@ -430,7 +430,7 @@ export default function AdminDailyDashboard() {
       <div className="max-w-6xl mx-auto h-full bg-white/95 backdrop-blur rounded-none md:rounded-[32px] shadow-2xl border border-blue-100 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex-shrink-0 px-4 md:px-8 pt-3 md:pt-8 pb-3 md:pb-4 border-b border-gray-100">
+        <div className="flex-shrink-0 px-4 md:px-8 pt-2 md:pt-8 pb-2 md:pb-4 border-b border-gray-100">
           {/* Desktop header — full */}
           <div className="hidden md:flex md:items-start md:justify-between gap-4">
             <div>
@@ -509,10 +509,10 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Spacer so content doesn't hide behind fixed bottom bar on mobile */}
-        <div className="h-14 md:hidden" />
+        <div className="h-12 md:hidden" />
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-3 md:pt-6">
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-1 md:pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
