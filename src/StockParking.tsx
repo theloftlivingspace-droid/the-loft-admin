@@ -1,4 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
+const SB_HDR = { 'Content-Type':'application/json', apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, Prefer:'resolution=merge-duplicates' };
+
+async function sbLoad(key: string) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/settings?key=eq.${key}&select=value`, { headers: SB_HDR });
+    const rows = await r.json();
+    if (rows?.[0]?.value) return JSON.parse(rows[0].value);
+  } catch {}
+  return null;
+}
+async function sbSave(key: string, value: unknown) {
+  await fetch(`${SB_URL}/rest/v1/settings`, {
+    method: 'POST', headers: SB_HDR,
+    body: JSON.stringify({ key, value: JSON.stringify(value) }),
+  });
+}
 
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
@@ -12,6 +31,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
+  const [saving, setSaving] = useState('');
+  const [saved,  setSaved]  = useState('');
 
   // ── stock ────────────────────────────────────────────────────────────────
   const [stockData, setStockData] = useState<StockItem[]>([
@@ -173,6 +194,20 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     setShowWModal(false);
   };
 
+  // ── Supabase save/load ────────────────────────────────────────────────────
+  const doSave = useCallback(async (key: string, data: unknown) => {
+    setSaving(key); setSaved('');
+    await sbSave(key, data);
+    setSaving(''); setSaved(key);
+    setTimeout(() => setSaved(''), 2500);
+  }, []);
+
+  useEffect(() => {
+    sbLoad('parking_in').then(d => { if (d) setParkingIn(d); });
+    sbLoad('parking_out').then(d => { if (d) setParkingOut(d); });
+    sbLoad('warranty_data').then(d => { if (d) setWarrantyData(d); });
+  }, []);
+
   // ── shared styles ─────────────────────────────────────────────────────────
   const sectionNav = (keys: {key:typeof section; label:string; emoji:string}[]) => (
     <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
@@ -285,7 +320,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
               <span className="truncate">Car · In-house</span>
               <span className="ml-1 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingIn.length} คัน</span>
             </h2>
-            <button onClick={()=>setShowPIModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+            <div className="flex gap-2">
+              <button onClick={()=>setShowPIModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>doSave('parking_in', parkingIn)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_in'?'bg-gray-200 text-gray-400':saved==='parking_in'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                {saving==='parking_in'?'...' : saved==='parking_in'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
@@ -341,7 +382,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
               <span className="truncate">Car · Outside</span>
               <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingOut.length} คัน</span>
             </h2>
-            <button onClick={()=>setShowPOModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+            <div className="flex gap-2">
+              <button onClick={()=>setShowPOModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>doSave('parking_out', parkingOut)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_out'?'bg-gray-200 text-gray-400':saved==='parking_out'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                {saving==='parking_out'?'...' : saved==='parking_out'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
@@ -395,7 +442,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
               <span className="truncate">Warranty</span>
               <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">{warrantyData.length} รายการ</span>
             </h2>
-            <button onClick={()=>setShowWModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+            <div className="flex gap-2">
+              <button onClick={()=>setShowWModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>doSave('warranty_data', warrantyData)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='warranty_data'?'bg-gray-200 text-gray-400':saved==='warranty_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                {saving==='warranty_data'?'...' : saved==='warranty_data'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+              </button>
+            </div>
           </div>
           {/* category tabs */}
           <div className="flex gap-2 mb-4 flex-wrap">
