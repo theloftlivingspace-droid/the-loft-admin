@@ -195,19 +195,24 @@ export default function AdminDailyDashboard() {
       });
   }, []);
 
-  // Notification counts from BookingInvoiceTodo GAS
+  // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min
   useEffect(() => {
-    fetch('/api/gas-proxy?app=todo&action=getDashboard')
-      .then(r => r.json())
-      .then(j => {
-        if (!j.ok) return;
-        const d = j.data ?? j;
-        const booking = (d.booking ?? d.bookings ?? []) as {done?:boolean; isNewToday?:boolean}[];
-        const invoice = (d.invoice ?? d.ledger ?? []) as {done?:boolean; detectedToday?:boolean}[];
-        setNotifBooking(booking.filter((x) => !x.done).length);
-        setNotifInvoice(invoice.filter((x) => !x.done).length);
-      })
-      .catch(() => {});
+    const fetchNotif = () => {
+      fetch('/api/gas-proxy?app=todo&action=getDashboard')
+        .then(r => r.json())
+        .then(j => {
+          if (!j.ok) return;
+          const d = j.data ?? j;
+          const booking = (d.booking ?? d.bookings ?? []) as {done?:boolean}[];
+          const invoice = (d.invoice ?? d.ledger ?? []) as {done?:boolean}[];
+          setNotifBooking(booking.filter((x) => !x.done).length);
+          setNotifInvoice(invoice.filter((x) => !x.done).length);
+        })
+        .catch(() => {});
+    };
+    fetchNotif();
+    const timer = setInterval(fetchNotif, 10 * 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // Auth
