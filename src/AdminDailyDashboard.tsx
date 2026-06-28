@@ -512,7 +512,7 @@ export default function AdminDailyDashboard() {
         <div className="h-16 md:hidden" />
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-1 md:pt-6">
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-0 md:pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
