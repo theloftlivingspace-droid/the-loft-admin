@@ -664,6 +664,24 @@ export default function AdminDailyDashboard() {
           ))}
         </div>
 
+        {/* Billing Console — SSO link */}
+        <button
+          onClick={async () => {
+            try {
+              const r = await fetch('/api/billing-url');
+              const { url } = await r.json();
+              window.open(url, '_blank');
+            } catch {
+              window.open('https://hotel-line-bot.onrender.com/', '_blank');
+            }
+          }}
+          className="w-full mb-5 bg-teal-600 hover:bg-teal-700 active:scale-95 transition-all text-white rounded-2xl px-5 py-3 flex items-center justify-center gap-2 font-semibold shadow-sm"
+        >
+          <span className="text-lg">💳</span>
+          <span>Billing Console (อพาร์ทเมนท์)</span>
+          <span className="ml-auto text-teal-200 text-xs">↗ เปิดแท็บใหม่</span>
+        </button>
+
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
