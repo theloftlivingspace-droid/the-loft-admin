@@ -67,7 +67,7 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stockparking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'car' }[] = [
+const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stockparking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'parking-in' | 'parking-out' | 'warranty' }[] = [
   { label: 'ตอบข้อความลูกค้า' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
@@ -76,7 +76,7 @@ const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stock
   { label: 'บันทึกการจองเพิ่ม', tab: 'todo', todoTab: 'booking' },
   { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo', todoTab: 'invoice' },
   { label: 'ตรวจสอบสต๊อก', tab: 'stockparking', stockTab: 'stock' },
-  { label: 'ตรวจสอบทะเบียนรถ', tab: 'stockparking', stockTab: 'car' },
+  { label: 'ตรวจสอบทะเบียนรถ', tab: 'stockparking', stockTab: 'parking-out' },
   { label: 'เตรียมเอกสาร' },
   { label: 'สแกน / จัดเก็บไฟล์' },
   { label: 'สรุปรายงานประจำวัน' },
@@ -231,6 +231,7 @@ export default function AdminDailyDashboard() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking'>('dashboard');
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
+  const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
   const [notifInvoice, setNotifInvoice]     = useState(0);
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
@@ -604,7 +605,7 @@ export default function AdminDailyDashboard() {
           <CheckInOut />
         )}
         {adminTab === 'stockparking' && (
-          <StockParking />
+          <StockParking key={stockInitialTab} initialTab={stockInitialTab} />
         )}
 
         {/* Dashboard Tab */}
@@ -619,6 +620,8 @@ export default function AdminDailyDashboard() {
           ]).map((q, i) => (
             <button key={i}
               onClick={() => {
+                if (q.scroll === 'car') setStockInitialTab('parking-out');
+                else if (q.scroll === '') setStockInitialTab('stock');
                 setAdminTab(q.tab);
                 if (q.scroll === 'checklist') {
                   setTimeout(() => document.getElementById('daily-checklist')?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -674,7 +677,7 @@ export default function AdminDailyDashboard() {
                     {task.url
                       ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{task.label}</a>
                       : task.tab
-                        ? <button onClick={() => { if (task.todoTab) setTodoInitialTab(task.todoTab); setAdminTab(task.tab!); }} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
+                        ? <button onClick={() => { if (task.todoTab) setTodoInitialTab(task.todoTab); if (task.stockTab) setStockInitialTab(task.stockTab); setAdminTab(task.tab!); }} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
                         : task.label}
                   </span>
                 </div>

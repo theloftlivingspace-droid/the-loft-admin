@@ -8,9 +8,9 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
-export default function StockParking() {
+export default function StockParking({ initialTab }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty' } = {}) {
   // ── nav ──────────────────────────────────────────────────────────────────
-  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
+  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
 
   // ── stock ────────────────────────────────────────────────────────────────
   const [stockData, setStockData] = useState<StockItem[]>([
