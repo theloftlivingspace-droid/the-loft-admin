@@ -213,6 +213,8 @@ export default function AdminDailyDashboard() {
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
   const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingToken, setBillingToken]     = useState(() => localStorage.getItem('billing_token') || '');
   const [notifInvoice, setNotifInvoice]     = useState(0);
   const [notifLowStock, setNotifLowStock]   = useState(0);
 
@@ -664,23 +666,57 @@ export default function AdminDailyDashboard() {
           ))}
         </div>
 
-        {/* Billing Console — SSO link */}
+        {/* Billing Console — token modal */}
         <button
-          onClick={async () => {
-            try {
-              const r = await fetch('/api/billing-url');
-              const { url } = await r.json();
-              window.open(url, '_blank');
-            } catch {
-              window.open('https://hotel-line-bot.onrender.com/', '_blank');
-            }
-          }}
+          onClick={() => setShowBillingModal(true)}
           className="w-full mb-5 bg-teal-600 hover:bg-teal-700 active:scale-95 transition-all text-white rounded-2xl px-5 py-3 flex items-center justify-center gap-2 font-semibold shadow-sm"
         >
           <span className="text-lg">💳</span>
           <span>Billing Console (อพาร์ทเมนท์)</span>
           <span className="ml-auto text-teal-200 text-xs">↗ เปิดแท็บใหม่</span>
         </button>
+
+        {/* Billing Token Modal */}
+        {showBillingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h3 className="text-base font-bold mb-1">💳 Billing Console</h3>
+              <p className="text-xs text-gray-500 mb-4">ใส่ Admin Token เพื่อเข้าระบบ</p>
+              <input
+                type="password"
+                value={billingToken}
+                onChange={e => setBillingToken(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    localStorage.setItem('billing_token', billingToken);
+                    window.open(`https://hotel-line-bot.onrender.com/?token=${encodeURIComponent(billingToken)}`, '_blank');
+                    setShowBillingModal(false);
+                  }
+                }}
+                placeholder="Admin Token"
+                autoFocus
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:border-teal-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowBillingModal(false)}
+                  className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >ยกเลิก</button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('billing_token', billingToken);
+                    window.open(`https://hotel-line-bot.onrender.com/?token=${encodeURIComponent(billingToken)}`, '_blank');
+                    setShowBillingModal(false);
+                  }}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-xl py-2 text-sm font-semibold"
+                >เข้าระบบ</button>
+              </div>
+              {billingToken && (
+                <p className="text-xs text-gray-400 text-center mt-3">จำ token ไว้ในเครื่องนี้แล้ว</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
