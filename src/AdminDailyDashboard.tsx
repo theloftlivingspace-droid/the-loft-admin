@@ -202,14 +202,16 @@ export default function AdminDailyDashboard() {
       fetch('/api/gas-proxy?app=todo&action=getData')
         .then(r => r.json())
         .then(j => {
-          if (!j.ok) return;
+          console.log('[notif] GAS response:', j);
+          if (!j.ok) { console.log('[notif] j.ok false, skipping'); return; }
           const d = j.data ?? j;
           const booking = (d.booking ?? d.bookings ?? []) as {done?:boolean}[];
           const invoice = (d.invoice ?? d.ledger ?? []) as {done?:boolean}[];
+          console.log('[notif] booking:', booking.length, 'invoice:', invoice.length);
           setNotifBooking(booking.filter((x) => !x.done).length);
           setNotifInvoice(invoice.filter((x) => !x.done).length);
         })
-        .catch(() => {});
+        .catch((e) => console.log('[notif] fetch error:', e));
     };
     fetchNotif();
     const timer = setInterval(fetchNotif, 10 * 60 * 1000);
