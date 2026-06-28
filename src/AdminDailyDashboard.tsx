@@ -195,6 +195,21 @@ export default function AdminDailyDashboard() {
       });
   }, []);
 
+  // Notification counts from BookingInvoiceTodo GAS
+  useEffect(() => {
+    fetch('/api/gas-proxy?app=todo&action=getDashboard')
+      .then(r => r.json())
+      .then(j => {
+        if (!j.ok) return;
+        const d = j.data ?? j;
+        const booking = (d.booking ?? d.bookings ?? []) as {done?:boolean; isNewToday?:boolean}[];
+        const invoice = (d.invoice ?? d.ledger ?? []) as {done?:boolean; detectedToday?:boolean}[];
+        setNotifBooking(booking.filter((x) => !x.done).length);
+        setNotifInvoice(invoice.filter((x) => !x.done).length);
+      })
+      .catch(() => {});
+  }, []);
+
   // Auth
   const [loggedIn, setLoggedIn]             = useState(false);
   const [username, setUsername]             = useState('');
@@ -211,6 +226,8 @@ export default function AdminDailyDashboard() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking'>('dashboard');
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
+  const [notifBooking, setNotifBooking]     = useState(0);
+  const [notifInvoice, setNotifInvoice]     = useState(0);
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -469,6 +486,17 @@ export default function AdminDailyDashboard() {
               </button>
             </div>
           </div>
+          {/* Notification banner strip — mobile only */}
+          {(notifBooking > 0 || notifInvoice > 0) && (
+            <button
+              onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
+              className="md:hidden mt-2 w-full flex items-center justify-center gap-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 hover:bg-amber-100 active:scale-95 transition-all">
+              {notifBooking > 0 && <span>📋 {notifBooking} booking รอเพิ่ม</span>}
+              {notifBooking > 0 && notifInvoice > 0 && <span className="text-amber-300">·</span>}
+              {notifInvoice > 0 && <span>🧾 {notifInvoice} invoice รอสร้าง</span>}
+              <span className="ml-1 text-amber-500">→</span>
+            </button>
+          )}
         </div>
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
