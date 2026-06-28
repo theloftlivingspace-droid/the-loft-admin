@@ -195,7 +195,7 @@ export default function AdminDailyDashboard() {
       });
   }, []);
 
-  // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min
+  // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min (v2)
   useEffect(() => {
     const fetchNotif = () => {
       fetch('/api/gas-proxy?app=todo&action=getDashboard')
