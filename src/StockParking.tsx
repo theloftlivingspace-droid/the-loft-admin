@@ -3,7 +3,7 @@ import { useState } from 'react';
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
 
-interface StockItem  { id:number; name:string; qty:number; unit:string; note:string }
+interface StockItem  { id:number; name:string; qty:number; unit:string; note:string; minQty?: number }
 interface ParkingIn  { id:number; room:string; plate:string; type:string; name:string; status:string }
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
@@ -14,31 +14,33 @@ export default function StockParking({ initialTab }: { initialTab?: 'stock'|'par
 
   // ── stock ────────────────────────────────────────────────────────────────
   const [stockData, setStockData] = useState<StockItem[]>([
-    {id:1,name:'กระดาษทิชชู',qty:51,unit:'ชิ้น',note:''},
-    {id:2,name:'น้ำดื่ม',qty:61,unit:'ขวด',note:''},
-    {id:3,name:'ไมโครเวฟ',qty:1,unit:'อัน',note:''},
-    {id:4,name:'เตารีด',qty:1,unit:'อัน',note:''},
-    {id:5,name:'ไดร์เป่าผม',qty:2,unit:'อัน',note:''},
-    {id:6,name:'หมอน',qty:3,unit:'ใบ',note:''},
-    {id:7,name:'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม',qty:1,unit:'ชุด',note:''},
-    {id:8,name:'ผ้าเช็ดตัว',qty:2,unit:'ผืน',note:''},
-    {id:9,name:'ผ้านวม',qty:1,unit:'ผืน',note:''},
-    {id:10,name:'ผ้าปูที่นอน',qty:1,unit:'ผืน',note:''},
-    {id:11,name:'ที่นอน TOPPER',qty:1,unit:'อัน',note:''},
-    {id:12,name:'ทีวี',qty:1,unit:'เครื่อง',note:''},
-    {id:13,name:'พัดลม',qty:1,unit:'ตัว',note:''},
-    {id:14,name:'กาน้ำร้อน',qty:2,unit:'ใบ',note:'เสีย 1'},
-    {id:15,name:'ชุดกะทะไฟฟ้า',qty:2,unit:'ชุด',note:''},
-    {id:16,name:'ยาสระผม+สบู่',qty:20,unit:'ชุด',note:'Shampoo+Shower Gel+Soap'},
-    {id:17,name:'สบู่',qty:21,unit:'ก้อน',note:''},
-    {id:18,name:'แชมพู',qty:27,unit:'ขวด',note:''},
-    {id:19,name:'เจลอาบน้ำ',qty:4,unit:'ขวด',note:''},
-    {id:20,name:'พรมเช็ดเท้า',qty:8,unit:'ผืน',note:''},
-    {id:21,name:'หน้ากากอนามัย',qty:0,unit:'กล่อง/ชิ้น',note:''},
-    {id:22,name:'ฝาชักโคก',qty:2,unit:'อัน',note:''},
-    {id:23,name:'หลอดไฟ LED',qty:8,unit:'ดวง',note:'ขนาดปกติ 7 / เล็ก 2'},
+    {id:1, name:'กระดาษทิชชู',    qty:51, unit:'ม้วน', note:'',                          minQty:10},
+    {id:2, name:'น้ำดื่ม',         qty:61, unit:'ขวด',  note:'',                          minQty:10},
+    {id:16,name:'ยาสระผม+สบู่',   qty:20, unit:'ชุด',  note:'Shampoo+Shower Gel+Soap',  minQty:10},
+    {id:24,name:'ถุงขยะ',          qty:0,  unit:'ถุง',  note:'',                          minQty:10},
+    {id:25,name:'roller',          qty:0,  unit:'ชิ้น', note:'',                          minQty:1},
+    {id:3, name:'ไมโครเวฟ',        qty:1,  unit:'อัน',  note:''},
+    {id:4, name:'เตารีด',          qty:1,  unit:'อัน',  note:''},
+    {id:5, name:'ไดร์เป่าผม',      qty:2,  unit:'อัน',  note:''},
+    {id:6, name:'หมอน',            qty:3,  unit:'ใบ',   note:''},
+    {id:7, name:'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม', qty:1, unit:'ชุด', note:''},
+    {id:8, name:'ผ้าเช็ดตัว',      qty:2,  unit:'ผืน',  note:''},
+    {id:9, name:'ผ้านวม',          qty:1,  unit:'ผืน',  note:''},
+    {id:10,name:'ผ้าปูที่นอน',     qty:1,  unit:'ผืน',  note:''},
+    {id:11,name:'ที่นอน TOPPER',   qty:1,  unit:'อัน',  note:''},
+    {id:12,name:'ทีวี',            qty:1,  unit:'เครื่อง',note:''},
+    {id:13,name:'พัดลม',           qty:1,  unit:'ตัว',  note:''},
+    {id:14,name:'กาน้ำร้อน',       qty:2,  unit:'ใบ',   note:'เสีย 1'},
+    {id:15,name:'ชุดกะทะไฟฟ้า',   qty:2,  unit:'ชุด',  note:''},
+    {id:17,name:'สบู่',            qty:21, unit:'ก้อน', note:''},
+    {id:18,name:'แชมพู',           qty:27, unit:'ขวด',  note:''},
+    {id:19,name:'เจลอาบน้ำ',      qty:4,  unit:'ขวด',  note:''},
+    {id:20,name:'พรมเช็ดเท้า',     qty:8,  unit:'ผืน',  note:''},
+    {id:21,name:'หน้ากากอนามัย',   qty:0,  unit:'กล่อง/ชิ้น',note:''},
+    {id:22,name:'ฝาชักโคก',        qty:2,  unit:'อัน',  note:''},
+    {id:23,name:'หลอดไฟ LED',     qty:8,  unit:'ดวง',  note:'ขนาดปกติ 7 / เล็ก 2'},
   ]);
-  const [nextSId, setNextSId] = useState(24);
+  const [nextSId, setNextSId] = useState(26);
   const [showStockModal, setShowStockModal] = useState(false);
   const [newStock, setNewStock] = useState({name:'',qty:0,unit:'',note:''});
 
@@ -227,29 +229,35 @@ export default function StockParking({ initialTab }: { initialTab?: 'stock'|'par
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#','ชื่อของใช้','จำนวน','หน่วย','หมายเหตุ',''].map(h=>(
+                <tr>{['#','ชื่อของใช้','จำนวน','ขั้นต่ำ','หน่วย','หมายเหตุ',''].map(h=>(
                   <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
-                {stockData.map((r,i)=>(
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                {stockData.map((r,i)=>{
+                  const isLow = r.minQty !== undefined && r.qty < r.minQty;
+                  return (
+                  <tr key={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2 font-medium">{r.name}</td>
+                    <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
+                      {isLow && <span className="mr-1">🔴</span>}{r.name}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1">
                         <button onClick={()=>changeQty(r.id,-1)}
                           className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">−</button>
-                        <span className="min-w-[28px] text-center font-semibold">{r.qty}</span>
+                        <span className={`min-w-[28px] text-center font-semibold ${isLow ? 'text-red-600' : ''}`}>{r.qty}</span>
                         <button onClick={()=>changeQty(r.id,+1)}
                           className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">+</button>
                       </div>
                     </td>
+                    <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
                     <td className="px-3 py-2 text-gray-500">{r.unit}</td>
                     <td className="px-3 py-2 text-gray-400 text-xs">{r.note}</td>
                     <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>ลบ</button></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
