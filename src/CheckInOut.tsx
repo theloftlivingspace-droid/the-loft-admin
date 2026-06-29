@@ -720,7 +720,7 @@ export default function CheckInOut() {
                     {/* Right status badge */}
                     <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                       {(s.status === 'checking-out-today' || s.status === 'checked-in') && (() => {
-                        const reallyInspected = isCheckedOut && co?.inspected;
+                        const reallyInspected = co?.inspected;
                         return (
                           <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
                             ${reallyInspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
