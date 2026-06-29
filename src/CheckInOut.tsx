@@ -467,12 +467,13 @@ export default function CheckInOut() {
           const rows = parseCSV(csv);
           const h = rows[0];
           // Raw_Checkout_Log columns:
-          // UID(0) Date(1) Time(2) Inspector(3) Room(4) OTA(5) Guest(6)
-          // Status(7) Ready(8) Issues(9) Damages(10) Charge(11) ChargeNote(12)
-          // ElecUnit(13) ElecTHB(14) LateCheckout(15) Repairs(16) ExtraNote(17)
-          // DriveLinks(18) Timestamp(19) JSON(20)
+          // UID(0) Date(1) Time(2) Inspector(3) Maid(4) Room(5) OTA(6) Guest(7)
+          // Status(8) Ready(9) Issues(10) Damages(11) Charge(12) ChargeNote(13)
+          // ElecUnit(14) ElecTHB(15) LateCheckout(16) Repairs(17) ExtraNote(18)
+          // DriveLinks(19) Timestamp(20) JSON(21)
           const iDate      = h.indexOf('Date');
           const iInspector = h.indexOf('Inspector');
+          const iMaid      = h.indexOf('Maid');
           const iRoom      = h.indexOf('Room');
           const iStatus    = h.indexOf('Status');
           const iReady     = h.indexOf('Ready');
@@ -493,7 +494,7 @@ export default function CheckInOut() {
               room: rm,
               inspected,
               inspectedBy: iInspector >= 0 ? (row[iInspector] || '') : '',
-              cleanedBy:   '',
+              cleanedBy:   iMaid >= 0 ? (row[iMaid] || '') : '',
               issues:      iIssues >= 0 ? (row[iIssues] || '') : '',
               date,
             });
