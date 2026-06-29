@@ -865,13 +865,7 @@ export default function CheckInOut() {
                 {s.status === 'checking-out-today' && co && (
                   <div className="mx-4 mb-3 p-2.5 bg-gray-50 rounded-xl text-[11px] text-gray-500 space-y-0.5">
                     {co.cleanedBy   && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
-                    {/* ถ้าแขกยังไม่ออก → แสดง "ยังไม่ตรวจห้อง" สีเหลือง แม้ inspectedBy จะมีค่า */}
-                    {!isCheckedOut
-                      ? <div className="text-yellow-600 font-medium">🟡 ยังไม่ตรวจห้อง (แขกยังไม่ออก)</div>
-                      : co.inspectedBy
-                        ? <div>👁️ ตรวจโดย: <span className="text-gray-700">{co.inspectedBy}</span></div>
-                        : <div className="text-yellow-600 font-medium">🟡 ยังไม่ตรวจห้อง</div>
-                    }
+                    {isCheckedOut && co.inspectedBy && <div>👁️ ตรวจโดย: <span className="text-gray-700">{co.inspectedBy}</span></div>}
                     {co.issues      && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
                   </div>
                 )}
