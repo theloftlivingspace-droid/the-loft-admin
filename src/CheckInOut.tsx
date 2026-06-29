@@ -647,7 +647,8 @@ export default function CheckInOut() {
             // ── per-card check-in state ──────────────────────────────
             const isCheckedIn  = ciDoneSet.has(s.resId);
             const isCancelled  = cancelledSet.has(s.resId);
-            const isCheckedOut = checkedOutSet.has(s.resId);
+            const isCheckedOut = checkedOutSet.has(s.resId)
+              || (s.status === 'checking-out-today' && (co?.inspected ?? false));
             const isNoShow     = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn && !isCheckedOut;
 
             // สี: cancelled=แดง | checkedOut=ส้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
