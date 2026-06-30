@@ -122,22 +122,22 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   // ── parking in ───────────────────────────────────────────────────────────
   const [parkingIn, setParkingIn] = useState<ParkingIn[]>([
-    {id:1,room:'105',plate:'บธ1074',type:'รถยนต์',name:'',status:'OK'},
+    {id:1,room:'105',plate:'บธ1074',type:'Car',name:'',status:'OK'},
     {id:2,room:'105',plate:'8316',type:'',name:'',status:''},
     {id:3,room:'107',plate:'4500',type:'',name:'',status:''},
-    {id:4,room:'213',plate:'5ขย2961',type:'รถยนต์',name:'',status:'OK'},
+    {id:4,room:'213',plate:'5ขย2961',type:'Car',name:'',status:'OK'},
     {id:5,room:'302',plate:'3091',type:'',name:'',status:''},
     {id:6,room:'306',plate:'7051',type:'',name:'',status:''},
-    {id:7,room:'308',plate:'8ขฎ8365',type:'รถมอเตอร์ไซต์',name:'',status:'OK'},
+    {id:7,room:'308',plate:'8ขฎ8365',type:'Motorcycle',name:'',status:'OK'},
     {id:8,room:'312',plate:'กว 1156',type:'',name:'อารียา เรียมแสน',status:''},
     {id:9,room:'315',plate:'ถฬ7555',type:'',name:'ฤกษ์มงคล เย็นใจ',status:'OK'},
     {id:10,room:'315',plate:'1ณ0264',type:'',name:'ฤกษ์มงคล เย็นใจ',status:''},
-    {id:11,room:'406',plate:'8กว691',type:'รถยนต์',name:'',status:'OK'},
-    {id:12,room:'409',plate:'ตถ617',type:'รถยนต์',name:'',status:'OK'},
-    {id:13,room:'410',plate:'บธ5372',type:'รถยนต์',name:'เจนจิรา ปัดถาวโร',status:'OK'},
+    {id:11,room:'406',plate:'8กว691',type:'Car',name:'',status:'OK'},
+    {id:12,room:'409',plate:'ตถ617',type:'Car',name:'',status:'OK'},
+    {id:13,room:'410',plate:'บธ5372',type:'Car',name:'เจนจิรา ปัดถาวโร',status:'OK'},
     {id:14,room:'414',plate:'533',type:'',name:'',status:''},
     {id:15,room:'414',plate:'5612',type:'',name:'',status:''},
-    {id:16,room:'516',plate:'3ขส7034',type:'รถยนต์',name:'',status:'OK'},
+    {id:16,room:'516',plate:'3ขส7034',type:'Car',name:'',status:'OK'},
   ]);
   const [nextPIId, setNextPIId] = useState(17);
   const [showPIModal, setShowPIModal] = useState(false);
@@ -151,19 +151,19 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   // ── parking out ──────────────────────────────────────────────────────────
   const [parkingOut, setParkingOut] = useState<ParkingOut[]>([
-    {id:1,plate:'ผธ1138',type:'รถยนต์',name:'รุ่งโรจน์ อินธินิน',status:'OK'},
-    {id:2,plate:'บม1764',type:'รถยนต์',name:'',status:'OK'},
-    {id:3,plate:'กง8823',type:'รถยนต์',name:'',status:'OK'},
-    {id:4,plate:'1มฆ299',type:'แท็กซี่',name:'ประจักษ์ แปลนดี',status:''},
-    {id:5,plate:'5กช3204',type:'รถยนต์',name:'จักรี ธนามี',status:'OK'},
-    {id:6,plate:'4ขห3832',type:'รถยนต์',name:'',status:'OK'},
+    {id:1,plate:'ผธ1138',type:'Car',name:'รุ่งโรจน์ อินธินิน',status:'OK'},
+    {id:2,plate:'บม1764',type:'Car',name:'',status:'OK'},
+    {id:3,plate:'กง8823',type:'Car',name:'',status:'OK'},
+    {id:4,plate:'1มฆ299',type:'Taxi',name:'ประจักษ์ แปลนดี',status:''},
+    {id:5,plate:'5กช3204',type:'Car',name:'จักรี ธนามี',status:'OK'},
+    {id:6,plate:'4ขห3832',type:'Car',name:'',status:'OK'},
     {id:7,plate:'2ขพ6423',type:'',name:'ประคอง ประมวล',status:''},
-    {id:8,plate:'3ขฆ7238',type:'รถยนต์',name:'จิตภรณ์ สีสัญ',status:'OK'},
-    {id:9,plate:'2ขญ3250',type:'มอเตอร์ไซต์',name:'',status:'OK'},
-    {id:10,plate:'8กฉ5112',type:'มอเตอร์ไซต์',name:'มยุรี พันธ์วงค์',status:'OK'},
+    {id:8,plate:'3ขฆ7238',type:'Car',name:'จิตภรณ์ สีสัญ',status:'OK'},
+    {id:9,plate:'2ขญ3250',type:'Motorcycle',name:'',status:'OK'},
+    {id:10,plate:'8กฉ5112',type:'Motorcycle',name:'มยุรี พันธ์วงค์',status:'OK'},
     {id:11,plate:'0934',type:'',name:'',status:''},
-    {id:12,plate:'5ขช1137',type:'รถยนต์',name:'',status:'OK'},
-    {id:13,plate:'5ขศ8450',type:'รถยนต์',name:'',status:'OK'},
+    {id:12,plate:'5ขช1137',type:'Car',name:'',status:'OK'},
+    {id:13,plate:'5ขศ8450',type:'Car',name:'',status:'OK'},
   ]);
   const [nextPOId, setNextPOId] = useState(14);
   const [showPOModal, setShowPOModal] = useState(false);
@@ -287,7 +287,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
   );
 
-  const typeOpts = ['รถยนต์','รถมอเตอร์ไซต์','แท็กซี่','จักรยานยนต์'];
+  const typeOpts = ['Car','Motorcycle'];
 
   return (
     <div>
