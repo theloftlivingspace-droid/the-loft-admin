@@ -85,6 +85,13 @@ const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stock
   { label: 'ตรวจสอบงานค้าง' },
 ];
 
+// Translation keys parallel to TASKS array (for display only — generateSummary still uses task.label)
+const TASK_LABEL_KEYS = [
+  'adm_task_reply', 'adm_task_pricing', 'adm_task_checkin', 'adm_task_checkout_list',
+  'adm_task_tm30', 'adm_task_booking', 'adm_task_invoice', 'adm_task_stock',
+  'adm_task_car', 'adm_task_docs', 'adm_task_scan', 'adm_task_summary', 'adm_task_pending',
+];
+
 // ─── Auto-summary generator ───────────────────────────────────────────────────
 function generateSummary(data: {
   taskStatus: Record<number, string>;
@@ -339,18 +346,18 @@ export default function AdminDailyDashboard() {
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
   const handleRegister = async () => {
-    if (!username || !password || !fullName) { alert('กรุณากรอกข้อมูลให้ครบ'); return; }
+    if (!username || !password || !fullName) { alert(t('adm_alert_fill_all')); return; }
     setAuthLoading(true);
     const existing = await sbGet('users', `username=eq.${encodeURIComponent(username)}`);
-    if (existing.length > 0) { alert('Username นี้ถูกใช้งานแล้ว'); setAuthLoading(false); return; }
+    if (existing.length > 0) { alert(t('adm_alert_username_taken')); setAuthLoading(false); return; }
     await sbInsert('users', { full_name: fullName, username, password, role: 'employee' });
-    alert('สมัครสมาชิกเรียบร้อยแล้ว');
+    alert(t('adm_alert_register_success'));
     setIsRegisterMode(false); setFullName(''); setUsername(''); setPassword('');
     setAuthLoading(false);
   };
 
   const handleLogin = async () => {
-    if (!username || !password) { alert('กรุณากรอก Username และ Password'); return; }
+    if (!username || !password) { alert(t('adm_alert_fill_credentials')); return; }
     setAuthLoading(true);
     // Re-fetch IP + prefix fresh every login attempt
     let currentIP = clientIP;
@@ -372,10 +379,10 @@ export default function AdminDailyDashboard() {
     const results = await sbGet('users',
       `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
     setAuthLoading(false);
-    if (!results || results.length === 0) { alert('Username หรือ Password ไม่ถูกต้อง'); return; }
+    if (!results || results.length === 0) { alert(t('adm_alert_wrong_credentials')); return; }
     const matched: User = results[0];
     if (matched.role === 'employee' && !isOfficeNow) {
-      alert(`⛔ ไม่อนุญาต\nพนักงานสามารถเข้าใช้งานได้เฉพาะเครือข่ายออฟฟิศเท่านั้น\n\nIP ปัจจุบันของคุณ: ${currentIP || 'ไม่ทราบ'}\nกรุณาแจ้ง IP นี้ให้ admin หากต้องการอัปเดต`); return;
+      alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
     }
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
   };
@@ -388,7 +395,7 @@ export default function AdminDailyDashboard() {
 
   // ─── Submit — auto-generate summary ────────────────────────────────────────
   const handleSubmitReport = async () => {
-    if (!employeeName) { alert('กรุณากรอกชื่อพนักงานก่อนส่งรายงาน'); return; }
+    if (!employeeName) { alert(t('adm_alert_fill_employee_name')); return; }
     setAuthLoading(true);
 
     const summary = generateSummary({
@@ -437,7 +444,7 @@ export default function AdminDailyDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-amber-100 flex items-center justify-center">
       <div className="text-center text-white">
         <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm opacity-80">กำลังตรวจสอบเครือข่าย...</p>
+        <p className="text-sm opacity-80">{t('adm_checking_network')}</p>
       </div>
     </div>
   );
@@ -459,31 +466,31 @@ export default function AdminDailyDashboard() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-500 to-blue-900 bg-clip-text text-transparent">The Loft Admin</h1>
-          <p className="text-gray-500 mt-2 text-sm">{isRegisterMode ? 'สมัครสมาชิกพนักงานใหม่' : 'ระบบรายงานงานประจำวันพนักงาน'}</p>
+          <p className="text-gray-500 mt-2 text-sm">{isRegisterMode ? t('adm_register_subtitle') : t('adm_login_subtitle')}</p>
         </div>
         {isOfficeNetwork && (
           <div className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-full mb-6 mx-auto w-fit bg-green-100 text-green-700 border border-green-200">
-            <span className="w-2 h-2 rounded-full bg-green-500" />🏢 เครือข่ายออฟฟิศ — เข้าได้ทุก account
+            <span className="w-2 h-2 rounded-full bg-green-500" />{t('adm_office_network_badge')}
           </div>
         )}
         <div className="space-y-5">
           {isRegisterMode && (
-            <div><label className="block text-sm font-medium mb-2">ชื่อ - นามสกุล</label>
-              <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="กรอกชื่อพนักงาน" /></div>
+            <div><label className="block text-sm font-medium mb-2">{t('adm_fullname_label')}</label>
+              <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder={t('adm_fullname_placeholder')} /></div>
           )}
-          <div><label className="block text-sm font-medium mb-2">Username</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="กรอก Username" /></div>
-          <div><label className="block text-sm font-medium mb-2">Password</label>
+          <div><label className="block text-sm font-medium mb-2">{t('adm_username_label')}</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder={t('adm_username_placeholder')} /></div>
+          <div><label className="block text-sm font-medium mb-2">{t('adm_password_label')}</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !isRegisterMode && handleLogin()}
-              className="w-full border rounded-2xl px-4 py-3" placeholder="กรอก Password" /></div>
+              className="w-full border rounded-2xl px-4 py-3" placeholder={t('adm_password_placeholder')} /></div>
           <button onClick={isRegisterMode ? handleRegister : handleLogin} disabled={authLoading}
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-blue-900 text-white font-semibold shadow-xl hover:scale-[1.02] transition-all disabled:opacity-60">
-            {authLoading ? '⏳ กำลังดำเนินการ...' : isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+            {authLoading ? t('adm_processing') : isRegisterMode ? t('adm_register_btn') : t('adm_login_btn')}
           </button>
           <button onClick={() => { setIsRegisterMode(!isRegisterMode); setUsername(''); setPassword(''); setFullName(''); }}
             className="w-full py-3 rounded-2xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
-            {isRegisterMode ? 'กลับไปหน้าเข้าสู่ระบบ' : 'สร้างบัญชีพนักงาน'}
+            {isRegisterMode ? t('adm_back_to_login') : t('adm_create_employee_account')}
           </button>
         </div>
       </div>
@@ -617,7 +624,7 @@ export default function AdminDailyDashboard() {
             { key: 'todo',         label: t('tab_booking') },
             { key: 'checkinout',   label: t('tab_checkinout') },
             { key: 'stockparking', label: t('tab_stock') },
-            ...(isAdmin ? [{ key: 'users' as const, label: '👥 จัดการบัญชี' }] : []),
+            ...(isAdmin ? [{ key: 'users' as const, label: t('adm_tab_users') }] : []),
           ] as const).map(t2 => (
             <button key={t2.key} onClick={() => { setAdminTab(t2.key); scrollToTop(); }}
               className={`flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold border-b-2 transition-colors
@@ -657,17 +664,17 @@ export default function AdminDailyDashboard() {
         {isAdmin && adminTab === 'dashboard' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3">
             <div className="flex-1">
-              <p className="text-xs font-semibold text-blue-700 mb-1">🌐 IP ปัจจุบัน (ของคุณ)</p>
+              <p className="text-xs font-semibold text-blue-700 mb-1">{t('adm_current_ip')}</p>
               <p className="font-mono text-sm font-bold text-blue-900">{clientIP || '...'}</p>
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-blue-700 mb-1">🏢 Office IP Prefix (ที่ตั้งไว้)</p>
+              <p className="text-xs font-semibold text-blue-700 mb-1">{t('adm_office_ip_prefix')}</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={ipPrefixInput}
                   onChange={e => setIpPrefixInput(e.target.value)}
-                  placeholder="เช่น 49.228.65"
+                  placeholder={t('adm_ip_placeholder')}
                   className="border rounded-xl px-3 py-1.5 text-sm font-mono flex-1 focus:outline-none focus:border-blue-400"
                 />
                 <button
@@ -679,14 +686,14 @@ export default function AdminDailyDashboard() {
                   }}
                   disabled={ipPrefixSaving || ipPrefixInput === officeIpPrefix}
                   className="px-4 py-1.5 bg-blue-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:bg-blue-800 transition">
-                  {ipPrefixSaving ? '...' : 'บันทึก'}
+                  {ipPrefixSaving ? '...' : t('adm_save')}
                 </button>
               </div>
               <p className="text-xs text-blue-500 mt-1">
                 {clientIP && ipPrefixInput
                   ? clientIP.startsWith(ipPrefixInput)
-                    ? '✅ IP ปัจจุบันตรงกับ Office'
-                    : '⚠️ IP ปัจจุบันไม่ตรงกับ Office — employee จะ login ไม่ได้'
+                    ? t('adm_ip_match')
+                    : t('adm_ip_mismatch')
                   : ''}
               </p>
             </div>
@@ -714,9 +721,9 @@ export default function AdminDailyDashboard() {
         {/* Quick Links — shortcut buttons */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {([
-            { icon: '✅', line1: 'Checklist', line2: 'งานประจำวัน', tab: 'dashboard' as const, scroll: 'checklist' },
-            { icon: '📦', line1: 'ตรวจสอบ',  line2: 'สต๊อก',       tab: 'stockparking' as const, scroll: '' },
-            { icon: '🚗', line1: 'ตรวจสอบ',  line2: 'ทะเบียนรถ',   tab: 'stockparking' as const, scroll: 'car' },
+            { icon: '✅', line1: t('adm_ql_checklist1'), line2: t('adm_ql_checklist2'), tab: 'dashboard' as const, scroll: 'checklist' },
+            { icon: '📦', line1: t('adm_ql_check'),  line2: t('adm_ql_stock'),       tab: 'stockparking' as const, scroll: '' },
+            { icon: '🚗', line1: t('adm_ql_check'),  line2: t('adm_ql_car'),   tab: 'stockparking' as const, scroll: 'car' },
           ]).map((q, i) => (
             <button key={i}
               onClick={() => {
@@ -740,8 +747,8 @@ export default function AdminDailyDashboard() {
           className="w-full mb-5 bg-teal-600 hover:bg-teal-700 active:scale-95 transition-all text-white rounded-2xl px-5 py-3 flex items-center justify-center gap-2 font-semibold shadow-sm"
         >
           <span className="text-lg">💳</span>
-          <span>Billing Console (อพาร์ทเมนท์)</span>
-          <span className="ml-auto text-teal-200 text-xs">↗ เปิดแท็บใหม่</span>
+          <span>{t('adm_billing_btn')}</span>
+          <span className="ml-auto text-teal-200 text-xs">{t('adm_open_new_tab')}</span>
         </button>
 
         {/* Billing Token Modal */}
@@ -749,7 +756,7 @@ export default function AdminDailyDashboard() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
               <h3 className="text-base font-bold mb-1">💳 Billing Console</h3>
-              <p className="text-xs text-gray-500 mb-4">ใส่ Admin Token เพื่อเข้าระบบ</p>
+              <p className="text-xs text-gray-500 mb-4">{t('adm_billing_token_prompt')}</p>
               <input
                 type="password"
                 value={billingToken}
@@ -769,7 +776,7 @@ export default function AdminDailyDashboard() {
                 <button
                   onClick={() => setShowBillingModal(false)}
                   className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50"
-                >ยกเลิก</button>
+                >{t('adm_cancel')}</button>
                 <button
                   onClick={() => {
                     localStorage.setItem('billing_token', billingToken);
@@ -777,10 +784,10 @@ export default function AdminDailyDashboard() {
                     setShowBillingModal(false);
                   }}
                   className="flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-xl py-2 text-sm font-semibold"
-                >เข้าระบบ</button>
+                >{t('adm_enter_system')}</button>
               </div>
               {billingToken && (
-                <p className="text-xs text-gray-400 text-center mt-3">จำ token ไว้ในเครื่องนี้แล้ว</p>
+                <p className="text-xs text-gray-400 text-center mt-3">{t('adm_token_remembered')}</p>
               )}
             </div>
           </div>
@@ -789,10 +796,10 @@ export default function AdminDailyDashboard() {
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { icon: '👤', label: 'ผู้ใช้งาน', value: currentUser?.full_name || '-' },
-            { icon: '📋', label: 'งานเสร็จ', value: `${Object.values(taskStatus).filter(s => s === 'เสร็จแล้ว').length} / ${TASKS.length}` },
-            { icon: '🏠', label: 'Check-in วันนี้', value: `${checkInGuests || '0'} ห้อง` },
-            { icon: '📄', label: 'รายงานทั้งหมด', value: `${reports.length} ฉบับ` },
+            { icon: '👤', label: t('adm_stat_user'), value: currentUser?.full_name || '-' },
+            { icon: '📋', label: t('adm_stat_done_tasks'), value: `${Object.values(taskStatus).filter(s => s === 'เสร็จแล้ว').length} / ${TASKS.length}` },
+            { icon: '🏠', label: t('adm_stat_checkin_today'), value: `${checkInGuests || '0'} ${t('adm_stat_rooms')}` },
+            { icon: '📄', label: t('adm_stat_all_reports'), value: `${reports.length} ${t('adm_stat_docs_unit')}` },
           ].map((c, i) => (
             <div key={i} className="bg-white rounded-2xl border shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2"><span className="text-lg">{c.icon}</span><p className="text-xs text-gray-500">{c.label}</p></div>
@@ -803,21 +810,21 @@ export default function AdminDailyDashboard() {
 
         {submitted && (
           <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-2xl px-5 py-4 font-medium text-sm">
-            ✅ ส่งรายงานประจำวันเรียบร้อยแล้ว — {today}
+            {t('adm_submitted_banner')} {today}
           </div>
         )}
 
         {/* Employee Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div><label className="block text-sm font-medium mb-2">ชื่อพนักงาน</label>
-            <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="กรอกชื่อพนักงาน" /></div>
-          <div><label className="block text-sm font-medium mb-2">เวลาเข้างาน</label>
+          <div><label className="block text-sm font-medium mb-2">{t('adm_employee_name_label')}</label>
+            <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder={t('adm_fullname_placeholder')} /></div>
+          <div><label className="block text-sm font-medium mb-2">{t('adm_checkin_time_label')}</label>
             <input type="text" value={checkInTime} disabled className="w-full border rounded-2xl px-4 py-3 bg-gray-100 text-gray-600 cursor-not-allowed" /></div>
         </div>
 
         {/* Checklist */}
         <div id="daily-checklist" className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-3xl p-6 mb-8 border border-orange-100 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Checklist งานประจำวัน</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">{t('adm_checklist_title')}</h2>
           <div className="space-y-3">
             {TASKS.map((task, i) => (
               <div key={i} className="flex items-center justify-between bg-white rounded-2xl border p-4 hover:shadow-sm transition">
@@ -827,20 +834,20 @@ export default function AdminDailyDashboard() {
                     onChange={e => setTaskChecked(prev => ({ ...prev, [i]: e.target.checked }))} />
                   <span className={`text-gray-700 text-sm ${taskChecked[i] ? 'line-through text-gray-400' : ''}`}>
                     {task.url
-                      ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{task.label}</a>
+                      ? <a href={task.url} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">{t(TASK_LABEL_KEYS[i])}</a>
                       : task.tab
-                        ? <button onClick={() => { if (task.todoTab) setTodoInitialTab(task.todoTab); if (task.stockTab) setStockInitialTab(task.stockTab); setAdminTab(task.tab!); }} className="text-blue-600 underline hover:text-blue-800 text-left">{task.label}</button>
-                        : task.label}
+                        ? <button onClick={() => { if (task.todoTab) setTodoInitialTab(task.todoTab); if (task.stockTab) setStockInitialTab(task.stockTab); setAdminTab(task.tab!); }} className="text-blue-600 underline hover:text-blue-800 text-left">{t(TASK_LABEL_KEYS[i])}</button>
+                        : t(TASK_LABEL_KEYS[i])}
                   </span>
                 </div>
                 <select className="border rounded-xl px-3 py-2 text-sm"
                   value={taskStatus[i] || ''}
                   onChange={e => setTaskStatus(prev => ({ ...prev, [i]: e.target.value }))}>
-                  <option value="">สถานะ</option>
-                  <option>เสร็จแล้ว</option>
-                  <option>กำลังดำเนินการ</option>
-                  <option>รอติดตาม</option>
-                  <option>มีปัญหา</option>
+                  <option value="">{t('adm_status_select')}</option>
+                  <option value="เสร็จแล้ว">{t('adm_status_done')}</option>
+                  <option value="กำลังดำเนินการ">{t('adm_status_inprogress')}</option>
+                  <option value="รอติดตาม">{t('adm_status_followup')}</option>
+                  <option value="มีปัญหา">{t('adm_status_issue')}</option>
                 </select>
               </div>
             ))}
@@ -849,45 +856,45 @@ export default function AdminDailyDashboard() {
           {/* Check-in / Check-out / TM30 / Invoice */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <div className="bg-white border rounded-2xl p-5">
-              <h3 className="font-semibold mb-4">Check-in วันนี้</h3>
+              <h3 className="font-semibold mb-4">{t('adm_checkin_today_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">จำนวนแขก Check-in</label>
+                <div><label className="block text-sm mb-2">{t('adm_checkin_guest_count')}</label>
                   <input type="number" value={checkInGuests} onChange={e => setCheckInGuests(e.target.value)} className="w-full border rounded-xl px-4 py-3" placeholder="0" /></div>
-                <div><label className="block text-sm mb-2">ห้องที่ Check-in</label>
-                  <textarea rows={3} value={checkInRooms} onChange={e => setCheckInRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder="เช่น 201, 305, 402" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_checkin_rooms_label')}</label>
+                  <textarea rows={3} value={checkInRooms} onChange={e => setCheckInRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder={t('adm_rooms_eg1')} /></div>
               </div>
             </div>
             <div className="bg-white border rounded-2xl p-5">
-              <h3 className="font-semibold mb-4">Check-out วันนี้</h3>
+              <h3 className="font-semibold mb-4">{t('adm_checkout_today_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">จำนวนแขก Check-out</label>
+                <div><label className="block text-sm mb-2">{t('adm_checkout_guest_count')}</label>
                   <input type="number" value={checkOutGuests} onChange={e => setCheckOutGuests(e.target.value)} className="w-full border rounded-xl px-4 py-3" placeholder="0" /></div>
-                <div><label className="block text-sm mb-2">ห้องที่ Check-out</label>
-                  <textarea rows={3} value={checkOutRooms} onChange={e => setCheckOutRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder="เช่น 102, 208" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_checkout_rooms_label')}</label>
+                  <textarea rows={3} value={checkOutRooms} onChange={e => setCheckOutRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder={t('adm_rooms_eg2')} /></div>
               </div>
             </div>
             <div className="bg-white border rounded-2xl p-5">
-              <h3 className="font-semibold mb-4">TM30 & Booking</h3>
+              <h3 className="font-semibold mb-4">{t('adm_tm30_booking_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">ลงทะเบียน TM30 ครบหรือไม่</label>
+                <div><label className="block text-sm mb-2">{t('adm_tm30_complete_q')}</label>
                   <select value={tm30Status} onChange={e => setTm30Status(e.target.value)} className="w-full border rounded-xl px-4 py-3">
-                    <option value="">เลือก</option><option>ครบแล้ว</option><option>ยังไม่ครบ</option>
+                    <option value="">{t('adm_select')}</option><option value="ครบแล้ว">{t('adm_tm30_complete')}</option><option value="ยังไม่ครบ">{t('adm_tm30_incomplete')}</option>
                   </select></div>
-                <div><label className="block text-sm mb-2">บันทึกการจองเพิ่มกี่ห้อง</label>
+                <div><label className="block text-sm mb-2">{t('adm_new_bookings_count')}</label>
                   <input type="number" value={newBookings} onChange={e => setNewBookings(e.target.value)} className="w-full border rounded-xl px-4 py-3" placeholder="0" /></div>
-                <div><label className="block text-sm mb-2">ห้องที่มีการจองเพิ่ม</label>
-                  <textarea rows={3} value={newBookingRooms} onChange={e => setNewBookingRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder="เช่น 203, 301" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_new_booking_rooms_label')}</label>
+                  <textarea rows={3} value={newBookingRooms} onChange={e => setNewBookingRooms(e.target.value)} className="w-full border rounded-xl p-3" placeholder={t('adm_rooms_eg3')} /></div>
               </div>
             </div>
             <div className="bg-white border rounded-2xl p-5">
-              <h3 className="font-semibold mb-4">Invoice & Receipt</h3>
+              <h3 className="font-semibold mb-4">{t('adm_invoice_receipt_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">สร้างใบแจ้งหนี้ / ใบเสร็จกี่ห้อง</label>
+                <div><label className="block text-sm mb-2">{t('adm_invoice_count')}</label>
                   <input type="number" value={invoiceRooms} onChange={e => setInvoiceRooms(e.target.value)} className="w-full border rounded-xl px-4 py-3" placeholder="0" /></div>
-                <div><label className="block text-sm mb-2">ยอดรวมทั้งหมด (บาท)</label>
+                <div><label className="block text-sm mb-2">{t('adm_invoice_total_label')}</label>
                   <input type="number" value={invoiceTotal} onChange={e => setInvoiceTotal(e.target.value)} className="w-full border rounded-xl px-4 py-3" placeholder="0.00" /></div>
-                <div><label className="block text-sm mb-2">หมายเลขห้อง</label>
-                  <textarea rows={3} value={invoiceRoomNumbers} onChange={e => setInvoiceRoomNumbers(e.target.value)} className="w-full border rounded-xl p-3" placeholder="เช่น 105, 302" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_invoice_room_numbers_label')}</label>
+                  <textarea rows={3} value={invoiceRoomNumbers} onChange={e => setInvoiceRoomNumbers(e.target.value)} className="w-full border rounded-xl p-3" placeholder={t('adm_rooms_eg4')} /></div>
               </div>
             </div>
           </div>
@@ -895,30 +902,30 @@ export default function AdminDailyDashboard() {
 
         {/* Stock */}
         <div className="bg-blue-950 border border-blue-800 rounded-3xl p-6 mb-8">
-          <h2 className="text-xl font-semibold text-amber-300 mb-6">ตรวจสอบสต๊อก & จัดซื้อ</h2>
+          <h2 className="text-xl font-semibold text-amber-300 mb-6">{t('adm_stock_purchase_title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl border p-5">
-              <h3 className="font-semibold mb-4">รายการของใกล้หมด / ต้องซื้อเพิ่ม</h3>
+              <h3 className="font-semibold mb-4">{t('adm_stock_low_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">รายการสินค้า</label>
-                  <textarea rows={5} value={stockItems} onChange={e => setStockItems(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="เช่น กระดาษชำระ, น้ำดื่ม, สบู่" /></div>
-                <div><label className="block text-sm mb-2">จำนวนที่ต้องซื้อเพิ่ม</label>
-                  <textarea rows={4} value={stockQty} onChange={e => setStockQty(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="เช่น กระดาษชำระ 20 แพ็ค" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_stock_items_label')}</label>
+                  <textarea rows={5} value={stockItems} onChange={e => setStockItems(e.target.value)} className="w-full border rounded-2xl p-4" placeholder={t('adm_stock_items_eg')} /></div>
+                <div><label className="block text-sm mb-2">{t('adm_stock_qty_label')}</label>
+                  <textarea rows={4} value={stockQty} onChange={e => setStockQty(e.target.value)} className="w-full border rounded-2xl p-4" placeholder={t('adm_stock_qty_eg')} /></div>
               </div>
             </div>
             <div className="bg-white rounded-2xl border p-5">
-              <h3 className="font-semibold mb-4">สร้างรายการจัดซื้อ</h3>
+              <h3 className="font-semibold mb-4">{t('adm_create_purchase_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">ร้านค้า / Supplier</label>
-                  <input type="text" value={supplier} onChange={e => setSupplier(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="ระบุร้านค้าหรือ Supplier" /></div>
-                <div><label className="block text-sm mb-2">งบประมาณโดยประมาณ (บาท)</label>
+                <div><label className="block text-sm mb-2">{t('adm_supplier_label')}</label>
+                  <input type="text" value={supplier} onChange={e => setSupplier(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder={t('adm_supplier_placeholder')} /></div>
+                <div><label className="block text-sm mb-2">{t('adm_budget_label')}</label>
                   <input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="0.00" /></div>
-                <div><label className="block text-sm mb-2">สถานะการจัดซื้อ</label>
+                <div><label className="block text-sm mb-2">{t('adm_purchase_status_label')}</label>
                   <select value={purchaseStatus} onChange={e => setPurchaseStatus(e.target.value)} className="w-full border rounded-2xl px-4 py-3">
-                    <option value="">เลือกสถานะ</option><option>รออนุมัติ</option><option>สั่งซื้อแล้ว</option><option>ได้รับสินค้าแล้ว</option>
+                    <option value="">{t('adm_select_status')}</option><option value="รออนุมัติ">{t('adm_purchase_status_pending')}</option><option value="สั่งซื้อแล้ว">{t('adm_purchase_status_ordered')}</option><option value="ได้รับสินค้าแล้ว">{t('adm_purchase_status_received')}</option>
                   </select></div>
-                <div><label className="block text-sm mb-2">หมายเหตุเพิ่มเติม</label>
-                  <textarea rows={4} value={purchaseNote} onChange={e => setPurchaseNote(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="รายละเอียดเพิ่มเติม" /></div>
+                <div><label className="block text-sm mb-2">{t('adm_purchase_note_label')}</label>
+                  <textarea rows={4} value={purchaseNote} onChange={e => setPurchaseNote(e.target.value)} className="w-full border rounded-2xl p-4" placeholder={t('adm_purchase_note_placeholder')} /></div>
               </div>
             </div>
           </div>
@@ -932,32 +939,32 @@ export default function AdminDailyDashboard() {
                 'bg-amber-400 hover:bg-amber-500 text-gray-900'
               }`}
             >
-              {stockSaving ? '⏳ กำลังบันทึก...' : stockSaved ? '✅ บันทึกแล้ว' : '💾 บันทึกสต็อก'}
+              {stockSaving ? t('adm_stock_saving') : stockSaved ? t('adm_stock_saved') : t('adm_stock_save_btn')}
             </button>
           </div>
         </div>
 
         {/* Documents */}
         <div className="bg-purple-50 border border-purple-200 rounded-3xl p-6 mb-8">
-          <h2 className="text-xl font-semibold text-purple-700 mb-6">เอกสารที่ดำเนินการวันนี้ & งานเพิ่มเติม</h2>
+          <h2 className="text-xl font-semibold text-purple-700 mb-6">{t('adm_docs_extra_title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl border p-5 shadow-sm">
-              <h3 className="font-semibold mb-4">เอกสารที่ทำวันนี้</h3>
+              <h3 className="font-semibold mb-4">{t('adm_docs_today_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">รายการเอกสาร</label>
-                  <textarea rows={6} value={docList} onChange={e => setDocList(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="เช่น ใบแจ้งหนี้ห้อง 302, สัญญาเช่า" /></div>
-                <div><label className="block text-sm mb-2">จำนวนเอกสารทั้งหมด</label>
+                <div><label className="block text-sm mb-2">{t('adm_doc_list_label')}</label>
+                  <textarea rows={6} value={docList} onChange={e => setDocList(e.target.value)} className="w-full border rounded-2xl p-4" placeholder={t('adm_doc_list_eg')} /></div>
+                <div><label className="block text-sm mb-2">{t('adm_doc_count_label')}</label>
                   <input type="number" value={docCount} onChange={e => setDocCount(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="0" /></div>
               </div>
             </div>
             <div className="bg-white rounded-2xl border p-5 shadow-sm">
-              <h3 className="font-semibold mb-4">งานอื่น ๆ ที่ได้รับมอบหมาย</h3>
+              <h3 className="font-semibold mb-4">{t('adm_extra_tasks_title')}</h3>
               <div className="space-y-4">
-                <div><label className="block text-sm mb-2">รายละเอียดงาน</label>
-                  <textarea rows={6} value={extraTask} onChange={e => setExtraTask(e.target.value)} className="w-full border rounded-2xl p-4" placeholder="ระบุงานเพิ่มเติมที่ได้รับมอบหมายวันนี้" /></div>
-                <div><label className="block text-sm mb-2">สถานะงาน</label>
+                <div><label className="block text-sm mb-2">{t('adm_task_detail_label')}</label>
+                  <textarea rows={6} value={extraTask} onChange={e => setExtraTask(e.target.value)} className="w-full border rounded-2xl p-4" placeholder={t('adm_task_detail_placeholder')} /></div>
+                <div><label className="block text-sm mb-2">{t('adm_task_status_label')}</label>
                   <select value={extraTaskStatus} onChange={e => setExtraTaskStatus(e.target.value)} className="w-full border rounded-2xl px-4 py-3">
-                    <option value="">เลือกสถานะ</option><option>เสร็จแล้ว</option><option>กำลังดำเนินการ</option><option>รอติดตาม</option>
+                    <option value="">{t('adm_select_status')}</option><option value="เสร็จแล้ว">{t('adm_status_done')}</option><option value="กำลังดำเนินการ">{t('adm_status_inprogress')}</option><option value="รอติดตาม">{t('adm_status_followup')}</option>
                   </select></div>
               </div>
             </div>
@@ -968,13 +975,13 @@ export default function AdminDailyDashboard() {
         <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 mb-8">
           <h2 className="text-lg font-semibold text-amber-700 mb-4">Daily KPI</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className="block text-sm mb-2">ตอบลูกค้าครบ</label>
+            <div><label className="block text-sm mb-2">{t('adm_kpi_reply_label')}</label>
               <select value={kpiReply} onChange={e => setKpiReply(e.target.value)} className="w-full border rounded-2xl px-4 py-3">
-                <option value="">เลือก</option><option>YES</option><option>NO</option>
+                <option value="">{t('adm_select')}</option><option>{t('adm_yes')}</option><option>{t('adm_no')}</option>
               </select></div>
-            <div><label className="block text-sm mb-2">จำนวนงานค้าง</label>
+            <div><label className="block text-sm mb-2">{t('adm_kpi_pending_label')}</label>
               <input type="number" value={kpiPending} onChange={e => setKpiPending(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="0" /></div>
-            <div><label className="block text-sm mb-2">จำนวนข้อผิดพลาด</label>
+            <div><label className="block text-sm mb-2">{t('adm_kpi_errors_label')}</label>
               <input type="number" value={kpiErrors} onChange={e => setKpiErrors(e.target.value)} className="w-full border rounded-2xl px-4 py-3" placeholder="0" /></div>
           </div>
         </div>
@@ -983,11 +990,11 @@ export default function AdminDailyDashboard() {
         <div className="bg-blue-900 border border-blue-800 rounded-3xl p-5 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-amber-300">ระบบส่งรายงานออนไลน์</h2>
-              <p className="text-sm text-blue-200 mt-1">ระบบจะสรุปข้อมูลทั้งหมดอัตโนมัติเมื่อกดส่งรายงาน</p>
+              <h2 className="text-base font-semibold text-amber-300">{t('adm_report_system_title')}</h2>
+              <p className="text-sm text-blue-200 mt-1">{t('adm_report_system_desc')}</p>
             </div>
             <div className="bg-white rounded-2xl border px-4 py-3 text-sm shadow-sm flex-shrink-0">
-              <p className="font-medium text-gray-700">วันที่รายงาน</p>
+              <p className="font-medium text-gray-700">{t('report_date_label')}</p>
               <p className="text-gray-500">{today}</p>
             </div>
           </div>
@@ -996,25 +1003,25 @@ export default function AdminDailyDashboard() {
         {/* Report History */}
         <div className="bg-white border rounded-3xl p-6 shadow-sm mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">{isAdmin ? 'รายงานทั้งหมด' : 'รายงานของฉัน'}</h2>
-            <span className="text-sm text-gray-500">{reports.length} รายงาน</span>
+            <h2 className="text-xl font-semibold text-gray-800">{isAdmin ? t('adm_all_reports') : t('adm_my_reports')}</h2>
+            <span className="text-sm text-gray-500">{reports.length} {t('adm_reports_unit')}</span>
           </div>
           {reportsLoading ? (
-            <div className="text-center py-10 text-gray-400 text-sm">⏳ กำลังโหลด...</div>
+            <div className="text-center py-10 text-gray-400 text-sm">{t('adm_loading')}</div>
           ) : reports.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm">ยังไม่มีรายงานที่ถูกส่ง</div>
+            <div className="text-center py-10 text-gray-400 text-sm">{t('adm_no_reports_yet')}</div>
           ) : (
             <div className="space-y-3">
               {reports.map(report => (
                 <div key={report.id} className="border rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:shadow-sm transition">
                   <div>
                     <p className="font-semibold text-gray-800">{report.employee}</p>
-                    <p className="text-sm text-gray-500">{report.date} • ส่งเวลา {report.submit_time}</p>
+                    <p className="text-sm text-gray-500">{report.date} • {t('adm_sent_at')} {report.submit_time}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">{report.status}</span>
                     <button onClick={() => setSelectedReport(report)}
-                      className="px-4 py-2 rounded-xl bg-blue-900 text-white hover:bg-blue-800 transition text-sm">ดูรายงาน</button>
+                      className="px-4 py-2 rounded-xl bg-blue-900 text-white hover:bg-blue-800 transition text-sm">{t('adm_view_report')}</button>
                   </div>
                 </div>
               ))}
@@ -1029,7 +1036,7 @@ export default function AdminDailyDashboard() {
               ${submitted ? 'bg-green-400 cursor-not-allowed opacity-70'
               : authLoading ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-amber-400 to-blue-900 hover:scale-[1.02]'}`}>
-            {authLoading ? '⏳ กำลังบันทึก...' : submitted ? '✅ ส่งรายงานเรียบร้อยแล้ว' : 'ส่งรายงานประจำวัน'}
+            {authLoading ? t('adm_submitting') : submitted ? t('adm_submitted_done') : t('adm_submit_daily_report')}
           </button>
         </div>
 
@@ -1045,17 +1052,17 @@ export default function AdminDailyDashboard() {
           <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">รายละเอียดรายงาน</h2>
+                <h2 className="text-xl font-bold text-gray-800">{t('adm_report_detail_title')}</h2>
                 <p className="text-sm text-gray-500 mt-1">{selectedReport.employee} • {selectedReport.date} • {selectedReport.submit_time}</p>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="px-4 py-2 rounded-xl border hover:bg-gray-50 transition text-sm">✕ ปิด</button>
+              <button onClick={() => setSelectedReport(null)} className="px-4 py-2 rounded-xl border hover:bg-gray-50 transition text-sm">{t('adm_close')}</button>
             </div>
 
             {/* ข้อมูลหลัก */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
-                { label: 'Check-in', value: `${selectedReport.check_in_guests || '0'} ท่าน` },
-                { label: 'Check-out', value: `${selectedReport.check_out_guests || '0'} ท่าน` },
+                { label: 'Check-in', value: `${selectedReport.check_in_guests || '0'} ${t('adm_guests_unit')}` },
+                { label: 'Check-out', value: `${selectedReport.check_out_guests || '0'} ${t('adm_guests_unit')}` },
                 { label: 'TM30', value: selectedReport.tm30_status || '-' },
                 { label: 'Invoice', value: selectedReport.invoice_total ? `฿${Number(selectedReport.invoice_total).toLocaleString()}` : '-' },
               ].map((c, i) => (
@@ -1069,31 +1076,31 @@ export default function AdminDailyDashboard() {
             {/* สรุปอัตโนมัติ */}
             <div className="space-y-4 text-sm">
               <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-                <p className="font-semibold text-green-700 mb-2">✅ งานที่ทำเสร็จ</p>
+                <p className="font-semibold text-green-700 mb-2">{t('adm_completed_tasks')}</p>
                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedReport.completed_tasks || '-'}</p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                <p className="font-semibold text-amber-700 mb-2">⏳ งานที่ต้องติดตามต่อ</p>
+                <p className="font-semibold text-amber-700 mb-2">{t('adm_pending_followup_tasks')}</p>
                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedReport.pending_tasks || '-'}</p>
               </div>
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-                <p className="font-semibold text-red-700 mb-2">⚠️ ปัญหาที่พบ</p>
+                <p className="font-semibold text-red-700 mb-2">{t('adm_issues_found')}</p>
                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedReport.issues_found || '-'}</p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                <p className="font-semibold text-blue-700 mb-2">📊 KPI สรุป</p>
+                <p className="font-semibold text-blue-700 mb-2">{t('adm_kpi_summary')}</p>
                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedReport.suggestions || '-'}</p>
               </div>
 
               {/* รายละเอียดเพิ่มเติม */}
               <details className="border rounded-2xl overflow-hidden">
-                <summary className="px-4 py-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-50">รายละเอียดเพิ่มเติม</summary>
+                <summary className="px-4 py-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-50">{t('adm_more_details')}</summary>
                 <div className="px-4 pb-4 space-y-2 text-gray-600 pt-2">
-                  <p><span className="font-medium">เวลาเข้างาน:</span> {selectedReport.check_in_time || '-'}</p>
-                  <p><span className="font-medium">ห้อง Check-in:</span> {selectedReport.check_in_rooms || '-'}</p>
-                  <p><span className="font-medium">ห้อง Check-out:</span> {selectedReport.check_out_rooms || '-'}</p>
-                  <p><span className="font-medium">จองเพิ่ม:</span> {selectedReport.new_bookings || '-'} ห้อง ({selectedReport.new_booking_rooms || '-'})</p>
-                  <p><span className="font-medium">Invoice:</span> {selectedReport.invoice_rooms || '-'} ห้อง หมายเลข {selectedReport.invoice_room_numbers || '-'}</p>
+                  <p><span className="font-medium">{t('adm_checkin_time_colon')}</span> {selectedReport.check_in_time || '-'}</p>
+                  <p><span className="font-medium">{t('adm_checkin_rooms_colon')}</span> {selectedReport.check_in_rooms || '-'}</p>
+                  <p><span className="font-medium">{t('adm_checkout_rooms_colon')}</span> {selectedReport.check_out_rooms || '-'}</p>
+                  <p><span className="font-medium">{t('adm_extra_bookings_colon')}</span> {selectedReport.new_bookings || '-'} {t('adm_rooms_unit')} ({selectedReport.new_booking_rooms || '-'})</p>
+                  <p><span className="font-medium">{t('adm_invoice_colon')}</span> {selectedReport.invoice_rooms || '-'} {t('adm_rooms_unit')} {t('adm_room_number_label')} {selectedReport.invoice_room_numbers || '-'}</p>
                 </div>
               </details>
             </div>
