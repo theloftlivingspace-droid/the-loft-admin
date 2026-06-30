@@ -35,19 +35,6 @@ async function sbUpsert(table: string, body: object) {
     body: JSON.stringify(body),
   });
 }
-async function sbUpdate(table: string, params: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    method: 'PATCH',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
-async function sbDelete(table: string, params: string) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    method: 'DELETE',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-  });
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface User {
