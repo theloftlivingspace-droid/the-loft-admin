@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import BookingInvoiceTodo from './BookingInvoiceTodo';
 import CheckInOut from './CheckInOut';
 import StockParking from './StockParking';
+import UserManagement from './UserManagement';
 import { useLang } from './LanguageContext';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -32,6 +33,19 @@ async function sbUpsert(table: string, body: object) {
     method: 'POST',
     headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(body),
+  });
+}
+async function sbUpdate(table: string, params: string, body: object) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
+    body: JSON.stringify(body),
+  });
+}
+async function sbDelete(table: string, params: string) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    method: 'DELETE',
+    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
   });
 }
 
@@ -230,7 +244,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking' | 'users'>('dashboard');
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
   const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
@@ -616,6 +630,7 @@ export default function AdminDailyDashboard() {
             { key: 'todo',         label: t('tab_booking') },
             { key: 'checkinout',   label: t('tab_checkinout') },
             { key: 'stockparking', label: t('tab_stock') },
+            ...(isAdmin ? [{ key: 'users' as const, label: '👥 จัดการบัญชี' }] : []),
           ] as const).map(t2 => (
             <button key={t2.key} onClick={() => { setAdminTab(t2.key); scrollToTop(); }}
               className={`flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold border-b-2 transition-colors
@@ -634,6 +649,7 @@ export default function AdminDailyDashboard() {
             { key: 'todo',         icon: '📋', label: 'Booking' },
             { key: 'checkinout',   icon: '🏨', label: 'Check-in/out' },
             { key: 'stockparking', icon: '📦', label: 'Stock' },
+            ...(isAdmin ? [{ key: 'users' as const, icon: '👥', label: 'Users' }] : []),
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => { setAdminTab(tab.key); scrollToTop(); }}
               className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors relative
@@ -701,6 +717,9 @@ export default function AdminDailyDashboard() {
         <div className={adminTab === 'stockparking' ? '' : 'hidden'}>
           <StockParking initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
         </div>
+        {isAdmin && adminTab === 'users' && (
+          <UserManagement />
+        )}
 
         {/* Dashboard Tab */}
         {adminTab === 'dashboard' && <div>
