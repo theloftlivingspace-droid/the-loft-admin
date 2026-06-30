@@ -23,13 +23,51 @@ async function sbSave(key: string, value: unknown) {
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
 
+// ── Thai → English translations for stock item names & units ──────────────
+const STOCK_NAME_EN: Record<string,string> = {
+  'กระดาษทิชชู': 'Tissue paper',
+  'น้ำดื่ม': 'Drinking water',
+  'ยาสระผม+สบู่': 'Shampoo + Soap',
+  'ถุงขยะ': 'Trash bags',
+  'roller': 'Lint roller',
+  'ไมโครเวฟ': 'Microwave',
+  'เตารีด': 'Iron',
+  'ไดร์เป่าผม': 'Hair dryer',
+  'หมอน': 'Pillow',
+  'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hand towel set',
+  'ผ้าเช็ดตัว': 'Bath towel',
+  'ผ้านวม': 'Comforter',
+  'ผ้าปูที่นอน': 'Bedsheet',
+  'ที่นอน TOPPER': 'Mattress topper',
+  'ทีวี': 'TV',
+  'พัดลม': 'Fan',
+  'กาน้ำร้อน': 'Electric kettle',
+  'ชุดกะทะไฟฟ้า': 'Electric pan set',
+  'สบู่': 'Soap',
+  'แชมพู': 'Shampoo',
+  'เจลอาบน้ำ': 'Shower gel',
+  'พรมเช็ดเท้า': 'Door mat',
+  'หน้ากากอนามัย': 'Face mask',
+  'ฝาชักโคก': 'Toilet seat cover',
+  'หลอดไฟ LED': 'LED light bulb',
+};
+const STOCK_UNIT_EN: Record<string,string> = {
+  'ม้วน': 'roll', 'ขวด': 'bottle', 'ชุด': 'set', 'ถุง': 'bag', 'ชิ้น': 'pc',
+  'อัน': 'pc', 'ใบ': 'pc', 'ผืน': 'pc', 'เครื่อง': 'unit', 'ตัว': 'unit',
+  'ก้อน': 'bar', 'กล่อง/ชิ้น': 'box/pc', 'ดวง': 'pc',
+};
+const STOCK_NOTE_EN: Record<string,string> = {
+  'เสีย 1': '1 broken',
+  'ขนาดปกติ 7 / เล็ก 2': 'Standard 7 / Small 2',
+};
+
 interface StockItem  { id:number; name:string; qty:number; unit:string; note:string; minQty?: number }
 interface ParkingIn  { id:number; room:string; plate:string; type:string; name:string; status:string }
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
@@ -290,7 +328,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                   <tr key={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
                     <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
-                      {isLow && <span className="mr-1">🔴</span>}{r.name}
+                      {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1">
@@ -302,8 +340,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                       </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
-                    <td className="px-3 py-2 text-gray-500">{r.unit}</td>
-                    <td className="px-3 py-2 text-gray-400 text-xs">{r.note}</td>
+                    <td className="px-3 py-2 text-gray-500">{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
+                    <td className="px-3 py-2 text-gray-400 text-xs">{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
                     <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
                   </tr>
                   );
