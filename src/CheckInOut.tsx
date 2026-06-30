@@ -628,10 +628,10 @@ export default function CheckInOut() {
               };
               const ciD = parseLocal(s.checkin);
               const coD = parseLocal(s.checkout);
-              // Scan from 3 days before checkin up to checkout
-              const scanStart = new Date(ciD);
-              scanStart.setDate(scanStart.getDate() - 3);
-              for (let d = new Date(scanStart); d <= coD; d.setDate(d.getDate() + 1)) {
+              // Scan only within the stay window (checkin → checkout).
+              // Inspections before checkin belong to the previous guest's
+              // checkout and must never be attributed to this booking.
+              for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
                 const ds = toLocalDate(d);
                 const k = `${s.roomNum}_${ds}`;
                 if (coStatus[k]) return k;
