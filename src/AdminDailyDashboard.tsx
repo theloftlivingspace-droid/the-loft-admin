@@ -388,7 +388,7 @@ export default function AdminDailyDashboard() {
     if (!results || results.length === 0) { alert('Username หรือ Password ไม่ถูกต้อง'); return; }
     const matched: User = results[0];
     if (matched.role === 'employee' && !isOfficeNow) {
-      alert('⛔ ไม่อนุญาต\nพนักงานสามารถเข้าใช้งานได้เฉพาะเครือข่ายออฟฟิศเท่านั้น'); return;
+      alert(`⛔ ไม่อนุญาต\nพนักงานสามารถเข้าใช้งานได้เฉพาะเครือข่ายออฟฟิศเท่านั้น\n\nIP ปัจจุบันของคุณ: ${currentIP || 'ไม่ทราบ'}\nกรุณาแจ้ง IP นี้ให้ admin หากต้องการอัปเดต`); return;
     }
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
   };
