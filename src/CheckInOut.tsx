@@ -88,12 +88,15 @@ function channelIcon(ch: string): string {
 
 // Drive doc helpers — calls GAS Web App endpoints (uploadDoc / deleteDoc / getAllDocs)
 async function uploadDocToDrive(room: string, checkin: string, resId: string, file: File): Promise<DocFile | null> {
-  const base64Data: string = await new Promise((resolve, reject) => {
+  const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target?.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+  // dataUrl looks like "data:image/jpeg;base64,/9j/4AAQ..." — GAS expects
+  // the raw base64 payload only, so strip everything up to and including the comma.
+  const base64Data = dataUrl.split(',')[1] ?? dataUrl;
   const res = await fetch(GAS_API, {
     method: 'POST',
     body: JSON.stringify({
