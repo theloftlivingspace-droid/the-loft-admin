@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLang } from './LanguageContext';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -28,6 +29,7 @@ interface ParkingOut { id:number; plate:string; type:string; name:string; status
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
+  const { t } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
@@ -236,8 +238,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
         <h3 className="text-base font-semibold mb-4 text-gray-800">{title}</h3>
         <div className="space-y-3">{children}</div>
         <div className="flex gap-2 mt-5 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition">ยกเลิก</button>
-          <button onClick={onSave}  className="px-5 py-2 rounded-xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition">บันทึก</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition">{t('sp_cancel')}</button>
+          <button onClick={onSave}  className="px-5 py-2 rounded-xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition">{t('sp_save_btn')}</button>
         </div>
       </div>
     </div>
@@ -264,20 +266,20 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
               <span className="truncate">Stock</span>
-              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{stockData.length} รายการ</span>
+              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{stockData.length} {t('sp_items_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowStockModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>setShowStockModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('stock_data', stockData)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='stock_data'?'bg-gray-200 text-gray-400':saved==='stock_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
-                {saving==='stock_data'?'...' : saved==='stock_data'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+                {saving==='stock_data'?'...' : saved==='stock_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#','ชื่อของใช้','จำนวน','ขั้นต่ำ','หน่วย','หมายเหตุ',''].map(h=>(
+                <tr>{['#',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_min_qty'),t('sp_col_unit'),t('sp_col_note'),''].map(h=>(
                   <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}</tr>
               </thead>
@@ -302,7 +304,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                     <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
                     <td className="px-3 py-2 text-gray-500">{r.unit}</td>
                     <td className="px-3 py-2 text-gray-400 text-xs">{r.note}</td>
-                    <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>ลบ</button></td>
+                    <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
                   </tr>
                   );
                 })}
@@ -310,11 +312,11 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             </table>
           </div>
           {showStockModal && (
-            <Modal title="เพิ่มของใช้" onClose={()=>setShowStockModal(false)} onSave={addStock}>
-              <Field label="ชื่อของใช้"><input className={inputCls} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder="เช่น สบู่"/></Field>
-              <Field label="จำนวน"><input className={inputCls} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
-              <Field label="หน่วยนับ"><input className={inputCls} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder="เช่น ขวด"/></Field>
-              <Field label="หมายเหตุ"><input className={inputCls} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
+            <Modal title={t('sp_modal_add_item')} onClose={()=>setShowStockModal(false)} onSave={addStock}>
+              <Field label={t('sp_field_item_name')}><input className={inputCls} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
+              <Field label={t('sp_field_qty')}><input className={inputCls} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
+              <Field label={t('sp_field_unit')}><input className={inputCls} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
+              <Field label={t('sp_field_note')}><input className={inputCls} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
           )}
         </div>
@@ -326,20 +328,20 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
               <span className="truncate">Car · In-house</span>
-              <span className="ml-1 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingIn.length} คัน</span>
+              <span className="ml-1 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingIn.length} {t('sp_cars_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowPIModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>setShowPIModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_in', parkingIn)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_in'?'bg-gray-200 text-gray-400':saved==='parking_in'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
-                {saving==='parking_in'?'...' : saved==='parking_in'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+                {saving==='parking_in'?'...' : saved==='parking_in'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#','ห้อง','ทะเบียน','ประเภท','ชื่อ','สถานะ',''].map(h=>(
+                <tr>{['#',t('sp_col_room'),t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map(h=>(
                   <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
                 ))}</tr>
               </thead>
@@ -347,7 +349,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 {parkingIn.map((r,i)=>(
                   <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">ห้อง {r.room}</span></td>
+                    <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{t('sp_room_prefix')} {r.room}</span></td>
                     <td className="px-3 py-2 font-semibold">{r.plate}</td>
                     <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
                     <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
@@ -356,23 +358,23 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                         ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
                         : <span className="text-gray-400 text-xs">—</span>}
                     </td>
-                    <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel}>ลบ</button></td>
+                    <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {showPIModal && (
-            <Modal title="เพิ่มรถผู้เช่าในตึก" onClose={()=>setShowPIModal(false)} onSave={addParkIn}>
-              <Field label="เลขห้อง"><input className={inputCls} value={newPI.room} onChange={e=>setNewPI(p=>({...p,room:e.target.value}))} placeholder="205"/></Field>
-              <Field label="ทะเบียนรถ"><input className={inputCls} value={newPI.plate} onChange={e=>setNewPI(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
-              <Field label="ประเภท">
+            <Modal title={t('sp_modal_add_car_in')} onClose={()=>setShowPIModal(false)} onSave={addParkIn}>
+              <Field label={t('sp_field_room_no')}><input className={inputCls} value={newPI.room} onChange={e=>setNewPI(p=>({...p,room:e.target.value}))} placeholder="205"/></Field>
+              <Field label={t('sp_field_plate')}><input className={inputCls} value={newPI.plate} onChange={e=>setNewPI(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
+              <Field label={t('sp_field_type')}>
                 <select className={inputCls} value={newPI.type} onChange={e=>setNewPI(p=>({...p,type:e.target.value}))}>
                   <option value="">—</option>{typeOpts.map(o=><option key={o}>{o}</option>)}
                 </select>
               </Field>
-              <Field label="ชื่อผู้ทำสัญญา"><input className={inputCls} value={newPI.name} onChange={e=>setNewPI(p=>({...p,name:e.target.value}))} /></Field>
-              <Field label="สถานะ">
+              <Field label={t('sp_field_contract_name')}><input className={inputCls} value={newPI.name} onChange={e=>setNewPI(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_status')}>
                 <select className={inputCls} value={newPI.status} onChange={e=>setNewPI(p=>({...p,status:e.target.value}))}>
                   <option value="">—</option><option value="OK">OK</option>
                 </select>
@@ -388,20 +390,20 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
               <span className="truncate">Car · Outside</span>
-              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingOut.length} คัน</span>
+              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingOut.length} {t('sp_cars_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowPOModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>setShowPOModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_out', parkingOut)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_out'?'bg-gray-200 text-gray-400':saved==='parking_out'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
-                {saving==='parking_out'?'...' : saved==='parking_out'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+                {saving==='parking_out'?'...' : saved==='parking_out'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#','ทะเบียน','ประเภท','ชื่อ','สถานะ',''].map(h=>(
+                <tr>{['#',t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map(h=>(
                   <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
                 ))}</tr>
               </thead>
@@ -417,22 +419,22 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                         ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
                         : <span className="text-gray-400 text-xs">—</span>}
                     </td>
-                    <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel}>ลบ</button></td>
+                    <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {showPOModal && (
-            <Modal title="เพิ่มรถผู้เช่าภายนอก" onClose={()=>setShowPOModal(false)} onSave={addParkOut}>
-              <Field label="ทะเบียนรถ"><input className={inputCls} value={newPO.plate} onChange={e=>setNewPO(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
-              <Field label="ประเภท">
+            <Modal title={t('sp_modal_add_car_out')} onClose={()=>setShowPOModal(false)} onSave={addParkOut}>
+              <Field label={t('sp_field_plate')}><input className={inputCls} value={newPO.plate} onChange={e=>setNewPO(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
+              <Field label={t('sp_field_type')}>
                 <select className={inputCls} value={newPO.type} onChange={e=>setNewPO(p=>({...p,type:e.target.value}))}>
                   <option value="">—</option>{typeOpts.map(o=><option key={o}>{o}</option>)}
                 </select>
               </Field>
-              <Field label="ชื่อผู้ทำสัญญา"><input className={inputCls} value={newPO.name} onChange={e=>setNewPO(p=>({...p,name:e.target.value}))} /></Field>
-              <Field label="สถานะ">
+              <Field label={t('sp_field_contract_name')}><input className={inputCls} value={newPO.name} onChange={e=>setNewPO(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_status')}>
                 <select className={inputCls} value={newPO.status} onChange={e=>setNewPO(p=>({...p,status:e.target.value}))}>
                   <option value="">—</option><option value="OK">OK</option>
                 </select>
@@ -448,13 +450,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
               <span className="truncate">Warranty</span>
-              <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">{warrantyData.length} รายการ</span>
+              <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">{warrantyData.length} {t('sp_items_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowWModal(true)} className={btnAdd}>+ เพิ่มรายการ</button>
+              <button onClick={()=>setShowWModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('warranty_data', warrantyData)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='warranty_data'?'bg-gray-200 text-gray-400':saved==='warranty_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
-                {saving==='warranty_data'?'...' : saved==='warranty_data'?'✅ บันทึกแล้ว' : '💾 บันทึก'}
+                {saving==='warranty_data'?'...' : saved==='warranty_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
@@ -471,7 +473,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#','ห้อง','แบรนด์','รุ่น','Serial No.','การรับประกัน','วันติดตั้ง',''].map(h=>(
+                <tr>{['#',t('sp_col_room'),t('sp_col_brand'),t('sp_col_model'),'Serial No.',t('sp_col_warranty'),t('sp_col_installed'),''].map(h=>(
                   <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}</tr>
               </thead>
@@ -485,25 +487,25 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                     <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.sn||'—'}</td>
                     <td className="px-3 py-2 text-gray-500 text-xs max-w-[180px]">{r.warranty||'—'}</td>
                     <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">{r.installed||'—'}</td>
-                    <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel}>ลบ</button></td>
+                    <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {showWModal && (
-            <Modal title="เพิ่มรายการรับประกัน" onClose={()=>setShowWModal(false)} onSave={addWarranty}>
-              <Field label="หมวดหมู่">
+            <Modal title={t('sp_modal_add_warranty')} onClose={()=>setShowWModal(false)} onSave={addWarranty}>
+              <Field label={t('sp_field_category')}>
                 <select className={inputCls} value={newW.cat} onChange={e=>setNewW(p=>({...p,cat:e.target.value as WCat}))}>
                   {W_CATS.map(c=><option key={c}>{c}</option>)}
                 </select>
               </Field>
-              <Field label="ห้อง"><input className={inputCls} value={newW.room} onChange={e=>setNewW(p=>({...p,room:e.target.value}))} placeholder="เช่น 205, OFFICE"/></Field>
-              <Field label="แบรนด์"><input className={inputCls} value={newW.brand} onChange={e=>setNewW(p=>({...p,brand:e.target.value}))} /></Field>
-              <Field label="รุ่น (Model)"><input className={inputCls} value={newW.model} onChange={e=>setNewW(p=>({...p,model:e.target.value}))} /></Field>
+              <Field label={t('sp_field_room')}><input className={inputCls} value={newW.room} onChange={e=>setNewW(p=>({...p,room:e.target.value}))} placeholder={t('sp_placeholder_room')}/></Field>
+              <Field label={t('sp_field_brand')}><input className={inputCls} value={newW.brand} onChange={e=>setNewW(p=>({...p,brand:e.target.value}))} /></Field>
+              <Field label={t('sp_field_model')}><input className={inputCls} value={newW.model} onChange={e=>setNewW(p=>({...p,model:e.target.value}))} /></Field>
               <Field label="Serial No."><input className={inputCls} value={newW.sn} onChange={e=>setNewW(p=>({...p,sn:e.target.value}))} /></Field>
-              <Field label="การรับประกัน"><input className={inputCls} value={newW.warranty} onChange={e=>setNewW(p=>({...p,warranty:e.target.value}))} placeholder="เช่น ประกัน 5 ปี"/></Field>
-              <Field label="วันติดตั้ง"><input className={inputCls} type="date" onChange={e=>setNewW(p=>({...p,installed:e.target.value}))} /></Field>
+              <Field label={t('sp_field_warranty')}><input className={inputCls} value={newW.warranty} onChange={e=>setNewW(p=>({...p,warranty:e.target.value}))} placeholder={t('sp_placeholder_warranty')}/></Field>
+              <Field label={t('sp_field_install_date')}><input className={inputCls} type="date" onChange={e=>setNewW(p=>({...p,installed:e.target.value}))} /></Field>
             </Modal>
           )}
         </div>
