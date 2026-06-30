@@ -87,6 +87,12 @@ function channelIcon(ch: string): string {
   return '📋';
 }
 
+// Standalone translation helper for module-level functions (outside React/useLang context).
+// Reads the same localStorage key the LanguageProvider persists to.
+function tStatic(th: string, en: string): string {
+  try { return localStorage.getItem('loft_admin_lang') === 'en' ? en : th; } catch { return th; }
+}
+
 // Drive doc helpers — calls GAS Web App endpoints (uploadDoc / deleteDoc / getAllDocs)
 async function uploadDocToDrive(room: string, checkin: string, resId: string, file: File): Promise<DocFile | null> {
   const dataUrl: string = await new Promise((resolve, reject) => {
@@ -109,7 +115,7 @@ async function uploadDocToDrive(room: string, checkin: string, resId: string, fi
     }),
   });
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'อัปโหลดไม่สำเร็จ');
+  if (!json.ok) throw new Error(json.error || tStatic('อัปโหลดไม่สำเร็จ', 'Upload failed'));
   return json as DocFile;
 }
 
@@ -119,7 +125,7 @@ async function deleteDocFromDrive(fileId: string): Promise<void> {
     body: JSON.stringify({ action: 'deleteDoc', fileId }),
   });
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'ลบไม่สำเร็จ');
+  if (!json.ok) throw new Error(json.error || tStatic('ลบไม่สำเร็จ', 'Delete failed'));
 }
 
 async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
@@ -137,6 +143,7 @@ const STATUS_CONFIG = {
 
 // ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
 function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void | Promise<void> }) {
+  const { t } = useLang();
   const [idx, setIdx] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
@@ -171,7 +178,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
               setDeleting(true);
@@ -191,7 +198,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <div className="bg-white rounded-xl p-8 text-center text-gray-500">
             <div className="text-4xl mb-3">📄</div>
             <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{t('ci_click_download')}</a>
           </div>
         )}
       </div>
@@ -255,9 +262,9 @@ export default function CheckInOut() {
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(isEarly ? `🧳 Checkout แล้ว (ก่อนกำหนด — อัปเดต Sheet1)` : '🧳 Checkout แล้ว');
+      showToast(isEarly ? `🧳 ${t('ci_checkout_early')}` : `🧳 ${t('ci_checkout_simple')}`);
     } catch {
-      showToast('❌ บันทึกไม่สำเร็จ');
+      showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCheckoutSaving(null);
     }
@@ -267,7 +274,7 @@ export default function CheckInOut() {
     const next = new Set(ciDoneSet).add(resId);
     setCiDoneSet(next);
     localStorage.setItem('ci_done', JSON.stringify([...next]));
-    showToast('✅ เช็คอินแล้ว');
+    showToast(`✅ ${t('ci_checked_in_toast')}`);
   }
 
   async function confirmCancel(s: Stay) {
@@ -281,9 +288,9 @@ export default function CheckInOut() {
       const next = new Set(cancelledSet).add(s.resId);
       setCancelledSet(next);
       localStorage.setItem('ci_cancel', JSON.stringify([...next]));
-      showToast('🚫 ยกเลิก booking แล้ว');
+      showToast(`🚫 ${t('ci_cancel_booking_done')}`);
     } catch {
-      showToast('❌ บันทึกไม่สำเร็จ');
+      showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCancelSaving(false);
       setCancelConfirm(null);
@@ -329,12 +336,12 @@ export default function CheckInOut() {
         })
         .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
           .then(j => {
-            if (j.ok === false) showToast('Note บันทึกแล้ว ⚠️ LINE: ' + (j.error || 'error'));
-            else showToast('บันทึก Note + แจ้ง LINE แล้ว ✅');
+            if (j.ok === false) showToast(t('ci_note_saved_line_warn') + (j.error || 'error'));
+            else showToast(t('ci_note_saved_line_ok'));
           })
-          .catch(e => showToast('Note บันทึกแล้ว ⚠️ LINE: ' + String(e)));
+          .catch(e => showToast(t('ci_note_saved_line_warn') + String(e)));
     } catch (e) {
-      showToast('❌ บันทึกไม่สำเร็จ: ' + String(e));
+      showToast(t('ci_save_failed_colon') + String(e));
     } finally {
       setNoteSaving(false);
     }
@@ -366,7 +373,7 @@ export default function CheckInOut() {
         }
       }
     } catch (err) {
-      alert('อัปโหลดไม่สำเร็จ: ' + (err instanceof Error ? err.message : String(err)));
+      alert(t('ci_upload_failed_colon') + (err instanceof Error ? err.message : String(err)));
     } finally {
       setUploadingFor(null);
     }
@@ -389,9 +396,9 @@ export default function CheckInOut() {
     setError('');
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus`);
-      if (!res.ok) throw new Error('โหลดข้อมูลห้องไม่สำเร็จ');
+      if (!res.ok) throw new Error(t('ci_load_room_failed'));
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
-      if (!Array.isArray(json.stays)) throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
+      if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
 
       const tod = today();
       const soon = addDays(tod, 5);
@@ -515,7 +522,7 @@ export default function CheckInOut() {
         }
       } catch (_) { /* optional */ }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
+      setError(e instanceof Error ? e.message : t('ci_load_failed'));
     } finally {
       setLoading(false);
     }
@@ -540,14 +547,14 @@ export default function CheckInOut() {
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
-      กำลังโหลดข้อมูล...
+      {t('ci_loading_data')}
     </div>
   );
   if (error) return (
     <div className="text-center py-16 text-red-500">
       <div className="text-2xl mb-2">⚠️</div>
       <p className="text-sm">{error}</p>
-      <button onClick={load} className="mt-3 px-4 py-2 text-xs bg-red-50 rounded-xl border border-red-200 text-red-600">ลองใหม่</button>
+      <button onClick={load} className="mt-3 px-4 py-2 text-xs bg-red-50 rounded-xl border border-red-200 text-red-600">{t('ci_retry')}</button>
     </div>
   );
 
@@ -571,17 +578,17 @@ export default function CheckInOut() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-bold text-blue-950">สถานะห้องพัก</h2>
+          <h2 className="text-lg font-bold text-blue-950">{t('ci_room_status_title')}</h2>
           <p className="text-xs text-gray-400">{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
         </div>
         <div className="flex items-center gap-2">
           <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl bg-indigo-50 border-indigo-200 hover:bg-indigo-100 transition text-indigo-700 font-medium">
-            📋 สร้าง TM30
+            {t('ci_create_tm30')}
           </a>
           <button onClick={() => { load(); refreshDocs(); }}
             className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
-            🔄 รีเฟรช
+            {t('ci_refresh')}
           </button>
         </div>
       </div>
@@ -807,7 +814,7 @@ export default function CheckInOut() {
                             disabled={checkoutSaving === s.resId}
                             onClick={() => doCheckout(s)}
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-sm disabled:opacity-50">
-                            {checkoutSaving === s.resId ? '⏳...' : '🧳 Checkout'}
+                            {checkoutSaving === s.resId ? '⏳...' : t('ci_checkout_btn')}
                           </button>
                         </>
                       )}
@@ -815,24 +822,24 @@ export default function CheckInOut() {
                       {isNoShow && (
                         <>
                           <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-300">
-                            ⚠️ No Show
+                            ⚠️ {t('ci_no_show')}
                           </span>
                           {cancelConfirm !== s.resId && (
                             <button onClick={() => setCancelConfirm(s.resId)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
-                              🚫 Cancel Booking
+                              {t('ci_cancel_booking_btn')}
                             </button>
                           )}
                           {cancelConfirm === s.resId && (
                             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
-                              <span className="text-xs text-red-700 font-medium">ยืนยันยกเลิก?</span>
+                              <span className="text-xs text-red-700 font-medium">{t('ci_confirm_cancel_q')}</span>
                               <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
                                 className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
-                                {cancelSaving ? '...' : 'ยืนยัน'}
+                                {cancelSaving ? '...' : t('ci_confirm')}
                               </button>
                               <button onClick={() => setCancelConfirm(null)}
                                 className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
-                                ไม่
+                                {t('ci_no')}
                               </button>
                             </div>
                           )}
@@ -844,7 +851,7 @@ export default function CheckInOut() {
                   {isCheckedOut && (
                     <div className="mb-3">
                       <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
-                        🧳 Checked Out แล้ว
+                        🧳 {t('ci_checked_out_done')}
                       </span>
                     </div>
                   )}
@@ -883,24 +890,24 @@ export default function CheckInOut() {
 
       {/* Legend */}
       <div className="mt-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-500">
-        <div className="font-semibold text-gray-600 mb-1.5">หมายเหตุ</div>
+        <div className="font-semibold text-gray-600 mb-1.5">{t('ci_legend_title')}</div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <span>🟢 ตรวจห้องผ่าน / ห้องพร้อม</span>
-          <span>🟡 ยังไม่ตรวจห้อง</span>
-          <span>🔴 ห้องไม่พร้อม</span>
-          <span>⚪ ไม่ทราบสถานะ</span>
+          <span>{t('ci_legend_ready')}</span>
+          <span>{t('ci_legend_not_inspected')}</span>
+          <span>{t('ci_legend_not_ready')}</span>
+          <span>{t('ci_legend_unknown')}</span>
         </div>
       </div>
 
       {noteModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <p className="font-bold text-sm mb-1">📝 Note — ห้อง {noteModal.room}</p>
+            <p className="font-bold text-sm mb-1">📝 {t('ci_note_modal_title')} {noteModal.room}</p>
             <p className="text-xs text-gray-500 mb-3">{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
             <textarea
               className="w-full border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-300"
               rows={4}
-              placeholder="พิมพ์หมายเหตุ... (จะส่งไป LINE group แม่บ้านด้วย)"
+              placeholder={t('ci_note_placeholder')}
               value={noteText}
               onChange={e => setNoteText(e.target.value)}
               autoFocus
@@ -908,11 +915,11 @@ export default function CheckInOut() {
             <div className="flex gap-2 mt-3">
               <button onClick={() => setNoteModal(null)}
                 className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
-                ยกเลิก
+                {t('ci_cancel')}
               </button>
               <button onClick={saveNote} disabled={noteSaving}
                 className="flex-1 bg-yellow-400 hover:bg-yellow-500 rounded-lg py-2 text-sm font-bold transition disabled:opacity-50">
-                {noteSaving ? 'กำลังบันทึก...' : '💾 บันทึก + แจ้ง LINE'}
+                {noteSaving ? t('ci_saving') : t('ci_save_notify_line')}
               </button>
             </div>
           </div>
