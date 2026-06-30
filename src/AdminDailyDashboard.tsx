@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import BookingInvoiceTodo from './BookingInvoiceTodo';
 import CheckInOut from './CheckInOut';
 import StockParking from './StockParking';
+import { useLang } from './LanguageContext';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // IP prefix โหลดจาก Supabase settings table
@@ -162,6 +163,7 @@ function generateSummary(data: {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminDailyDashboard() {
+  const { lang, setLang, t } = useLang();
   // IP
   const [clientIP, setClientIP]   = useState('');
   const [ipLoading, setIpLoading] = useState(true);
@@ -500,25 +502,37 @@ export default function AdminDailyDashboard() {
           <div className="hidden md:flex md:items-start md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-blue-950">
-                {isAdmin ? 'Admin Management Dashboard' : 'Daily Admin Dashboard'}
+                {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
               </h1>
               <p className="text-gray-500 mt-1 text-sm">
-                {isAdmin ? 'บัญชีผู้ดูแลระบบ — ตรวจสอบรายงานของพนักงานทั้งหมดได้' : 'ระบบเช็คงานและสรุปรายงานประจำวันพนักงานธุรการ'}
+                {isAdmin ? t('admin_subtitle') : t('daily_subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+                <button
+                  onClick={() => setLang('th')}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition ${lang === 'th' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}>
+                  🇹🇭 ไทย
+                </button>
+                <button
+                  onClick={() => setLang('en')}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition ${lang === 'en' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}>
+                  🇬🇧 EN
+                </button>
+              </div>
               <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium
                 ${isOfficeNetwork ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
                 <span className={`w-2 h-2 rounded-full ${isOfficeNetwork ? 'bg-green-500' : 'bg-amber-400'}`} />
-                {isOfficeNetwork ? '🏢 ออฟฟิศ' : '🌐 ออนไลน์'}
+                {isOfficeNetwork ? t('office_badge') : t('online_badge')}
                 <span className="text-gray-400 font-normal">({clientIP})</span>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500 mb-1">วันที่รายงาน</p>
+                <p className="text-xs text-gray-500 mb-1">{t('report_date_label')}</p>
                 <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="border rounded-xl px-3 py-2 text-sm" />
               </div>
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-2xl border bg-white hover:bg-gray-50 transition shadow-sm text-sm">
-                🚪 Logout
+                {t('logout_btn')}
               </button>
             </div>
           </div>
@@ -539,7 +553,7 @@ export default function AdminDailyDashboard() {
                 <button
                   onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
                   className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition shadow-sm">
-                  🔴 {notifLowStock} รายการสต๊อกต่ำ
+                  🔴 {notifLowStock} {t('notif_low_stock')}
                   <span className="text-red-400">→</span>
                 </button>
               )}
@@ -551,6 +565,18 @@ export default function AdminDailyDashboard() {
               {isAdmin ? '📊 Admin Dashboard' : '📋 Daily Dashboard'}
             </h1>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-0.5 bg-gray-100 rounded-full p-0.5">
+                <button
+                  onClick={() => setLang('th')}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition ${lang === 'th' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}>
+                  TH
+                </button>
+                <button
+                  onClick={() => setLang('en')}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition ${lang === 'en' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}>
+                  EN
+                </button>
+              </div>
               <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="border rounded-lg px-2 py-1 text-xs" />
               <button onClick={handleLogout} className="flex items-center gap-1 px-2 py-1 rounded-lg border bg-white text-xs text-gray-600">
                 🚪
@@ -564,9 +590,9 @@ export default function AdminDailyDashboard() {
                 <button
                   onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 hover:bg-amber-100 active:scale-95 transition-all">
-                  {notifBooking > 0 && <span>📋 {notifBooking} booking รอเพิ่ม</span>}
+                  {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
                   {notifBooking > 0 && notifInvoice > 0 && <span className="text-amber-300">·</span>}
-                  {notifInvoice > 0 && <span>🧾 {notifInvoice} invoice รอสร้าง</span>}
+                  {notifInvoice > 0 && <span>🧾 {notifInvoice} {t('notif_invoice_pending')}</span>}
                   <span className="ml-1 text-amber-500">→</span>
                 </button>
               )}
@@ -574,7 +600,7 @@ export default function AdminDailyDashboard() {
                 <button
                   onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 active:scale-95 transition-all">
-                  🔴 {notifLowStock} รายการสต๊อกต่ำกว่าขั้นต่ำ
+                  🔴 {notifLowStock} {t('notif_low_stock')}
                   <span className="ml-1 text-red-400">→</span>
                 </button>
               )}
@@ -586,17 +612,17 @@ export default function AdminDailyDashboard() {
         {/* Desktop tabs (md and up) */}
         <div className="flex-shrink-0 hidden md:flex border-b px-6 md:px-8 overflow-x-auto">
           {([
-            { key: 'dashboard',    label: '📊 Dashboard' },
-            { key: 'todo',         label: '📋 Booking' },
-            { key: 'checkinout',   label: '🏨 Check-in/out' },
-            { key: 'stockparking', label: '📦 Stock' },
-          ] as const).map(t => (
-            <button key={t.key} onClick={() => { setAdminTab(t.key); scrollToTop(); }}
+            { key: 'dashboard',    label: t('tab_dashboard') },
+            { key: 'todo',         label: t('tab_booking') },
+            { key: 'checkinout',   label: t('tab_checkinout') },
+            { key: 'stockparking', label: t('tab_stock') },
+          ] as const).map(t2 => (
+            <button key={t2.key} onClick={() => { setAdminTab(t2.key); scrollToTop(); }}
               className={`flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold border-b-2 transition-colors
-                ${adminTab === t.key
+                ${adminTab === t2.key
                   ? 'border-blue-600 text-blue-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              {t.label}
+              {t2.label}
             </button>
           ))}
         </div>
@@ -608,13 +634,13 @@ export default function AdminDailyDashboard() {
             { key: 'todo',         icon: '📋', label: 'Booking' },
             { key: 'checkinout',   icon: '🏨', label: 'Check-in/out' },
             { key: 'stockparking', icon: '📦', label: 'Stock' },
-          ] as const).map(t => (
-            <button key={t.key} onClick={() => { setAdminTab(t.key); scrollToTop(); }}
+          ] as const).map(tab => (
+            <button key={tab.key} onClick={() => { setAdminTab(tab.key); scrollToTop(); }}
               className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors relative
-                ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>
-              <span className="text-2xl leading-none">{t.icon}</span>
-              <span className={`text-[11px] font-semibold leading-tight ${adminTab === t.key ? 'text-blue-700' : 'text-gray-400'}`}>{t.label}</span>
-              {adminTab === t.key && <span className="absolute bottom-0 inset-x-2 h-0.5 bg-blue-600 rounded-t-full" />}
+                ${adminTab === tab.key ? 'text-blue-700' : 'text-gray-400'}`}>
+              <span className="text-2xl leading-none">{tab.icon}</span>
+              <span className={`text-[11px] font-semibold leading-tight ${adminTab === tab.key ? 'text-blue-700' : 'text-gray-400'}`}>{tab.label}</span>
+              {adminTab === tab.key && <span className="absolute bottom-0 inset-x-2 h-0.5 bg-blue-600 rounded-t-full" />}
             </button>
           ))}
         </div>

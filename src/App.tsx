@@ -1,4 +1,9 @@
 import AdminDailyDashboard from './AdminDailyDashboard';
+import { LanguageProvider } from './LanguageContext';
 export default function App() {
-  return <AdminDailyDashboard />;
+  return (
+    <LanguageProvider>
+      <AdminDailyDashboard />
+    </LanguageProvider>
+  );
 }
