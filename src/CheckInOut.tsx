@@ -168,7 +168,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
@@ -446,7 +446,7 @@ export default function CheckInOut() {
         return od !== 0 ? od : a.checkout.localeCompare(b.checkout);
       });
       setStays(list);
-      setLastRefresh(new Date().toLocaleTimeString('th-TH'));
+      setLastRefresh(new Date().toLocaleTimeString('en-GB'));
 
       // Checkout log
       try {
@@ -758,7 +758,7 @@ export default function CheckInOut() {
                       const d = new Date(iso);
                       return {
                         day: d.getDate(),
-                        month: d.toLocaleDateString('th-TH', { month: 'short' }),
+                        month: d.toLocaleDateString('en-US', { month: 'short' }),
                         year: d.getFullYear(),
                       };
                     };

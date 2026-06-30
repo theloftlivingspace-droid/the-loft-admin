@@ -342,7 +342,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
@@ -676,7 +676,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                       {(() => {
                         const fmtD = (iso: string) => {
                           const d = new Date(iso);
-                          return { day: d.getDate(), month: d.toLocaleDateString('th-TH', { month: 'short' }), year: String(d.getFullYear()).slice(2) };
+                          return { day: d.getDate(), month: d.toLocaleDateString('en-US', { month: 'short' }), year: String(d.getFullYear()).slice(2) };
                         };
                         const ci = fmtD(item.checkin);
                         const co = fmtD(item.checkout);

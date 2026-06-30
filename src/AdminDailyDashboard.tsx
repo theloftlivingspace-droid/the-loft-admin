@@ -281,7 +281,7 @@ export default function AdminDailyDashboard() {
   // Form — basic
   const [employeeName, setEmployeeName] = useState('');
   const [checkInTime] = useState(
-    new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   );
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -326,7 +326,7 @@ export default function AdminDailyDashboard() {
   const [kpiPending, setKpiPending] = useState('');
   const [kpiErrors, setKpiErrors]   = useState('');
 
-  const today = new Date().toLocaleDateString('th-TH', {
+  const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 
@@ -408,7 +408,7 @@ export default function AdminDailyDashboard() {
     await sbInsert('reports', {
       date: today, employee: employeeName,
       check_in_time: checkInTime,
-      submit_time: new Date().toLocaleTimeString('th-TH'),
+      submit_time: new Date().toLocaleTimeString('en-GB'),
       status: 'ส่งแล้ว',
       completed_tasks: summary.completedTasks,
       pending_tasks:   summary.pendingTasks,
