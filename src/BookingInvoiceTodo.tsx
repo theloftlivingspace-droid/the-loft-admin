@@ -577,7 +577,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     .sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
 
   return (
-    <div className="relative">
+    <div className="relative pb-24">
       {viewerDocs && <DocViewer docs={viewerDocs} onClose={() => setViewerDocs(null)} />}
 
       <div className="flex items-center justify-between mb-4">

@@ -561,7 +561,7 @@ export default function CheckInOut() {
   const viewerDocs = viewerKey ? (docs[viewerKey] || []) : [];
 
   return (
-    <div className="pb-8">
+    <div className="pb-24">
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp"
         multiple className="hidden" onChange={handleFileChange} />

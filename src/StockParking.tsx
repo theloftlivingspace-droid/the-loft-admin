@@ -290,7 +290,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const typeOpts = ['Car','Motorcycle'];
 
   return (
-    <div>
+    <div className="pb-24">
       {sectionNav([
         {key:'stock',      label:'Stock',        emoji:'📦'},
         {key:'parking-in', label:'Car · In',      emoji:'🚗'},
