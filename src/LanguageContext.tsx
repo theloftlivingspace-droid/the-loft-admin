@@ -45,6 +45,21 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_no_data:           { th: 'ไม่มีข้อมูล', en: 'No data' },
   ci_last_refresh:      { th: 'อัปเดต', en: 'Updated' },
   ci_today_label:       { th: 'วันนี้', en: 'Today' },
+  ci_in_hotel:          { th: 'อยู่ในโรงแรม', en: 'In hotel' },
+  ci_filter_all:        { th: 'ทั้งหมด', en: 'All' },
+  ci_filter_checkedin:  { th: 'อยู่แล้ว', en: 'Checked in' },
+  ci_filter_checkouts:  { th: 'เช็คเอาท์วันนี้', en: 'Checking out today' },
+  ci_filter_arrivals:   { th: 'กำลังเข้า', en: 'Arriving' },
+  ci_checkin_tm30:      { th: 'เช็คอิน + TM30', en: 'Check-in + TM30' },
+  ci_arrives_in:        { th: 'เข้าในอีก', en: 'Arrives in' },
+  ci_days:              { th: 'วัน', en: 'days' },
+  ci_today_exclaim:     { th: 'วันนี้!', en: 'Today!' },
+  ci_edit_note:         { th: 'แก้ Note', en: 'Edit Note' },
+  ci_uploading:         { th: 'กำลังอัปโหลด…', en: 'Uploading…' },
+  ci_checkout_done_label: { th: 'แล้ว', en: 'done' },
+  ci_cancelled_booking: { th: 'ยกเลิก Booking', en: 'Booking Cancelled' },
+  ci_no_show:           { th: 'No Show', en: 'No Show' },
+  ci_remaining_nights:  { th: 'เหลือ', en: 'Remaining' },
 };
 
 type TranslationKey = keyof typeof DICT;

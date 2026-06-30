@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLang } from './LanguageContext';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Proxied through /api/gas-proxy (Vercel serverless function) because Google
@@ -128,10 +129,10 @@ async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
 }
 
 const STATUS_CONFIG = {
-  'checked-in':        { label: 'เช็คอินแล้ว',       bg: 'bg-emerald-500', text: 'text-white',        dot: 'bg-white' },
-  'arriving-today':    { label: 'เข้าวันนี้',          bg: 'bg-amber-400',   text: 'text-amber-900',    dot: 'bg-amber-900' },
-  'checking-out-today':{ label: 'เช็คเอาท์วันนี้',    bg: 'bg-orange-500',  text: 'text-white',        dot: 'bg-white' },
-  'arriving-soon':     { label: 'เข้าเร็วๆ นี้',      bg: 'bg-sky-400',     text: 'text-white',        dot: 'bg-white' },
+  'checked-in':        { labelKey: 'ci_checked_in_done',    bg: 'bg-emerald-500', text: 'text-white',        dot: 'bg-white' },
+  'arriving-today':    { labelKey: 'ci_arriving_today',     bg: 'bg-amber-400',   text: 'text-amber-900',    dot: 'bg-amber-900' },
+  'checking-out-today':{ labelKey: 'ci_checking_out_today', bg: 'bg-orange-500',  text: 'text-white',        dot: 'bg-white' },
+  'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: 'bg-sky-400',     text: 'text-white',        dot: 'bg-white' },
 };
 
 // ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
@@ -200,6 +201,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CheckInOut() {
+  const { t } = useLang();
   const [stays, setStays]           = useState<Stay[]>([]);
   const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
   const [loading, setLoading]       = useState(true);
@@ -570,7 +572,7 @@ export default function CheckInOut() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-bold text-blue-950">สถานะห้องพัก</h2>
-          <p className="text-xs text-gray-400">อัปเดต {lastRefresh} · วันนี้ {today()}</p>
+          <p className="text-xs text-gray-400">{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
         </div>
         <div className="flex items-center gap-2">
           <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
@@ -587,10 +589,10 @@ export default function CheckInOut() {
       {/* Summary KPI row */}
       <div className="grid grid-cols-4 gap-2 mb-5">
         {[
-          { label: 'อยู่ในโรงแรม', val: counts.checkedin,  icon: '🛏️',  color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-          { label: 'เช็คเอาท์วันนี้', val: counts.checkouts, icon: '🧳',  color: 'bg-orange-50 border-orange-200 text-orange-700' },
-          { label: 'เข้าวันนี้',   val: counts.today_ci,  icon: '📥',  color: 'bg-amber-50 border-amber-200 text-amber-700' },
-          { label: 'เข้าเร็วๆ นี้', val: counts.arrivals - counts.today_ci, icon: '📅', color: 'bg-sky-50 border-sky-200 text-sky-700' },
+          { label: t('ci_in_hotel'), val: counts.checkedin,  icon: '🛏️',  color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+          { label: t('ci_checking_out_today'), val: counts.checkouts, icon: '🧳',  color: 'bg-orange-50 border-orange-200 text-orange-700' },
+          { label: t('ci_arriving_today'),   val: counts.today_ci,  icon: '📥',  color: 'bg-amber-50 border-amber-200 text-amber-700' },
+          { label: t('ci_arriving_soon'), val: counts.arrivals - counts.today_ci, icon: '📅', color: 'bg-sky-50 border-sky-200 text-sky-700' },
         ].map(k => (
           <div key={k.label} className={`rounded-2xl border p-3 text-center ${k.color}`}>
             <div className="text-xl mb-0.5">{k.icon}</div>
@@ -603,10 +605,10 @@ export default function CheckInOut() {
       {/* Filter tabs */}
       <div className="flex gap-1.5 mb-4 bg-gray-100 rounded-2xl p-1">
         {([
-          { key: 'all',       label: `ทั้งหมด (${stays.length})` },
-          { key: 'checkedin', label: `อยู่แล้ว (${counts.checkedin})` },
-          { key: 'checkouts', label: `เช็คเอาท์วันนี้ (${counts.checkouts})` },
-          { key: 'arrivals',  label: `กำลังเข้า (${counts.arrivals})` },
+          { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
+          { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
+          { key: 'checkouts', label: `${t('ci_filter_checkouts')} (${counts.checkouts})` },
+          { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setView(t.key)}
             className={`flex-1 px-2 py-1.5 text-xs rounded-xl font-medium transition
@@ -618,7 +620,7 @@ export default function CheckInOut() {
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">ไม่มีข้อมูล</div>
+        <div className="text-center py-12 text-gray-400 text-sm">{t('ci_no_data')}</div>
       ) : (
         <div className="space-y-3">
           {filtered.map(s => {
@@ -665,11 +667,11 @@ export default function CheckInOut() {
                                 : isCheckedIn  ? 'bg-emerald-500'
                                 : isNoShow     ? 'bg-gray-400'
                                                : cfg.bg;
-            const topBarLabel  = isCancelled  ? '🚫 ยกเลิก Booking'
-                                : isCheckedOut ? '🧳 Checked Out แล้ว'
-                                : isCheckedIn  ? '✅ เช็คอินแล้ว'
-                                : isNoShow     ? '⚠️ No Show'
-                                               : cfg.label;
+            const topBarLabel  = isCancelled  ? `🚫 ${t('ci_cancelled_booking')}`
+                                : isCheckedOut ? `🧳 ${t('ci_checked_out_done')}`
+                                : isCheckedIn  ? `✅ ${t('ci_checked_in_done')}`
+                                : isNoShow     ? `⚠️ ${t('ci_no_show')}`
+                                               : t(cfg.labelKey);
             const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
             const dotCls       = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
 
@@ -685,14 +687,14 @@ export default function CheckInOut() {
                   <div className="flex items-center gap-2">
                     {s.status === 'checked-in' && (
                       <span className={`text-xs ${cfg.text} opacity-80`}>
-                        เหลือ {s.daysLeft} คืน · เช็คเอาท์ {s.checkout}
+                        {t('ci_remaining_nights')} {s.daysLeft} {t('ci_nights')} · {t('ci_checkout_label')} {s.checkout}
                       </span>
                     )}
                     {s.status === 'arriving-soon' && (
-                      <span className={`text-xs ${cfg.text} opacity-90`}>เข้าในอีก {s.daysUntil} วัน</span>
+                      <span className={`text-xs ${cfg.text} opacity-90`}>{t('ci_arrives_in')} {s.daysUntil} {t('ci_days')}</span>
                     )}
                     {s.status === 'arriving-today' && (
-                      <span className={`text-xs ${cfg.text} opacity-90`}>วันนี้!</span>
+                      <span className={`text-xs ${cfg.text} opacity-90`}>{t('ci_today_exclaim')}</span>
                     )}
                   </div>
                 </div>
@@ -759,15 +761,15 @@ export default function CheckInOut() {
                     return (
                       <div className="flex border border-gray-100 rounded-xl overflow-hidden mb-2">
                         <div className="flex-1 px-3 py-2">
-                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คอิน</div>
+                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">{t('ci_checkin_label')}</div>
                           <div className="text-xl font-semibold text-gray-900 leading-none">{ci.day}</div>
                           <div className="text-xs text-gray-500 mt-0.5">{ci.month} {ci.year}</div>
                         </div>
                         <div className="flex items-center justify-center px-3 bg-gray-50 text-[11px] text-gray-400 font-medium border-x border-gray-100">
-                          {s.nights}<br/>คืน
+                          {s.nights}<br/>{t('ci_nights')}
                         </div>
                         <div className="flex-1 px-3 py-2">
-                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">เช็คเอาท์</div>
+                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">{t('ci_checkout_label')}</div>
                           <div className={`text-xl font-semibold leading-none ${isCheckoutToday ? 'text-orange-600' : 'text-gray-900'}`}>{co2.day}</div>
                           <div className={`text-xs mt-0.5 ${isCheckoutToday ? 'text-orange-400' : 'text-gray-500'}`}>{co2.month} {co2.year}</div>
                         </div>
@@ -780,7 +782,7 @@ export default function CheckInOut() {
                     {s.note && <p className="flex-1 text-xs text-gray-400 italic truncate">📝 {s.note}</p>}
                     <button onClick={() => openNoteModal(s)}
                       className="text-[11px] border border-yellow-300 text-yellow-700 font-semibold rounded-lg px-2 py-1 hover:bg-yellow-50 transition whitespace-nowrap">
-                      {s.note ? '✏️ แก้ Note' : '📝 เพิ่ม Note'}
+                      {s.note ? `✏️ ${t('ci_edit_note')}` : `📝 ${t('ci_add_note')}`}
                     </button>
                   </div>
 
@@ -792,14 +794,14 @@ export default function CheckInOut() {
                         <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
                           onClick={() => markCheckedIn(s.resId)}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm">
-                          ✅ เช็คอิน + TM30
+                          ✅ {t('ci_checkin_tm30')}
                         </a>
                       )}
                       {/* เช็คอินแล้ว — badge + ปุ่ม checkout */}
                       {isCheckedIn && (
                         <>
                           <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
-                            ✅ เช็คอินแล้ว
+                            ✅ {t('ci_checked_in_done')}
                           </span>
                           <button
                             disabled={checkoutSaving === s.resId}
@@ -853,13 +855,13 @@ export default function CheckInOut() {
                       disabled={isUploading}
                       onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
                       className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
-                      {isUploading ? '⏳ กำลังอัปโหลด…' : '📎 อัปโหลดเอกสาร'}
+                      {isUploading ? `⏳ ${t('ci_uploading')}` : `📎 ${t('ci_upload_doc')}`}
                     </button>
                     {!docsLoading && cardDocs.length > 0 && (
                       <button
                         onClick={() => setViewerKey(cardKey)}
                         className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
-                        🗂 ดูเอกสาร ({cardDocs.length})
+                        🗂 {t('ci_view_docs')} ({cardDocs.length})
                       </button>
                     )}
                   </div>
@@ -868,8 +870,8 @@ export default function CheckInOut() {
                 {/* Checkout details (for checkout-today only) */}
                 {s.status === 'checking-out-today' && co && (
                   <div className="mx-4 mb-3 p-2.5 bg-gray-50 rounded-xl text-[11px] text-gray-500 space-y-0.5">
-                    {co.cleanedBy   && <div>🧹 ทำความสะอาด: <span className="text-gray-700">{co.cleanedBy}</span></div>}
-                    {co.inspectedBy && <div>👁️ ตรวจโดย: <span className="text-gray-700">{co.inspectedBy}</span></div>}
+                    {co.cleanedBy   && <div>🧹 {t('ci_cleaned_by')}: <span className="text-gray-700">{co.cleanedBy}</span></div>}
+                    {co.inspectedBy && <div>👁️ {t('ci_inspected_by')}: <span className="text-gray-700">{co.inspectedBy}</span></div>}
                     {co.issues      && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
                   </div>
                 )}
