@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLang } from './LanguageContext';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = '/api/gas-proxy?app=todo';
@@ -321,6 +322,7 @@ function fallbackCopy(text: string): void {
 
 // ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
 function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) {
+  const { t } = useLang();
   const [idx, setIdx] = useState(0);
   const doc = docs[idx];
 
@@ -350,7 +352,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ ดาวน์โหลด</a>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">{t('bi_download')}</a>
           <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
         </div>
       </div>
@@ -361,7 +363,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
           <div className="bg-white rounded-xl p-8 text-center text-gray-500">
             <div className="text-4xl mb-3">📄</div>
             <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">คลิกเพื่อดาวน์โหลด</a>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{t('bi_click_to_download')}</a>
           </div>
         )}
       </div>
@@ -452,6 +454,7 @@ function otaTheme(channel: string) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BookingInvoiceTodo({ initialTab, onCountChange }: { initialTab?: 'booking' | 'invoice'; onCountChange?: (booking: number, invoice: number) => void } = {}) {
+  const { t } = useLang();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -505,7 +508,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       }
       setData(enrichData(json));
     } catch (e) {
-      setError('โหลดข้อมูลไม่สำเร็จ: ' + String(e));
+      setError(t('bi_load_failed') + String(e));
     } finally { setLoading(false); }
   }, []);
 
@@ -516,7 +519,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     setTogglingId(resId);
     setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done } : x) } : d);
     try { await fetch(`${GAS_API}&action=setBookingDone&id=${encodeURIComponent(resId)}&done=${done}`); }
-    catch { setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
+    catch { setData(d => d ? { ...d, booking: d.booking.map(x => x.resId === resId ? { ...x, done: !done } : x) } : d); showToast(t('bi_save_failed')); }
     setTogglingId('');
   };
 
@@ -525,7 +528,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     setTogglingId(invoiceKey);
     setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done } : x) } : d);
     try { await fetch(`${GAS_API}&action=setInvoiceDone&id=${encodeURIComponent(invoiceKey)}&done=${done}`); }
-    catch { setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d); showToast('บันทึกไม่สำเร็จ'); }
+    catch { setData(d => d ? { ...d, invoice: d.invoice.map(x => x.invoiceKey === invoiceKey ? { ...x, done: !done } : x) } : d); showToast(t('bi_save_failed')); }
     setTogglingId('');
   };
 
@@ -535,7 +538,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       setHighlighted(id);
       const el = document.querySelector(`[data-itemid="${CSS.escape(id)}"]`);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      else showToast('ไม่พบรายการที่ตรงกัน (อาจถูกซ่อนอยู่ — ลองกด "แสดงทั้งหมด")');
+      else showToast(t('bi_no_match_found'));
       setTimeout(() => setHighlighted(''), 3000);
     }, 80);
   };
@@ -550,12 +553,12 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
   if (loading) return (
     <div className="flex items-center justify-center py-6 text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
-      กำลังโหลดข้อมูล...
+      {t('bi_loading_data')}
     </div>
   );
   if (error) return (
     <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-      ⚠️ {error}<button onClick={loadData} className="ml-4 underline">ลองใหม่</button>
+      ⚠️ {error}<button onClick={loadData} className="ml-4 underline">{t('bi_retry')}</button>
     </div>
   );
   if (!data) return null;
@@ -580,10 +583,10 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
-          <p className="text-xs text-gray-400">วันนี้: {data.today}</p>
+          <p className="text-xs text-gray-400">{t('bi_today_label')} {data.today}</p>
         </div>
         <button onClick={() => { loadData(); refreshDocs(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
-          🔄 รีเฟรช
+          {t('bi_refresh')}
         </button>
       </div>
 
@@ -594,7 +597,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อแขก…"
+          placeholder={t('bi_search_guest')}
           className="w-full pl-9 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
         />
         {search && (
@@ -607,16 +610,16 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
         {([
           { key: 'booking', label: '📅 Booking To Add', count: bookingPending, flag: bookingNewToday },
           { key: 'invoice', label: '🧾 Invoice To Create', count: invoicePending, flag: invoiceNewToday },
-        ] as const).map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
+        ] as const).map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex-1 pb-3 pt-2 text-sm font-semibold border-b-2 transition-colors
-              ${activeTab === t.key ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            {t.label}
+              ${activeTab === tab.key ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            {tab.label}
             <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold
-              ${t.count > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-              {t.count}
+              ${tab.count > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+              {tab.count}
             </span>
-            {t.flag > 0 && <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">+{t.flag}</span>}
+            {tab.flag > 0 && <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">+{tab.flag}</span>}
           </button>
         ))}
       </div>
@@ -624,13 +627,13 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       {activeTab === 'booking' && (
         <div>
           <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
-            <span>ทั้งหมด {data.booking.length} • ค้าง {bookingPending} • ใหม่วันนี้ {bookingNewToday}</span>
+            <span>{t('bi_total')} {data.booking.length} • {t('bi_pending')} {bookingPending} • {t('bi_new_today')} {bookingNewToday}</span>
             <button onClick={() => setShowDoneBooking(v => !v)} className="text-blue-600 underline">
-              {showDoneBooking ? 'ซ่อนรายการที่ทำแล้ว' : 'แสดงทั้งหมด'}
+              {showDoneBooking ? t('bi_hide_done') : t('bi_show_all')}
             </button>
           </div>
           {visibleBooking.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleBooking.map(item => {
                 const matchedInvoices = findMatches(item, data.invoice);
                 const isHl = highlighted === item.resId;
@@ -656,7 +659,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                         <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
                         <span className={`text-[13px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
                         {item.isNewToday && !item.done && (
-                          <span className="text-[13px] bg-yellow-200 text-yellow-900 rounded-full px-1 py-px font-bold flex-shrink-0">ใหม่</span>
+                          <span className="text-[13px] bg-yellow-200 text-yellow-900 rounded-full px-1 py-px font-bold flex-shrink-0">{t('bi_new_badge')}</span>
                         )}
                         <button
                           onClick={() => {
@@ -681,15 +684,15 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                         return (
                           <div className={`flex mt-0.5 ${th.dateBox}`}>
                             <div className="flex-1 px-1.5 py-0.5">
-                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คอิน</div>
+                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>{t('bi_checkin_label')}</div>
                               <div className={`text-base font-semibold leading-none ${th.dateVal}`}>{ci.day}</div>
                               <div className={`text-[13px] ${th.dateSub}`}>{ci.month} '{ci.year}</div>
                             </div>
                             <div className={`flex items-center justify-center px-1.5 text-[13px] font-medium text-center leading-tight ${th.nightBg}`}>
-                              <span className={`font-semibold ${th.nightNum}`}>{nights}</span>&nbsp;คืน
+                              <span className={`font-semibold ${th.nightNum}`}>{nights}</span>&nbsp;{t('bi_nights_unit')}
                             </div>
                             <div className="flex-1 px-1.5 py-0.5">
-                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>เช็คเอาท์</div>
+                              <div className={`text-[10px] uppercase tracking-widest ${th.dateLbl}`}>{t('bi_checkout_label')}</div>
                               <div className={`text-sm font-semibold leading-none ${th.dateVal}`}>{co.day}</div>
                               <div className={`text-[10px] ${th.dateSub}`}>{co.month} '{co.year}</div>
                             </div>
@@ -705,7 +708,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                           </button>
                         )}
                         {matchedInvoices.length === 0
-                          ? <span className="text-[13px] border rounded px-1 py-px text-gray-400">🧾 ไม่มี Invoice</span>
+                          ? <span className="text-[13px] border rounded px-1 py-px text-gray-400">{t('bi_no_invoice')}</span>
                           : matchedInvoices.map(inv => (
                               <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
                                 className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
@@ -726,13 +729,13 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       {activeTab === 'invoice' && (
         <div>
           <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
-            <span>ทั้งหมด {data.invoice.length} • ค้าง {invoicePending} • ตรวจพบวันนี้ {invoiceNewToday}</span>
+            <span>{t('bi_total')} {data.invoice.length} • {t('bi_pending')} {invoicePending} • {t('bi_detected_today')} {invoiceNewToday}</span>
             <button onClick={() => setShowDoneInvoice(v => !v)} className="text-blue-600 underline">
-              {showDoneInvoice ? 'ซ่อนรายการที่ทำแล้ว' : 'แสดงทั้งหมด'}
+              {showDoneInvoice ? t('bi_hide_done') : t('bi_show_all')}
             </button>
           </div>
           {visibleInvoice.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `ไม่พบ "${search}"` : 'ไม่มีรายการ'}</p>
+            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleInvoice.map(item => {
                 const matchedBookings = findMatches(item, data.booking);
                 const isHl = highlighted === item.invoiceKey;
@@ -747,24 +750,24 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                       className="w-5 h-5 mt-0.5 accent-blue-600 flex-shrink-0 cursor-pointer" />
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-bold text-sm">ห้อง {item.room} — {item.guest}</span>
-                        {item.detectedToday && <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">ตรวจพบวันนี้</span>}
-                        {item.isSplitFromMulti && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">รายการ {item.splitIndex}/{item.splitTotal}</span>}
+                        <span className="font-bold text-sm">{t('bi_room_prefix')} {item.room} — {item.guest}</span>
+                        {item.detectedToday && <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">{t('bi_detected_today')}</span>}
+                        {item.isSplitFromMulti && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{t('bi_item_index')} {item.splitIndex}/{item.splitTotal}</span>}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">
-                        {item.checkin} → {item.checkout}{item.nights ? ` (${item.nights} คืน)` : ''}
+                        {item.checkin} → {item.checkout}{item.nights ? ` (${item.nights} ${t('bi_nights_unit')})` : ''}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.ota}</span>
                         <span className="text-xs bg-green-100 text-green-700 font-bold rounded-lg px-2 py-0.5 flex items-center gap-1">
                           NET ฿{formatNum(item.net)}
-                          {item.isSplitFromMulti && <span className="font-normal opacity-60">(รวม ฿{formatNum(item.groupNet)})</span>}
-                          <button onClick={() => { copyToClipboard(String(item.net).replace(/,/g,'')); showToast('คัดลอกแล้ว: ' + item.net); }}
-                            className="ml-0.5 hover:text-green-900 transition" title="copy ยอด">⎘</button>
+                          {item.isSplitFromMulti && <span className="font-normal opacity-60">({t('bi_combined')} ฿{formatNum(item.groupNet)})</span>}
+                          <button onClick={() => { copyToClipboard(String(item.net).replace(/,/g,'')); showToast(t('bi_copied_label') + ' ' + item.net); }}
+                            className="ml-0.5 hover:text-green-900 transition" title={t('bi_copy_amount_title')}>⎘</button>
                         </span>
-                        <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">ตรวจพบ {item.detectedDate}</span>
+                        <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{t('bi_detected_label')} {item.detectedDate}</span>
                         {matchedBookings.length === 0
-                          ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">📅 ไม่มี Booking</button>
+                          ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">{t('bi_no_booking')}</button>
                           : matchedBookings.map(bk => (
                               <button key={bk.resId} onClick={() => jumpTo('booking', bk.resId)}
                                 className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
