@@ -233,6 +233,7 @@ export default function CheckInOut() {
     try { return new Set(JSON.parse(localStorage.getItem('ci_cancel') || '[]')); } catch { return new Set(); }
   });
   const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
+  const [cancelModal,   setCancelModal]   = useState<Stay | null>(null);
   const [cancelSaving,  setCancelSaving]  = useState(false);
 
   // ── Early checkout state ─────────────────────────────────────────────────
@@ -732,6 +733,15 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <span className={`text-xs ${cfg.text} opacity-90`}>{t('ci_today_exclaim')}</span>
                     )}
+                    {/* ปุ่มยกเลิกเล็กๆ มุมขวาบน */}
+                    {!isCancelled && !isCheckedOut && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setCancelModal(s); }}
+                        className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center text-white/80 hover:text-white text-[10px] font-bold transition leading-none"
+                        title="ยกเลิกการจอง">
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -847,60 +857,15 @@ export default function CheckInOut() {
                           </button>
                         </>
                       )}
-                      {/* No show — badge + ปุ่ม cancel */}
+                      {/* No show — badge */}
                       {isNoShow && (
-                        <>
-                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-300">
-                            ⚠️ {t('ci_no_show')}
-                          </span>
-                          {cancelConfirm !== s.resId && (
-                            <button onClick={() => setCancelConfirm(s.resId)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
-                              {t('ci_cancel_booking_btn')}
-                            </button>
-                          )}
-                          {cancelConfirm === s.resId && (
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
-                              <span className="text-xs text-red-700 font-medium">{t('ci_confirm_cancel_q')}</span>
-                              <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
-                                className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
-                                {cancelSaving ? '...' : t('ci_confirm')}
-                              </button>
-                              <button onClick={() => setCancelConfirm(null)}
-                                className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
-                                {t('ci_no')}
-                              </button>
-                            </div>
-                          )}
-                        </>
+                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-300">
+                          ⚠️ {t('ci_no_show')}
+                        </span>
                       )}
                     </div>
                   )}
 
-                  {/* Cancel button — arriving-soon (ยังไม่ถึงวันเข้าพัก) */}
-                  {s.status === 'arriving-soon' && !isCancelled && (
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      {cancelConfirm !== s.resId && (
-                        <button onClick={() => setCancelConfirm(s.resId)}
-                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
-                          🚫 {t('ci_cancel_booking_btn')}
-                        </button>
-                      )}
-                      {cancelConfirm === s.resId && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
-                          <span className="text-xs text-red-700 font-medium">{t('ci_confirm_cancel_q')}</span>
-                          <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
-                            className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
-                            {cancelSaving ? '...' : t('ci_confirm')}
-                          </button>
-                          <button onClick={() => setCancelConfirm(null)}
-                            className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
-                            {t('ci_no')}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                   {/* Checked out badge */}
                   {isCheckedOut && (
                     <div className="mb-3">
@@ -952,6 +917,33 @@ export default function CheckInOut() {
           <span>{t('ci_legend_unknown')}</span>
         </div>
       </div>
+
+      {/* Cancel confirmation modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🚫</div>
+              <p className="font-bold text-gray-900 text-base">{t('ci_confirm_cancel_q')}</p>
+              <p className="text-sm text-gray-500 mt-1">ห้อง {cancelModal.room} · {cancelModal.guest}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{cancelModal.checkin} → {cancelModal.checkout}</p>
+              <p className="text-xs text-orange-500 mt-2">⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้</p>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setCancelModal(null)}
+                className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                {t('ci_no')}
+              </button>
+              <button
+                disabled={cancelSaving}
+                onClick={async () => { await confirmCancel(cancelModal); setCancelModal(null); }}
+                className="flex-1 bg-red-500 hover:bg-red-600 rounded-xl py-2.5 text-sm font-bold text-white transition disabled:opacity-50">
+                {cancelSaving ? '⏳...' : `🚫 ${t('ci_confirm')}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {noteModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
