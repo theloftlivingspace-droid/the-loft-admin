@@ -308,7 +308,6 @@ export default function CheckInOut() {
       showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCancelSaving(false);
-      setCancelConfirm(null);
     }
   }
   const fileInputRef = useRef<HTMLInputElement>(null);
