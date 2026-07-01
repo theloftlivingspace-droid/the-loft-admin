@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLang } from './LanguageContext';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
@@ -66,10 +66,145 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
-export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
+
+// ── Patrol types & helpers ────────────────────────────────────────────────
+interface PatrolUnknown { id: string; plate: string; timestamp: string; photos: string[]; notes: string; spotNumber: string }
+
+async function compressImg(dataUrl: string): Promise<string> {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, 800 / Math.max(img.width || 1, img.height || 1));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function nowTH() {
+  return new Date().toLocaleString('th-TH', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false, timeZone: 'Asia/Bangkok',
+  });
+}
+
+function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: string) => void; t: (k: string) => string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setOpen(x => !x)}>
+        {u.photos[0]
+          ? <img src={u.photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
+          : <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl">🚗</div>}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono font-bold text-sm text-gray-900">{u.plate || '—'}</span>
+            <span className="bg-red-100 text-red-800 border border-red-200 text-xs px-2 py-0.5 rounded-full font-medium">
+              {t('sp_patrol_unknown_badge')}
+            </span>
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">{u.timestamp}</div>
+          {u.spotNumber && <div className="text-xs text-gray-400">{t('sp_patrol_spot_label')}: {u.spotNumber}</div>}
+        </div>
+        <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div className="px-3 pb-3 border-t border-gray-100 pt-3 space-y-2">
+          {u.photos.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {u.photos.map((p, i) => (
+                <img key={i} src={p} alt="" className="h-24 w-24 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
+              ))}
+            </div>
+          )}
+          {u.notes && <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-2">{u.notes}</p>}
+          <button onClick={() => onDelete(u.id)}
+            className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors">
+            🗑 {t('sp_delete')}
+          </button>
+        </div>
+      )}
+
+      {/* ── PATROL FORM MODAL ── */}
+      {showPatrolForm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-between">
+              <span className="font-semibold">🚨 {t('sp_patrol_form_title')}</span>
+              <button onClick={() => setShowPatrolForm(false)} className="text-white/80 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <div className="p-4 space-y-3 max-h-[80vh] overflow-y-auto">
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_timestamp_label')}</label>
+                <div className="mt-1 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">{nowTH()}</div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_plate_label')} *</label>
+                <input value={pPlate} onChange={e => setPPlate(e.target.value.toUpperCase())}
+                  placeholder="กข 1234 / BT 5678"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_spot_label')}</label>
+                <input value={pSpot} onChange={e => setPSpot(e.target.value)}
+                  placeholder={t('sp_patrol_spot_placeholder')}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_photos_label')} (max 4)</label>
+                {pPhotos.length < 4 && (
+                  <button onClick={() => patrolFileRef.current?.click()}
+                    className="mt-1 w-full border-2 border-dashed border-gray-300 rounded-xl py-4 text-sm text-gray-500 hover:border-red-400 hover:text-red-500 transition-colors flex flex-col items-center gap-1">
+                    <span className="text-2xl">📷</span>
+                    <span>{t('sp_patrol_photo_btn')}</span>
+                  </button>
+                )}
+                <input ref={patrolFileRef} type="file" accept="image/*" multiple capture="environment"
+                  onChange={handlePatrolFiles} className="hidden" />
+                {pPhotos.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {pPhotos.map((p, i) => (
+                      <div key={i} className="relative">
+                        <img src={p} alt="" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
+                        <button onClick={() => setPPhotos(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center leading-none">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_notes_label')}</label>
+                <textarea value={pNotes} onChange={e => setPNotes(e.target.value)}
+                  placeholder={t('sp_patrol_notes_placeholder')} rows={2}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowPatrolForm(false)}
+                  className="flex-1 border border-gray-300 rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  {t('sp_cancel')}
+                </button>
+                <button onClick={savePatrolUnknown}
+                  className="flex-1 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm">
+                  🚨 {t('sp_patrol_save_btn')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
-  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>(initialTab ?? 'stock');
+  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>(initialTab ?? 'stock');
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
   useEffect(() => { window.scrollTo(0, 0); }, [section]);
   const [saving, setSaving] = useState('');
@@ -235,7 +370,67 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     setShowWModal(false);
   };
 
+
+  // ── patrol ─────────────────────────────────────────────────────────────────
+  const [patrolUnknowns, setPatrolUnknowns] = useState<PatrolUnknown[]>([]);
+  const [patrolSearch,   setPatrolSearch]   = useState('');
+  const [patrolSearched, setPatrolSearched] = useState(false);
+  const [showPatrolForm, setShowPatrolForm] = useState(false);
+  const [pPlate, setPPlate] = useState('');
+  const [pSpot,  setPSpot]  = useState('');
+  const [pNotes, setPNotes] = useState('');
+  const [pPhotos,setPPhotos]= useState<string[]>([]);
+  const patrolFileRef = useRef<HTMLInputElement>(null);
+
   // ── Supabase save/load ────────────────────────────────────────────────────
+
+  // ── patrol helpers ─────────────────────────────────────────────────────────
+  function normQ(s: string) { return s.replace(/\s+/g, '').toLowerCase(); }
+  function patrolHits() {
+    const q = normQ(patrolSearch);
+    if (q.length < 2) return [];
+    return [
+      ...parkingIn.map(r => ({ plate: r.plate, label: `${t('sp_room_prefix')} ${r.room}`, extra: r.name })),
+      ...parkingOut.map(r => ({ plate: r.plate, label: t('sp_patrol_outside'), extra: r.name })),
+    ].filter(r => normQ(r.plate).includes(q));
+  }
+  function openPatrolForm(plate = '') {
+    setPPlate(plate.toUpperCase()); setPSpot(''); setPNotes(''); setPPhotos([]);
+    setShowPatrolForm(true);
+  }
+  async function handlePatrolFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []).slice(0, 4 - pPhotos.length);
+    const imgs = await Promise.all(files.map(f => new Promise<string>(res => {
+      const reader = new FileReader();
+      reader.onload = async ev => res(await compressImg(ev.target!.result as string));
+      reader.readAsDataURL(f);
+    })));
+    setPPhotos(prev => [...prev, ...imgs]);
+    e.target.value = '';
+  }
+  async function savePatrolUnknown() {
+    if (!pPlate.trim()) { alert(t('sp_patrol_plate_required')); return; }
+    const entry: PatrolUnknown = {
+      id: Math.random().toString(36).slice(2, 10),
+      plate: pPlate.trim().toUpperCase(),
+      timestamp: nowTH(),
+      photos: pPhotos,
+      notes: pNotes.trim(),
+      spotNumber: pSpot.trim(),
+    };
+    const next = [entry, ...patrolUnknowns];
+    setPatrolUnknowns(next);
+    setShowPatrolForm(false);
+    setPatrolSearch(''); setPatrolSearched(false);
+    await sbSave('patrol_unknowns', next);
+  }
+  async function deletePatrolUnknown(id: string) {
+    if (!confirm(t('sp_patrol_delete_confirm'))) return;
+    const next = patrolUnknowns.filter(u => u.id !== id);
+    setPatrolUnknowns(next);
+    await sbSave('patrol_unknowns', next);
+  }
+
   const doSave = useCallback(async (key: string, data: unknown) => {
     setSaving(key); setSaved('');
     await sbSave(key, data);
@@ -248,6 +443,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     sbLoad('parking_in').then(d => { if (d) setParkingIn(d); });
     sbLoad('parking_out').then(d => { if (d) setParkingOut(d); });
     sbLoad('warranty_data').then(d => { if (d) setWarrantyData(d); });
+    sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
   }, []);
 
   // ── shared styles ─────────────────────────────────────────────────────────
@@ -295,6 +491,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
         {key:'stock',      label:'Stock',        emoji:'📦'},
         {key:'parking-in', label:'Car · In',      emoji:'🚗'},
         {key:'parking-out',label:'Car · Out',     emoji:'🅿️'},
+        {key:'patrol',     label:t('sp_patrol_tab'),  emoji:'🚨'},
         {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
       ])}
 
@@ -482,6 +679,134 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
         </div>
       )}
 
+
+      {/* ── PATROL ── */}
+      {section === 'patrol' && (
+        <div className="space-y-4">
+          {/* Search box */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {t('sp_patrol_search_label')}
+            </label>
+            <div className="flex gap-2 mt-2">
+              <input
+                value={patrolSearch}
+                onChange={e => { setPatrolSearch(e.target.value); setPatrolSearched(false); }}
+                onKeyDown={e => { if (e.key === 'Enter') setPatrolSearched(true); }}
+                placeholder={t('sp_patrol_plate_placeholder')}
+                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+                autoCapitalize="characters"
+              />
+              <button
+                onClick={() => setPatrolSearched(true)}
+                disabled={normQ(patrolSearch).length < 2}
+                className="bg-blue-900 text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-blue-800 disabled:opacity-40 transition-colors"
+              >
+                {t('sp_patrol_search_btn')}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">{t('sp_patrol_search_hint')}</p>
+          </div>
+
+          {/* Search results */}
+          {patrolSearched && normQ(patrolSearch).length >= 2 && (() => {
+            const hits = patrolHits();
+            if (hits.length > 0) return (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {t('sp_patrol_found_count')} {hits.length}
+                </p>
+                {hits.map((h, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-green-200 shadow-sm p-3 flex items-center gap-3">
+                    <span className="text-2xl">✅</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-sm text-gray-900">{h.plate}</span>
+                        <span className="bg-green-100 text-green-800 border border-green-200 text-xs px-2 py-0.5 rounded-full font-medium">
+                          {t('sp_patrol_found_badge')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{h.label}{h.extra ? ` · ${h.extra}` : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+            return (
+              <div className="bg-red-50 rounded-2xl border border-red-200 p-4 text-center space-y-3">
+                <div className="text-3xl">🚨</div>
+                <div>
+                  <p className="font-semibold text-red-700">{t('sp_patrol_not_found_title')}</p>
+                  <p className="text-sm text-red-600 mt-0.5">
+                    <span className="font-mono font-bold">{patrolSearch.toUpperCase()}</span>
+                    {' '}{t('sp_patrol_not_found_desc')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => openPatrolForm(patrolSearch)}
+                  className="w-full bg-red-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm"
+                >
+                  📋 {t('sp_patrol_add_unknown_btn')}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* Direct log button */}
+          <button
+            onClick={() => openPatrolForm()}
+            className="w-full bg-white border-2 border-dashed border-gray-300 rounded-2xl py-3 text-sm text-gray-500 hover:border-red-400 hover:text-red-500 transition-colors font-medium"
+          >
+            ➕ {t('sp_patrol_add_direct_btn')}
+          </button>
+
+          {/* Unknown vehicles log */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              🚨 {t('sp_patrol_unknown_log_title')} ({patrolUnknowns.length})
+            </p>
+            {patrolUnknowns.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+                <div className="text-4xl mb-2">✅</div>
+                <p className="text-gray-600 font-medium">{t('sp_patrol_no_unknown')}</p>
+                <p className="text-sm text-gray-400 mt-1">{t('sp_patrol_no_unknown_desc')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {patrolUnknowns.map(u => (
+                  <PatrolCard key={u.id} u={u} onDelete={deletePatrolUnknown} t={t} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Reference: all registered plates */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              {t('sp_patrol_registered_list')} ({parkingIn.length + parkingOut.length})
+            </p>
+            <div className="space-y-1.5">
+              {parkingIn.map(r => (
+                <div key={r.id} className="bg-white rounded-xl border border-gray-200 px-3 py-2 flex items-center gap-2">
+                  <span className="text-sm">🚗</span>
+                  <span className="font-mono text-xs font-bold text-blue-800 flex-1 truncate">{r.plate}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{t('sp_room_prefix')} {r.room}</span>
+                  <span className="text-xs text-gray-400 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">{t('sp_patrol_in_building')}</span>
+                </div>
+              ))}
+              {parkingOut.map(r => (
+                <div key={r.id} className="bg-white rounded-xl border border-gray-200 px-3 py-2 flex items-center gap-2">
+                  <span className="text-sm">🚗</span>
+                  <span className="font-mono text-xs font-bold text-amber-800 flex-1 truncate">{r.plate}</span>
+                  {r.name && <span className="text-xs text-gray-500 truncate shrink-0 max-w-[80px]">{r.name}</span>}
+                  <span className="text-xs text-gray-400 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">{t('sp_patrol_outside')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── WARRANTY ── */}
       {section==='warranty' && (
         <div>
@@ -546,6 +871,75 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
               <Field label={t('sp_field_install_date')}><input className={inputCls} type="date" onChange={e=>setNewW(p=>({...p,installed:e.target.value}))} /></Field>
             </Modal>
           )}
+        </div>
+      )}
+
+      {/* ── PATROL FORM MODAL ── */}
+      {showPatrolForm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-between">
+              <span className="font-semibold">🚨 {t('sp_patrol_form_title')}</span>
+              <button onClick={() => setShowPatrolForm(false)} className="text-white/80 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <div className="p-4 space-y-3 max-h-[80vh] overflow-y-auto">
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_timestamp_label')}</label>
+                <div className="mt-1 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">{nowTH()}</div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_plate_label')} *</label>
+                <input value={pPlate} onChange={e => setPPlate(e.target.value.toUpperCase())}
+                  placeholder="กข 1234 / BT 5678"
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_spot_label')}</label>
+                <input value={pSpot} onChange={e => setPSpot(e.target.value)}
+                  placeholder={t('sp_patrol_spot_placeholder')}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_photos_label')} (max 4)</label>
+                {pPhotos.length < 4 && (
+                  <button onClick={() => patrolFileRef.current?.click()}
+                    className="mt-1 w-full border-2 border-dashed border-gray-300 rounded-xl py-4 text-sm text-gray-500 hover:border-red-400 hover:text-red-500 transition-colors flex flex-col items-center gap-1">
+                    <span className="text-2xl">📷</span>
+                    <span>{t('sp_patrol_photo_btn')}</span>
+                  </button>
+                )}
+                <input ref={patrolFileRef} type="file" accept="image/*" multiple capture="environment"
+                  onChange={handlePatrolFiles} className="hidden" />
+                {pPhotos.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {pPhotos.map((p, i) => (
+                      <div key={i} className="relative">
+                        <img src={p} alt="" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
+                        <button onClick={() => setPPhotos(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center leading-none">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_notes_label')}</label>
+                <textarea value={pNotes} onChange={e => setPNotes(e.target.value)}
+                  placeholder={t('sp_patrol_notes_placeholder')} rows={2}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowPatrolForm(false)}
+                  className="flex-1 border border-gray-300 rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  {t('sp_cancel')}
+                </button>
+                <button onClick={savePatrolUnknown}
+                  className="flex-1 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm">
+                  🚨 {t('sp_patrol_save_btn')}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
