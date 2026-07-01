@@ -282,11 +282,10 @@ export default function CheckInOut() {
   async function confirmCancel(s: Stay) {
     setCancelSaving(true);
     try {
-      await fetch(GAS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancelBooking', resId: s.resId, room: s.roomNum, guest: s.guest, checkin: s.checkin, checkout: s.checkout }),
-      });
+      const r = await fetch(`/api/gas-proxy?app=todo&action=cancelBooking&id=${encodeURIComponent(s.resId)}`);
+      let j: { ok?: boolean; error?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
       const next = new Set(cancelledSet).add(s.resId);
       setCancelledSet(next);
       localStorage.setItem('ci_cancel', JSON.stringify([...next]));
@@ -846,6 +845,31 @@ export default function CheckInOut() {
                             </div>
                           )}
                         </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Cancel button — arriving-soon (ยังไม่ถึงวันเข้าพัก) */}
+                  {s.status === 'arriving-soon' && !isCancelled && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {cancelConfirm !== s.resId && (
+                        <button onClick={() => setCancelConfirm(s.resId)}
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition">
+                          🚫 {t('ci_cancel_booking_btn')}
+                        </button>
+                      )}
+                      {cancelConfirm === s.resId && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-100 border border-red-300">
+                          <span className="text-xs text-red-700 font-medium">{t('ci_confirm_cancel_q')}</span>
+                          <button disabled={cancelSaving} onClick={() => confirmCancel(s)}
+                            className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-bold disabled:opacity-50">
+                            {cancelSaving ? '...' : t('ci_confirm')}
+                          </button>
+                          <button onClick={() => setCancelConfirm(null)}
+                            className="px-2 py-1 rounded-lg bg-white text-gray-600 text-xs border">
+                            {t('ci_no')}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
