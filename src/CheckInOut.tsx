@@ -241,18 +241,7 @@ export default function CheckInOut() {
   });
   const [checkoutSaving, setCheckoutSaving] = useState<string | null>(null); // resId being saved
 
-  // ── Local inspection toggle (for checked-in / checking-out-today cards) ──
-  const [localInspectedSet, setLocalInspectedSet] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('ci_inspected') || '[]')); } catch { return new Set(); }
-  });
-  function toggleInspected(cardKey: string) {
-    setLocalInspectedSet(prev => {
-      const next = new Set(prev);
-      if (next.has(cardKey)) { next.delete(cardKey); } else { next.add(cardKey); }
-      localStorage.setItem('ci_inspected', JSON.stringify([...next]));
-      return next;
-    });
-  }
+
 
   async function doCheckout(s: Stay) {
     setCheckoutSaving(s.resId);
@@ -667,37 +656,33 @@ export default function CheckInOut() {
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
-            const roomReady = co?.inspected || localInspectedSet.has(cardKey) ? true : (co?.inspected === false ? false : null);
+            const roomReady = co?.inspected ?? null;
 
             // ── per-card check-in state ──────────────────────────────
-            const isCheckedIn  = ciDoneSet.has(s.resId);
+            const isCheckedIn  = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
             const isCancelled  = cancelledSet.has(s.resId);
             const isCheckedOut = checkedOutSet.has(s.resId);
             const isNoShow     = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn && !isCheckedOut;
-            const isLocallyInspected = localInspectedSet.has(cardKey);
 
             // สี: cancelled=แดง | checkedOut=ส้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
             const cardBorderCls = isCancelled               ? 'border-red-300 bg-red-50'
                                 : isCheckedOut              ? 'border-orange-300 bg-orange-50'
                                 : isCheckedIn               ? 'border-emerald-300 bg-emerald-50'
-                                : isLocallyInspected        ? 'border-emerald-300 bg-emerald-50'
                                 : isNoShow                  ? 'border-gray-300 bg-gray-100'
                                 : s.status==='arriving-soon'? 'border-sky-300 bg-sky-50'
                                                             : 'border-gray-100 bg-white';
             const topBarCls    = isCancelled  ? 'bg-red-500'
                                 : isCheckedOut ? 'bg-orange-500'
                                 : isCheckedIn  ? 'bg-emerald-500'
-                                : isLocallyInspected ? 'bg-emerald-500'
                                 : isNoShow     ? 'bg-gray-400'
                                                : cfg.bg;
             const topBarLabel  = isCancelled  ? `🚫 ${t('ci_cancelled_booking')}`
                                 : isCheckedOut ? `🧳 ${t('ci_checked_out_done')}`
                                 : isCheckedIn  ? `✅ ${t('ci_checked_in_done')}`
-                                : isLocallyInspected ? `✅ Inspected`
                                 : isNoShow     ? `⚠️ ${t('ci_no_show')}`
                                                : t(cfg.labelKey);
-            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow || isLocallyInspected) ? 'text-white' : cfg.text;
-            const dotCls       = (isCancelled || isCheckedOut || isCheckedIn || isNoShow || isLocallyInspected) ? 'bg-white' : cfg.dot;
+            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
+            const dotCls       = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
 
             return (
               <div key={cardKey}
@@ -749,15 +734,13 @@ export default function CheckInOut() {
                     {/* Right status badge */}
                     <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                       {(s.status === 'checking-out-today' || s.status === 'checked-in') && (() => {
-                        const reallyInspected = co?.inspected || localInspectedSet.has(cardKey);
+                        const reallyInspected = co?.inspected;
                         return (
-                          <button
-                            onClick={() => toggleInspected(cardKey)}
-                            className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium active:scale-95 transition-transform
-                              ${reallyInspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+                          <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
+                            ${reallyInspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                              : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
                             <span className="text-base">{reallyInspected ? '🟢' : '🟡'}</span>
-                          </button>
+                          </div>
                         );
                       })()}
                       {s.status === 'arriving-today' && (
