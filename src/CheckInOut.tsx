@@ -232,7 +232,6 @@ export default function CheckInOut() {
   const [cancelledSet, setCancelledSet] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ci_cancel') || '[]')); } catch { return new Set(); }
   });
-  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
   const [cancelModal,   setCancelModal]   = useState<Stay | null>(null);
   const [cancelSaving,  setCancelSaving]  = useState(false);
 
