@@ -272,11 +272,25 @@ export default function CheckInOut() {
     }
   }
 
-  function markCheckedIn(resId: string) {
+  async function markCheckedIn(resId: string) {
+    // Optimistic local update so the UI feels instant on this device.
     const next = new Set(ciDoneSet).add(resId);
     setCiDoneSet(next);
     localStorage.setItem('ci_done', JSON.stringify([...next]));
     showToast(`✅ ${t('ci_checked_in_toast')}`);
+
+    // Persist to the shared sheet so OTHER devices (e.g. the admin's own
+    // phone/PC) see the check-in too — previously this only lived in
+    // this browser's localStorage and never synced anywhere.
+    try {
+      await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markCheckedIn', resId }),
+      });
+    } catch {
+      showToast(`⚠️ ${t('ci_save_failed')}`);
+    }
   }
 
   async function confirmCancel(s: Stay) {
@@ -398,8 +412,22 @@ export default function CheckInOut() {
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus`);
       if (!res.ok) throw new Error(t('ci_load_room_failed'));
-      const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }> } = await res.json();
+      const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
+
+      // Merge server-side (shared) check-in/checkout status into local sets.
+      // This is the source of truth across devices; localStorage is only an
+      // optimistic cache for this browser between refreshes.
+      const serverCheckedIn = new Set(ciDoneSet);
+      const serverCheckedOut = new Set(checkedOutSet);
+      for (const row of json.stays) {
+        if (row.resId && row.checkedInAt) serverCheckedIn.add(row.resId);
+        if (row.resId && row.checkedOutAt) serverCheckedOut.add(row.resId);
+      }
+      setCiDoneSet(serverCheckedIn);
+      setCheckedOutSet(serverCheckedOut);
+      localStorage.setItem('ci_done', JSON.stringify([...serverCheckedIn]));
+      localStorage.setItem('ci_checkout', JSON.stringify([...serverCheckedOut]));
 
       const tod = today();
       const soon = addDays(tod, 5);
