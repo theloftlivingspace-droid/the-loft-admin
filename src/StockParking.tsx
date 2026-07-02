@@ -371,7 +371,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   }, []);
 
   useEffect(() => {
-    sbLoad('stock_data').then(d => { if (d) setStockData(d); });
+    sbLoad('stock_data').then(d => {
+      if (!d) return;
+      // one-time migration: bump old minQty=1 to 2 for these items
+      const fixed = (d as StockItem[]).map(r =>
+        (r.id === 24 || r.id === 25) && r.minQty === 1 ? { ...r, minQty: 2 } : r
+      );
+      setStockData(fixed);
+      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
+    });
     sbLoad('parking_in').then(d => { if (d) setParkingIn(d); });
     sbLoad('parking_out').then(d => { if (d) setParkingOut(d); });
     sbLoad('warranty_data').then(d => { if (d) setWarrantyData(d); });
@@ -468,7 +476,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                           className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">+</button>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
+                    <td className="px-3 py-2 text-xs text-gray-400">
+                      <input type="number" min={0}
+                        value={r.minQty ?? ''}
+                        onChange={e=>{
+                          const v = e.target.value === '' ? undefined : Number(e.target.value);
+                          setStockData(prev => prev.map(x => x.id===r.id ? {...x, minQty:v} : x));
+                        }}
+                        className="w-14 px-1.5 py-0.5 rounded-lg border border-gray-200 text-center focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                    </td>
                     <td className="px-3 py-2 text-gray-500">{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
                     <td className="px-3 py-2 text-gray-400 text-xs">{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
                     <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
