@@ -591,15 +591,15 @@ export default function AdminDailyDashboard() {
               </div>
             )}
             {/* Mobile header — two rows so the brand name/title never truncate */}
-            <div className="flex md:hidden items-center gap-2 min-w-0">
-                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
+            <div className="flex md:hidden items-center gap-3 min-w-0">
+                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 42, height: 42, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="f-thai" style={{ fontSize: 8.5, fontWeight: 700, color: T.brass, letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                  <p className="f-thai" style={{ fontSize: 10.5, fontWeight: 700, color: T.brass, letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap' }}>
                     The Loft Living Space
                   </p>
-                  <h1 className="f-display" style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, marginTop: 1, whiteSpace: 'nowrap' }}>
+                  <h1 className="f-display" style={{ fontSize: 19, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 3, whiteSpace: 'nowrap' }}>
                     {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
                   </h1>
                 </div>
