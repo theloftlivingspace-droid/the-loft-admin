@@ -591,8 +591,7 @@ export default function AdminDailyDashboard() {
               </div>
             )}
             {/* Mobile header — two rows so the brand name/title never truncate */}
-            <div className="flex md:hidden flex-col gap-2.5">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex md:hidden items-center gap-2 min-w-0">
                 <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
@@ -604,27 +603,6 @@ export default function AdminDailyDashboard() {
                     {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
                   </h1>
                 </div>
-              </div>
-              <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
-                  <button
-                    onClick={() => setLang('th')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                    TH
-                  </button>
-                  <button
-                    onClick={() => setLang('en')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                    EN
-                  </button>
-                </div>
-                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-lg px-2 py-1 text-xs focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
-                <button onClick={handleLogout} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                  🚪
-                </button>
-              </div>
             </div>
             {/* Mobile notification banners */}
             {(notifBooking > 0 || notifInvoice > 0 || notifLowStock > 0) && (
@@ -654,13 +632,33 @@ export default function AdminDailyDashboard() {
             <div className="mt-3.5">
               <FoilRule />
             </div>
-            <div className="flex md:hidden items-center gap-1.5 mt-2.5">
+            <div className="flex md:hidden items-center justify-between gap-1.5 mt-2.5">
               <span className="f-thai" style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
                 {(() => {
                   const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stockparking: t('tab_stock'), users: t('adm_tab_users') } as Record<string, string>;
                   return activeLabel[adminTab] || '';
                 })()}
               </span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                  <button
+                    onClick={() => setLang('th')}
+                    className="press focus-ring rounded-full"
+                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                    TH
+                  </button>
+                  <button
+                    onClick={() => setLang('en')}
+                    className="press focus-ring rounded-full"
+                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                    EN
+                  </button>
+                </div>
+                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-lg px-2 py-1 text-xs focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
+                <button onClick={handleLogout} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
+                  🚪
+                </button>
+              </div>
             </div>
           </div>
         </div>
