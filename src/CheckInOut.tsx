@@ -241,38 +241,6 @@ export default function CheckInOut() {
   const [checkedOutSet,  setCheckedOutSet]  = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ci_checkout') || '[]')); } catch { return new Set(); }
   });
-  const [checkoutSaving, setCheckoutSaving] = useState<string | null>(null); // resId being saved
-
-
-
-  async function doCheckout(s: Stay) {
-    setCheckoutSaving(s.resId);
-    try {
-      const todayStr = today();
-      const isEarly  = todayStr < s.checkout;
-      await fetch(GAS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'earlyCheckout',
-          resId: s.resId,
-          room: s.roomNum,
-          guest: s.guest,
-          originalCheckout: s.checkout,
-          newCheckout: todayStr,
-          isEarly,
-        }),
-      });
-      const next = new Set(checkedOutSet).add(s.resId);
-      setCheckedOutSet(next);
-      localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(isEarly ? `🧳 ${t('ci_checkout_early')}` : `🧳 ${t('ci_checkout_simple')}`);
-    } catch {
-      showToast(`❌ ${t('ci_save_failed')}`);
-    } finally {
-      setCheckoutSaving(null);
-    }
-  }
 
   async function markCheckedIn(resId: string) {
     // Optimistic local update so the UI feels instant on this device.
@@ -419,12 +387,22 @@ export default function CheckInOut() {
       // Merge server-side (shared) check-in/checkout status into local sets.
       // This is the source of truth across devices; localStorage is only an
       // optimistic cache for this browser between refreshes.
-      const serverCheckedIn = new Set(ciDoneSet);
-      const serverCheckedOut = new Set(checkedOutSet);
+      const serverCheckedIn = new Set<string>();
+      const serverCheckedOut = new Set<string>();
+      const seenResIds = new Set<string>();
       for (const row of json.stays) {
-        if (row.resId && row.checkedInAt) serverCheckedIn.add(row.resId);
-        if (row.resId && row.checkedOutAt) serverCheckedOut.add(row.resId);
+        if (!row.resId) continue;
+        seenResIds.add(row.resId);
+        if (row.checkedInAt)  serverCheckedIn.add(row.resId);
+        if (row.checkedOutAt) serverCheckedOut.add(row.resId);
       }
+      // Preserve local-only optimistic state for resIds not present in this
+      // payload (e.g. just updated on this device); for resIds the server
+      // DOES report on, the server value wins — so clearing a cell in the
+      // sheet actually reverts the card instead of being stuck on the old
+      // locally-cached value forever.
+      for (const id of ciDoneSet)     if (!seenResIds.has(id)) serverCheckedIn.add(id);
+      for (const id of checkedOutSet) if (!seenResIds.has(id)) serverCheckedOut.add(id);
       setCiDoneSet(serverCheckedIn);
       setCheckedOutSet(serverCheckedOut);
       localStorage.setItem('ci_done', JSON.stringify([...serverCheckedIn]));
@@ -734,15 +712,15 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
-                    {/* ปุ่มมุมขวาบน: เช็คอินแล้ว → checkout, ยังไม่เช็คอิน → ยกเลิก */}
-                    {!isCancelled && !isCheckedOut && (
+                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น
+                        ไม่มีปุ่ม checkout ด้วยมือแล้ว — สถานะเช็คเอาท์ยืนยันผ่านการตรวจห้องเท่านั้น */}
+                    {!isCancelled && !isCheckedOut && (s.status === 'arriving-today' || s.status === 'arriving-soon') && (
                       <button
-                        disabled={checkoutSaving === s.resId}
-                        onClick={e => { e.stopPropagation(); isCheckedIn ? doCheckout(s) : setCancelModal(s); }}
-                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none disabled:opacity-50"
+                        onClick={e => { e.stopPropagation(); setCancelModal(s); }}
+                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
-                        title={isCheckedIn ? t('ci_checkout_btn') : 'ยกเลิกการจอง'}>
-                        {checkoutSaving === s.resId ? '⏳' : isCheckedIn ? '🧳' : '✕'}
+                        title="ยกเลิกการจอง">
+                        ✕
                       </button>
                     )}
                   </div>
