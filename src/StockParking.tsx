@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLang } from './LanguageContext';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -153,25 +156,40 @@ const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
   <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
 );
 
-// ── generic move-up/move-down helper for reorderable lists ─────────────────
-function moveArrItem<T>(setFn: React.Dispatch<React.SetStateAction<T[]>>, idx: number, dir: -1 | 1) {
-  setFn(arr => {
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= arr.length) return arr;
-    const copy = [...arr];
-    [copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]];
-    return copy;
-  });
+// ── drag-and-drop reordering (works with mouse and touch) ──────────────────
+// One row wrapper used inside every reorderable <table>: it turns a <tr>
+// into a drag source/target via dnd-kit's useSortable, driven by the handle
+// rendered inside it (via the `handleProps` render-prop).
+function SortableRow({id, className, children}:{id:number|string; className?:string; children:(handleProps:{attributes: import('@dnd-kit/core').DraggableAttributes; listeners: ReturnType<typeof useSortable>['listeners']})=>React.ReactNode}) {
+  const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? '#eff6ff' : undefined,
+    position: 'relative',
+    zIndex: isDragging ? 1 : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className={className}>
+      {children({attributes, listeners})}
+    </tr>
+  );
 }
 
-const MoveBtns = ({onUp,onDown,upDisabled,downDisabled}:{onUp:()=>void;onDown:()=>void;upDisabled:boolean;downDisabled:boolean}) => (
-  <div className="flex flex-col gap-0.5">
-    <button onClick={onUp} disabled={upDisabled}
-      className="w-6 h-5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-[10px] leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition">▲</button>
-    <button onClick={onDown} disabled={downDisabled}
-      className="w-6 h-5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-[10px] leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition">▼</button>
-  </div>
+const DragHandle = (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button type="button" {...props}
+    className="w-6 h-6 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+    aria-label="drag to reorder">⠿</button>
 );
+
+function useDndSensors() {
+  return useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+}
+
 
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   const { t, lang } = useLang();
@@ -334,18 +352,6 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [showWModal, setShowWModal] = useState(false);
   const [newW, setNewW] = useState<Omit<Warranty,'id'>>({cat:'AIR CONDITIONER',room:'',brand:'',model:'',sn:'',warranty:'',installed:''});
   const delWarranty = (id:number) => setWarrantyData(d=>d.filter(r=>r.id!==id));
-  const moveWarranty = (id:number, dir:-1|1) => setWarrantyData(arr => {
-    const cat = arr.find(r=>r.id===id)?.cat;
-    if (!cat) return arr;
-    const catIdxs = arr.reduce<number[]>((acc,r,idx)=>{ if(r.cat===cat) acc.push(idx); return acc; }, []);
-    const curPos = catIdxs.indexOf(arr.findIndex(r=>r.id===id));
-    const newPos = curPos + dir;
-    if (newPos < 0 || newPos >= catIdxs.length) return arr;
-    const i1 = catIdxs[curPos], i2 = catIdxs[newPos];
-    const copy = [...arr];
-    [copy[i1], copy[i2]] = [copy[i2], copy[i1]];
-    return copy;
-  });
   const addWarranty = () => {
     if(!newW.brand.trim()) return;
     setWarrantyData(d=>[...d,{id:nextWId,...newW}]);
@@ -459,6 +465,46 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   const typeOpts = ['Car','Motorcycle'];
 
+  // ── drag-and-drop reordering ─────────────────────────────────────────────
+  const dndSensors = useDndSensors();
+  const onStockDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setStockData(arr => {
+      const oldIdx = arr.findIndex(r=>r.id===active.id), newIdx = arr.findIndex(r=>r.id===over.id);
+      return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
+    });
+  };
+  const onParkingInDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setParkingIn(arr => {
+      const oldIdx = arr.findIndex(r=>r.id===active.id), newIdx = arr.findIndex(r=>r.id===over.id);
+      return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
+    });
+  };
+  const onParkingOutDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setParkingOut(arr => {
+      const oldIdx = arr.findIndex(r=>r.id===active.id), newIdx = arr.findIndex(r=>r.id===over.id);
+      return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
+    });
+  };
+  // Warranty rows are only ever dragged among currently-visible same-category
+  // rows (SortableContext below is scoped to the filtered list), and same-
+  // category rows are stored contiguously, so a plain arrayMove on the full
+  // array (using each item's real index) reorders correctly without
+  // disturbing other categories.
+  const onWarrantyDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setWarrantyData(arr => {
+      const oldIdx = arr.findIndex(r=>r.id===active.id), newIdx = arr.findIndex(r=>r.id===over.id);
+      return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
+    });
+  };
+
   return (
     <div className="pb-24">
       {sectionNav([
@@ -493,34 +539,37 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 ))}</tr>
               </thead>
               <tbody>
-                {stockData.map((r,i)=>{
-                  const isLow = r.minQty !== undefined && r.qty < r.minQty;
-                  return (
-                  <tr key={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
-                    <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2">
-                      <MoveBtns onUp={()=>moveArrItem(setStockData,i,-1)} onDown={()=>moveArrItem(setStockData,i,1)}
-                        upDisabled={i===0} downDisabled={i===stockData.length-1}/>
-                    </td>
-                    <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
-                      {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        <button onClick={()=>changeQty(r.id,-1)}
-                          className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">−</button>
-                        <span className={`min-w-[28px] text-center font-semibold ${isLow ? 'text-red-600' : ''}`}>{r.qty}</span>
-                        <button onClick={()=>changeQty(r.id,+1)}
-                          className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">+</button>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
-                    <td className="px-3 py-2 text-gray-500">{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
-                    <td className="px-3 py-2 text-gray-400 text-xs">{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
-                    <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
-                  </tr>
-                  );
-                })}
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onStockDragEnd}>
+                  <SortableContext items={stockData.map(r=>r.id)} strategy={verticalListSortingStrategy}>
+                    {stockData.map((r,i)=>{
+                      const isLow = r.minQty !== undefined && r.qty < r.minQty;
+                      return (
+                        <SortableRow key={r.id} id={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                          {(handleProps) => (<>
+                            <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                            <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                            <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
+                              {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1">
+                                <button onClick={()=>changeQty(r.id,-1)}
+                                  className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">−</button>
+                                <span className={`min-w-[28px] text-center font-semibold ${isLow ? 'text-red-600' : ''}`}>{r.qty}</span>
+                                <button onClick={()=>changeQty(r.id,+1)}
+                                  className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">+</button>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
+                            <td className="px-3 py-2 text-gray-500">{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
+                            <td className="px-3 py-2 text-gray-400 text-xs">{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
+                            <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                          </>)}
+                        </SortableRow>
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
               </tbody>
             </table>
           </div>
@@ -559,25 +608,28 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 ))}</tr>
               </thead>
               <tbody>
-                {parkingIn.map((r,i)=>(
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
-                    <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2">
-                      <MoveBtns onUp={()=>moveArrItem(setParkingIn,i,-1)} onDown={()=>moveArrItem(setParkingIn,i,1)}
-                        upDisabled={i===0} downDisabled={i===parkingIn.length-1}/>
-                    </td>
-                    <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{t('sp_room_prefix')} {r.room}</span></td>
-                    <td className="px-3 py-2 font-semibold">{r.plate}</td>
-                    <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
-                    <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
-                    <td className="px-3 py-2">
-                      {r.status==='OK'
-                        ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
-                        : <span className="text-gray-400 text-xs">—</span>}
-                    </td>
-                    <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
-                  </tr>
-                ))}
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onParkingInDragEnd}>
+                  <SortableContext items={parkingIn.map(r=>r.id)} strategy={verticalListSortingStrategy}>
+                    {parkingIn.map((r,i)=>(
+                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                        {(handleProps) => (<>
+                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                          <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{t('sp_room_prefix')} {r.room}</span></td>
+                          <td className="px-3 py-2 font-semibold">{r.plate}</td>
+                          <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
+                          <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
+                          <td className="px-3 py-2">
+                            {r.status==='OK'
+                              ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
+                              : <span className="text-gray-400 text-xs">—</span>}
+                          </td>
+                          <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                        </>)}
+                      </SortableRow>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </tbody>
             </table>
           </div>
@@ -625,24 +677,27 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 ))}</tr>
               </thead>
               <tbody>
-                {parkingOut.map((r,i)=>(
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
-                    <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2">
-                      <MoveBtns onUp={()=>moveArrItem(setParkingOut,i,-1)} onDown={()=>moveArrItem(setParkingOut,i,1)}
-                        upDisabled={i===0} downDisabled={i===parkingOut.length-1}/>
-                    </td>
-                    <td className="px-3 py-2 font-semibold">{r.plate}</td>
-                    <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
-                    <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
-                    <td className="px-3 py-2">
-                      {r.status==='OK'
-                        ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
-                        : <span className="text-gray-400 text-xs">—</span>}
-                    </td>
-                    <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
-                  </tr>
-                ))}
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onParkingOutDragEnd}>
+                  <SortableContext items={parkingOut.map(r=>r.id)} strategy={verticalListSortingStrategy}>
+                    {parkingOut.map((r,i)=>(
+                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                        {(handleProps) => (<>
+                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                          <td className="px-3 py-2 font-semibold">{r.plate}</td>
+                          <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
+                          <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
+                          <td className="px-3 py-2">
+                            {r.status==='OK'
+                              ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
+                              : <span className="text-gray-400 text-xs">—</span>}
+                          </td>
+                          <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                        </>)}
+                      </SortableRow>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </tbody>
             </table>
           </div>
@@ -827,22 +882,25 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 ))}</tr>
               </thead>
               <tbody>
-                {warrantyData.filter(r=>r.cat===wCat).map((r,i,filtered)=>(
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
-                    <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
-                    <td className="px-3 py-2">
-                      <MoveBtns onUp={()=>moveWarranty(r.id,-1)} onDown={()=>moveWarranty(r.id,1)}
-                        upDisabled={i===0} downDisabled={i===filtered.length-1}/>
-                    </td>
-                    <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{r.room}</span></td>
-                    <td className="px-3 py-2 font-semibold">{r.brand}</td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">{r.model}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.sn||'—'}</td>
-                    <td className="px-3 py-2 text-gray-500 text-xs max-w-[180px]">{r.warranty||'—'}</td>
-                    <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">{r.installed||'—'}</td>
-                    <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
-                  </tr>
-                ))}
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onWarrantyDragEnd}>
+                  <SortableContext items={warrantyData.filter(r=>r.cat===wCat).map(r=>r.id)} strategy={verticalListSortingStrategy}>
+                    {warrantyData.filter(r=>r.cat===wCat).map((r,i)=>(
+                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                        {(handleProps) => (<>
+                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                          <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{r.room}</span></td>
+                          <td className="px-3 py-2 font-semibold">{r.brand}</td>
+                          <td className="px-3 py-2 text-gray-600 text-xs">{r.model}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.sn||'—'}</td>
+                          <td className="px-3 py-2 text-gray-500 text-xs max-w-[180px]">{r.warranty||'—'}</td>
+                          <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">{r.installed||'—'}</td>
+                          <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                        </>)}
+                      </SortableRow>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </tbody>
             </table>
           </div>
