@@ -153,6 +153,26 @@ const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
   <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
 );
 
+// ── generic move-up/move-down helper for reorderable lists ─────────────────
+function moveArrItem<T>(setFn: React.Dispatch<React.SetStateAction<T[]>>, idx: number, dir: -1 | 1) {
+  setFn(arr => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= arr.length) return arr;
+    const copy = [...arr];
+    [copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]];
+    return copy;
+  });
+}
+
+const MoveBtns = ({onUp,onDown,upDisabled,downDisabled}:{onUp:()=>void;onDown:()=>void;upDisabled:boolean;downDisabled:boolean}) => (
+  <div className="flex flex-col gap-0.5">
+    <button onClick={onUp} disabled={upDisabled}
+      className="w-6 h-5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-[10px] leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition">▲</button>
+    <button onClick={onDown} disabled={downDisabled}
+      className="w-6 h-5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-[10px] leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition">▼</button>
+  </div>
+);
+
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
@@ -314,6 +334,18 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [showWModal, setShowWModal] = useState(false);
   const [newW, setNewW] = useState<Omit<Warranty,'id'>>({cat:'AIR CONDITIONER',room:'',brand:'',model:'',sn:'',warranty:'',installed:''});
   const delWarranty = (id:number) => setWarrantyData(d=>d.filter(r=>r.id!==id));
+  const moveWarranty = (id:number, dir:-1|1) => setWarrantyData(arr => {
+    const cat = arr.find(r=>r.id===id)?.cat;
+    if (!cat) return arr;
+    const catIdxs = arr.reduce<number[]>((acc,r,idx)=>{ if(r.cat===cat) acc.push(idx); return acc; }, []);
+    const curPos = catIdxs.indexOf(arr.findIndex(r=>r.id===id));
+    const newPos = curPos + dir;
+    if (newPos < 0 || newPos >= catIdxs.length) return arr;
+    const i1 = catIdxs[curPos], i2 = catIdxs[newPos];
+    const copy = [...arr];
+    [copy[i1], copy[i2]] = [copy[i2], copy[i1]];
+    return copy;
+  });
   const addWarranty = () => {
     if(!newW.brand.trim()) return;
     setWarrantyData(d=>[...d,{id:nextWId,...newW}]);
@@ -456,8 +488,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_min_qty'),t('sp_col_unit'),t('sp_col_note'),''].map(h=>(
-                  <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                <tr>{['#','',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_min_qty'),t('sp_col_unit'),t('sp_col_note'),''].map((h,hi)=>(
+                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -466,6 +498,10 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                   return (
                   <tr key={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                    <td className="px-3 py-2">
+                      <MoveBtns onUp={()=>moveArrItem(setStockData,i,-1)} onDown={()=>moveArrItem(setStockData,i,1)}
+                        upDisabled={i===0} downDisabled={i===stockData.length-1}/>
+                    </td>
                     <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
                       {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
                     </td>
@@ -518,14 +554,18 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#',t('sp_col_room'),t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map(h=>(
-                  <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
+                <tr>{['#','',t('sp_col_room'),t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map((h,hi)=>(
+                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 {parkingIn.map((r,i)=>(
                   <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                    <td className="px-3 py-2">
+                      <MoveBtns onUp={()=>moveArrItem(setParkingIn,i,-1)} onDown={()=>moveArrItem(setParkingIn,i,1)}
+                        upDisabled={i===0} downDisabled={i===parkingIn.length-1}/>
+                    </td>
                     <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{t('sp_room_prefix')} {r.room}</span></td>
                     <td className="px-3 py-2 font-semibold">{r.plate}</td>
                     <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
@@ -580,14 +620,18 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#',t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map(h=>(
-                  <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
+                <tr>{['#','',t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map((h,hi)=>(
+                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 {parkingOut.map((r,i)=>(
                   <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                    <td className="px-3 py-2">
+                      <MoveBtns onUp={()=>moveArrItem(setParkingOut,i,-1)} onDown={()=>moveArrItem(setParkingOut,i,1)}
+                        upDisabled={i===0} downDisabled={i===parkingOut.length-1}/>
+                    </td>
                     <td className="px-3 py-2 font-semibold">{r.plate}</td>
                     <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
                     <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
@@ -778,14 +822,18 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="overflow-x-auto rounded-2xl border shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
-                <tr>{['#',t('sp_col_room'),t('sp_col_brand'),t('sp_col_model'),'Serial No.',t('sp_col_warranty'),t('sp_col_installed'),''].map(h=>(
-                  <th key={h} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                <tr>{['#','',t('sp_col_room'),t('sp_col_brand'),t('sp_col_model'),'Serial No.',t('sp_col_warranty'),t('sp_col_installed'),''].map((h,hi)=>(
+                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
-                {warrantyData.filter(r=>r.cat===wCat).map((r,i)=>(
+                {warrantyData.filter(r=>r.cat===wCat).map((r,i,filtered)=>(
                   <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
                     <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                    <td className="px-3 py-2">
+                      <MoveBtns onUp={()=>moveWarranty(r.id,-1)} onDown={()=>moveWarranty(r.id,1)}
+                        upDisabled={i===0} downDisabled={i===filtered.length-1}/>
+                    </td>
                     <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{r.room}</span></td>
                     <td className="px-3 py-2 font-semibold">{r.brand}</td>
                     <td className="px-3 py-2 text-gray-600 text-xs">{r.model}</td>
