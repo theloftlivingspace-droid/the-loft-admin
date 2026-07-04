@@ -734,14 +734,15 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
-                    {/* ปุ่มยกเลิกเล็กๆ มุมขวาบน */}
+                    {/* ปุ่มมุมขวาบน: เช็คอินแล้ว → checkout, ยังไม่เช็คอิน → ยกเลิก */}
                     {!isCancelled && !isCheckedOut && (
                       <button
-                        onClick={e => { e.stopPropagation(); setCancelModal(s); }}
-                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                        disabled={checkoutSaving === s.resId}
+                        onClick={e => { e.stopPropagation(); isCheckedIn ? doCheckout(s) : setCancelModal(s); }}
+                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none disabled:opacity-50"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
-                        title="ยกเลิกการจอง">
-                        ✕
+                        title={isCheckedIn ? t('ci_checkout_btn') : 'ยกเลิกการจอง'}>
+                        {checkoutSaving === s.resId ? '⏳' : isCheckedIn ? '🧳' : '✕'}
                       </button>
                     )}
                   </div>
@@ -845,20 +846,11 @@ export default function CheckInOut() {
                           ✅ {t('ci_checkin_tm30')}
                         </a>
                       )}
-                      {/* เช็คอินแล้ว — badge + ปุ่ม checkout */}
+                      {/* เช็คอินแล้ว — badge (ปุ่ม checkout อยู่ที่มุมขวาบนแล้ว) */}
                       {isCheckedIn && (
-                        <>
-                          <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
-                            ✅ {t('ci_checked_in_done')}
-                          </span>
-                          <button
-                            disabled={checkoutSaving === s.resId}
-                            onClick={() => doCheckout(s)}
-                            className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
-                            style={{ background: T.wine, color: '#fff' }}>
-                            {checkoutSaving === s.resId ? '⏳...' : t('ci_checkout_btn')}
-                          </button>
-                        </>
+                        <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
+                          ✅ {t('ci_checked_in_done')}
+                        </span>
                       )}
                       {/* No show — badge */}
                       {isNoShow && (

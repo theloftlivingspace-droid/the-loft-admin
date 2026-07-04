@@ -698,10 +698,10 @@ export default function AdminDailyDashboard() {
             ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: 'Users' }] : []),
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => { setAdminTab(tab.key); scrollToTop(); }}
-              className="press focus-ring flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 min-w-0 relative">
-              <tab.Icon size={16} color={adminTab === tab.key ? T.navy : '#8A8570'} strokeWidth={adminTab === tab.key ? 2.2 : 1.8} />
-              <span className="f-thai text-[9px] font-semibold leading-tight truncate px-0.5" style={{ color: adminTab === tab.key ? T.navy : '#8A8570' }}>{tab.label}</span>
-              <span style={{ width: 10, height: 2, borderRadius: 1, background: adminTab === tab.key ? T.brass : 'transparent' }} />
+              className="press focus-ring flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-w-0 relative">
+              <tab.Icon size={23} color={adminTab === tab.key ? T.navy : '#8A8570'} strokeWidth={adminTab === tab.key ? 2.2 : 1.8} />
+              <span className="f-thai text-[10.5px] leading-tight text-center px-0.5" style={{ color: adminTab === tab.key ? T.navy : '#8A8570', fontWeight: adminTab === tab.key ? 700 : 600 }}>{tab.label}</span>
+              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: adminTab === tab.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
