@@ -387,12 +387,22 @@ export default function CheckInOut() {
       // Merge server-side (shared) check-in/checkout status into local sets.
       // This is the source of truth across devices; localStorage is only an
       // optimistic cache for this browser between refreshes.
-      const serverCheckedIn = new Set(ciDoneSet);
-      const serverCheckedOut = new Set(checkedOutSet);
+      const serverCheckedIn = new Set<string>();
+      const serverCheckedOut = new Set<string>();
+      const seenResIds = new Set<string>();
       for (const row of json.stays) {
-        if (row.resId && row.checkedInAt) serverCheckedIn.add(row.resId);
-        if (row.resId && row.checkedOutAt) serverCheckedOut.add(row.resId);
+        if (!row.resId) continue;
+        seenResIds.add(row.resId);
+        if (row.checkedInAt)  serverCheckedIn.add(row.resId);
+        if (row.checkedOutAt) serverCheckedOut.add(row.resId);
       }
+      // Preserve local-only optimistic state for resIds not present in this
+      // payload (e.g. just updated on this device); for resIds the server
+      // DOES report on, the server value wins — so clearing a cell in the
+      // sheet actually reverts the card instead of being stuck on the old
+      // locally-cached value forever.
+      for (const id of ciDoneSet)     if (!seenResIds.has(id)) serverCheckedIn.add(id);
+      for (const id of checkedOutSet) if (!seenResIds.has(id)) serverCheckedOut.add(id);
       setCiDoneSet(serverCheckedIn);
       setCheckedOutSet(serverCheckedOut);
       localStorage.setItem('ci_done', JSON.stringify([...serverCheckedIn]));
