@@ -379,7 +379,7 @@ export default function CheckInOut() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${GAS_API}&action=getRoomStatus`);
+      const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(t('ci_load_room_failed'));
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
