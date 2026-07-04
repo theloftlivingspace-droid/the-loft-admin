@@ -12,7 +12,7 @@ export const T = {
   paper: "#F7F9FB",
   card: "#FFFFFF",
   navy: "#123262",
-  navyDeep: "#071B3D",
+  navyDeep: "#142E67",
   navyTint: "#E4E9F2",
   brass: "#D9B25C",
   brassDeep: "#A9791A",
