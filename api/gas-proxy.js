@@ -11,7 +11,7 @@
 //   POST /api/gas-proxy?app=checkinout   (body forwarded as-is)
 
 const GAS_ENDPOINTS = {
-  todo:       'https://script.google.com/macros/s/AKfycbz3r-wEAImmD3jJUhTE58Z6IOQV_R1Q0iYs5imf8l4f5EUqZEdIKjQJzF4HuENgiJ4/exec',
+  todo:       'https://script.google.com/macros/s/AKfycbxwlKBtlw74Z52ryAK2SNV_3mNXhFzk3IoANSOqNBhfENUdO3QhfQUKovZ6_THXfeE/exec',
   checkinout: 'https://script.google.com/macros/s/AKfycbzb5T7x7qBw35LwX_bufF9oDjMRQAkI2WAqukQqkH4tNjyhCy-CCuWDDmPaiwxbN6M/exec',
 };
 
