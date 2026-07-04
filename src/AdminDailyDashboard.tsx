@@ -590,41 +590,19 @@ export default function AdminDailyDashboard() {
                 )}
               </div>
             )}
-            {/* Mobile header — compact single row */}
-            <div className="flex md:hidden items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 40, height: 40, border: `1px solid ${T.brass}55` }}>
+            {/* Mobile header — two rows so the brand name/title never truncate */}
+            <div className="flex md:hidden items-center gap-3 min-w-0">
+                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 42, height: 42, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="f-thai truncate" style={{ fontSize: 9.5, fontWeight: 700, color: T.brass, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
+                  <p className="f-thai" style={{ fontSize: 10.5, fontWeight: 700, color: T.brass, letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap' }}>
                     The Loft Living Space
                   </p>
-                  <h1 className="f-display truncate" style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 2 }}>
+                  <h1 className="f-display" style={{ fontSize: 19, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 3, whiteSpace: 'nowrap' }}>
                     {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
                   </h1>
                 </div>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
-                  <button
-                    onClick={() => setLang('th')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                    TH
-                  </button>
-                  <button
-                    onClick={() => setLang('en')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                    EN
-                  </button>
-                </div>
-                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-lg px-2 py-1 text-xs focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
-                <button onClick={handleLogout} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                  🚪
-                </button>
-              </div>
             </div>
             {/* Mobile notification banners */}
             {(notifBooking > 0 || notifInvoice > 0 || notifLowStock > 0) && (
@@ -654,13 +632,33 @@ export default function AdminDailyDashboard() {
             <div className="mt-3.5">
               <FoilRule />
             </div>
-            <div className="flex md:hidden items-center gap-1.5 mt-2.5">
+            <div className="flex md:hidden items-center justify-between gap-1.5 mt-2.5">
               <span className="f-thai" style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
                 {(() => {
                   const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stockparking: t('tab_stock'), users: t('adm_tab_users') } as Record<string, string>;
                   return activeLabel[adminTab] || '';
                 })()}
               </span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                  <button
+                    onClick={() => setLang('th')}
+                    className="press focus-ring rounded-full"
+                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                    TH
+                  </button>
+                  <button
+                    onClick={() => setLang('en')}
+                    className="press focus-ring rounded-full"
+                    style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                    EN
+                  </button>
+                </div>
+                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-lg px-2 py-1 text-xs focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
+                <button onClick={handleLogout} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
+                  🚪
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -706,11 +704,8 @@ export default function AdminDailyDashboard() {
           ))}
         </div>
 
-        {/* Spacer so content doesn't hide behind fixed bottom bar on mobile */}
-        <div className="h-16 md:hidden" />
-
         {/* Scrollable content */}
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 md:pb-8 pt-0 md:pt-6">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-0 md:pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3" style={{ background: T.navyTint, border: `1px solid ${T.hairGold}` }}>
