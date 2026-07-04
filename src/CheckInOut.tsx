@@ -734,15 +734,15 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
-                    {/* ปุ่มมุมขวาบน: เช็คอินแล้ว → checkout, ยังไม่เช็คอิน → ยกเลิก */}
-                    {!isCancelled && !isCheckedOut && (
+                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น
+                        ไม่มีปุ่ม checkout ด้วยมือแล้ว — สถานะเช็คเอาท์ยืนยันผ่านการตรวจห้องเท่านั้น */}
+                    {!isCancelled && !isCheckedOut && (s.status === 'arriving-today' || s.status === 'arriving-soon') && (
                       <button
-                        disabled={checkoutSaving === s.resId}
-                        onClick={e => { e.stopPropagation(); isCheckedIn ? doCheckout(s) : setCancelModal(s); }}
-                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none disabled:opacity-50"
+                        onClick={e => { e.stopPropagation(); setCancelModal(s); }}
+                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
-                        title={isCheckedIn ? t('ci_checkout_btn') : 'ยกเลิกการจอง'}>
-                        {checkoutSaving === s.resId ? '⏳' : isCheckedIn ? '🧳' : '✕'}
+                        title="ยกเลิกการจอง">
+                        ✕
                       </button>
                     )}
                   </div>
