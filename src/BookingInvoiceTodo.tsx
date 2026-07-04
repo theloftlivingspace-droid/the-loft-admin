@@ -566,11 +566,22 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
   const bookingNewToday = data.booking.filter(x => x.isNewToday && !x.done).length;
   const invoiceNewToday = data.invoice.filter(x => x.detectedToday && !x.done).length;
 
+  // firstSeen comes in two incompatible formats: ISO 'yyyy-MM-dd' for bookings detected
+  // since the format was fixed, and legacy 'EEE MMM d' (no year) for a backfill batch
+  // detected before that. Raw string comparison sorts 'Mon Jun 15' ahead of '2026-07-04'
+  // (since 'M' > '2' lexicographically), scrambling the list. Parse both into real
+  // timestamps instead — legacy strings are all from 2026, so that year is assumed.
+  const firstSeenTs = (s?: string) => {
+    if (!s) return 0;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + 'T00:00:00').getTime();
+    const t = new Date(s + ' 2026').getTime();
+    return isNaN(t) ? 0 : t;
+  };
   const searchNorm = normNameForSearch(search);
   const visibleBooking = data.booking
     .filter(x => showDoneBooking || !x.done)
     .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
-    .sort((a, b) => { const fa = a.firstSeen || ''; const fb = b.firstSeen || ''; if (fa && fb) return fb.localeCompare(fa); return (b.checkin || '').localeCompare(a.checkin || ''); });
+    .sort((a, b) => { const ta = firstSeenTs(a.firstSeen); const tb = firstSeenTs(b.firstSeen); if (ta && tb) return tb - ta; return (b.checkin || '').localeCompare(a.checkin || ''); });
   const visibleInvoice = data.invoice
     .filter(x => showDoneInvoice || !x.done)
     .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
