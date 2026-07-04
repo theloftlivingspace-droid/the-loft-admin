@@ -3,6 +3,7 @@ import { useLang } from './LanguageContext';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { T } from './theme';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -98,35 +99,35 @@ function nowTH() {
 function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: string) => void; t: (k: string) => string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+    <div className="f-thai rounded-xl overflow-hidden" style={{ background: T.card, border: `1px solid ${T.wine}30` }}>
       <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setOpen(x => !x)}>
         {u.photos[0]
-          ? <img src={u.photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
-          : <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl">🚗</div>}
+          ? <img src={u.photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" style={{ border: `1px solid ${T.hair}` }} />
+          : <div className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 text-2xl" style={{ background: T.bone }}>🚗</div>}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono font-bold text-sm text-gray-900">{u.plate || '—'}</span>
-            <span className="bg-red-100 text-red-800 border border-red-200 text-xs px-2 py-0.5 rounded-full font-medium">
+            <span className="f-num font-bold text-sm" style={{ color: T.ink }}>{u.plate || '—'}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: T.wineTint, color: T.wine, border: `1px solid ${T.wine}30` }}>
               {t('sp_patrol_unknown_badge')}
             </span>
           </div>
-          <div className="text-xs text-gray-500 mt-0.5">{u.timestamp}</div>
-          {u.spotNumber && <div className="text-xs text-gray-400">{t('sp_patrol_spot_label')}: {u.spotNumber}</div>}
+          <div className="text-xs mt-0.5" style={{ color: T.inkSoft }}>{u.timestamp}</div>
+          {u.spotNumber && <div className="text-xs" style={{ color: T.inkSoft }}>{t('sp_patrol_spot_label')}: {u.spotNumber}</div>}
         </div>
-        <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
+        <span className="text-sm" style={{ color: T.inkSoft }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
-        <div className="px-3 pb-3 border-t border-gray-100 pt-3 space-y-2">
+        <div className="px-3 pb-3 pt-3 space-y-2" style={{ borderTop: `1px solid ${T.hair}` }}>
           {u.photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {u.photos.map((p, i) => (
-                <img key={i} src={p} alt="" className="h-24 w-24 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
+                <img key={i} src={p} alt="" className="h-24 w-24 rounded-lg object-cover flex-shrink-0" style={{ border: `1px solid ${T.hair}` }} />
               ))}
             </div>
           )}
-          {u.notes && <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-2">{u.notes}</p>}
+          {u.notes && <p className="text-sm rounded-lg p-2" style={{ color: T.ink, background: T.bone }}>{u.notes}</p>}
           <button onClick={() => onDelete(u.id)}
-            className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors">
+            className="press text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${T.wine}30`, color: T.wine }}>
             🗑 {t('sp_delete')}
           </button>
         </div>
@@ -141,32 +142,33 @@ function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: strin
 //    keystroke, which is what was breaking typing/adding items) ────────────
 const Modal = ({title,onClose,onSave,children,cancelLabel,saveLabel}:{title:string;onClose:()=>void;onSave:()=>void;children:React.ReactNode;cancelLabel:string;saveLabel:string}) => (
   <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
-    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl my-8 sm:my-0">
-      <h3 className="text-base font-semibold mb-4 text-gray-800">{title}</h3>
+    <div className="f-thai rounded-3xl p-6 w-full max-w-md my-8 sm:my-0" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }}>
+      <h3 className="f-display text-base font-semibold mb-4" style={{ color: T.ink }}>{title}</h3>
       <div className="space-y-3">{children}</div>
       <div className="flex gap-2 mt-5 justify-end">
-        <button onClick={onClose} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition">{cancelLabel}</button>
-        <button onClick={onSave}  className="px-5 py-2 rounded-xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition">{saveLabel}</button>
+        <button onClick={onClose} className="press px-4 py-2 rounded-xl text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>{cancelLabel}</button>
+        <button onClick={onSave}  className="press px-5 py-2 rounded-xl text-sm font-medium" style={{ background: T.navy, color: '#fff' }}>{saveLabel}</button>
       </div>
     </div>
   </div>
 );
 
 const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
-  <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
+  <div><label className="f-thai block text-xs mb-1" style={{ color: T.inkSoft }}>{label}</label>{children}</div>
 );
 
 // ── drag-and-drop reordering (works with mouse and touch) ──────────────────
 // One row wrapper used inside every reorderable <table>: it turns a <tr>
 // into a drag source/target via dnd-kit's useSortable, driven by the handle
 // rendered inside it (via the `handleProps` render-prop).
-function SortableRow({id, className, children}:{id:number|string; className?:string; children:(handleProps:{attributes: import('@dnd-kit/core').DraggableAttributes; listeners: ReturnType<typeof useSortable>['listeners']})=>React.ReactNode}) {
+function SortableRow({id, className, style: styleProp, children}:{id:number|string; className?:string; style?: React.CSSProperties; children:(handleProps:{attributes: import('@dnd-kit/core').DraggableAttributes; listeners: ReturnType<typeof useSortable>['listeners']})=>React.ReactNode}) {
   const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({ id });
   const style: React.CSSProperties = {
+    ...styleProp,
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    background: isDragging ? '#eff6ff' : undefined,
+    background: isDragging ? T.navyTint : styleProp?.background,
     position: 'relative',
     zIndex: isDragging ? 1 : undefined,
   };
@@ -179,7 +181,8 @@ function SortableRow({id, className, children}:{id:number|string; className?:str
 
 const DragHandle = (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button type="button" {...props}
-    className="w-6 h-6 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+    className="press w-6 h-6 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+    style={{ color: T.inkSoft }}
     aria-label="drag to reorder">⠿</button>
 );
 
@@ -449,19 +452,26 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
       {keys.map(k=>(
         <button key={k.key} onClick={()=>setSection(k.key)}
-          className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition border
-            ${section===k.key
-              ? 'bg-blue-900 text-white border-blue-900 shadow'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
+          className="f-thai flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold press"
+          style={section===k.key ? { background: T.navy, color: '#fff', border: `1px solid ${T.navy}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
           {k.emoji} {k.label}
         </button>
       ))}
     </div>
   );
 
-  const inputCls = "w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400";
-  const btnDel   = "px-2 py-1 rounded-lg text-xs border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition";
-  const btnAdd   = "px-4 py-2 rounded-2xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition";
+  const inputCls = "focus-ring w-full rounded-xl px-3 py-2 text-sm";
+  const inputStyle = { border: `1px solid ${T.hairGold}`, color: T.ink };
+  const btnDel   = "press f-thai px-2 py-1 rounded-lg text-xs";
+  const btnDelStyle = { border: `1px solid ${T.wine}30`, background: T.wineTint, color: T.wine };
+  const btnAdd   = "press f-thai px-4 py-2 rounded-2xl text-sm font-medium";
+  const btnAddStyle = { background: T.navy, color: '#fff' };
+  const saveBtnStyle = (key: string) =>
+    saving===key ? { background: '#E5E7EB', color: '#9CA3AF' }
+    : saved===key ? { background: T.sage, color: '#fff' }
+    : { background: T.brass, color: T.navyDeep };
+
+
 
   const typeOpts = ['Car','Motorcycle'];
 
@@ -519,23 +529,23 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {section==='stock' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+            <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
               <span className="truncate">Stock</span>
-              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{stockData.length} {t('sp_items_unit')}</span>
+              <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.navyTint, color: T.navy }}>{stockData.length} {t('sp_items_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowStockModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
+              <button onClick={()=>setShowStockModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('stock_data', stockData)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='stock_data'?'bg-gray-200 text-gray-400':saved==='stock_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('stock_data')}>
                 {saving==='stock_data'?'...' : saved==='stock_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border shadow-sm">
+          <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
                 <tr>{['#','',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_min_qty'),t('sp_col_unit'),t('sp_col_note'),''].map((h,hi)=>(
-                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                  <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: T.inkSoft }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -544,26 +554,26 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                     {stockData.map((r,i)=>{
                       const isLow = r.minQty !== undefined && r.qty < r.minQty;
                       return (
-                        <SortableRow key={r.id} id={r.id} className={`border-b last:border-0 transition ${isLow ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                        <SortableRow key={r.id} id={r.id} style={{ borderBottom: `1px solid ${T.hair}`, background: isLow ? T.wineTint : 'transparent' }}>
                           {(handleProps) => (<>
-                            <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                            <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                             <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                            <td className={`px-3 py-2 font-medium ${isLow ? 'text-red-700' : ''}`}>
+                            <td className="px-3 py-2 font-medium f-thai" style={{ color: isLow ? T.wine : T.ink }}>
                               {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
                                 <button onClick={()=>changeQty(r.id,-1)}
-                                  className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">−</button>
-                                <span className={`min-w-[28px] text-center font-semibold ${isLow ? 'text-red-600' : ''}`}>{r.qty}</span>
+                                  className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
+                                <span className="f-num min-w-[28px] text-center font-semibold" style={{ color: isLow ? T.wine : T.ink }}>{r.qty}</span>
                                 <button onClick={()=>changeQty(r.id,+1)}
-                                  className="w-6 h-6 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm flex items-center justify-center">+</button>
+                                  className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-xs text-gray-400">{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
-                            <td className="px-3 py-2 text-gray-500">{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
-                            <td className="px-3 py-2 text-gray-400 text-xs">{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
-                            <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                            <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
+                            <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
+                            <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
+                            <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                           </>)}
                         </SortableRow>
                       );
@@ -575,10 +585,10 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           </div>
           {showStockModal && (
             <Modal title={t('sp_modal_add_item')} onClose={()=>setShowStockModal(false)} onSave={addStock} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
-              <Field label={t('sp_field_item_name')}><input className={inputCls} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
-              <Field label={t('sp_field_qty')}><input className={inputCls} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
-              <Field label={t('sp_field_unit')}><input className={inputCls} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
-              <Field label={t('sp_field_note')}><input className={inputCls} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
+              <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
+              <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
+              <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
+              <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
           )}
         </div>
@@ -588,43 +598,43 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {section==='parking-in' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+            <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
               <span className="truncate">Car · In-house</span>
-              <span className="ml-1 text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingIn.length} {t('sp_cars_unit')}</span>
+              <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.sageTint, color: T.sage }}>{parkingIn.length} {t('sp_cars_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowPIModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
+              <button onClick={()=>setShowPIModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_in', parkingIn)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_in'?'bg-gray-200 text-gray-400':saved==='parking_in'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_in')}>
                 {saving==='parking_in'?'...' : saved==='parking_in'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border shadow-sm">
+          <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
                 <tr>{['#','',t('sp_col_room'),t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map((h,hi)=>(
-                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
+                  <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium" style={{ color: T.inkSoft }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onParkingInDragEnd}>
                   <SortableContext items={parkingIn.map(r=>r.id)} strategy={verticalListSortingStrategy}>
                     {parkingIn.map((r,i)=>(
-                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                      <SortableRow key={r.id} id={r.id} style={{ borderBottom: `1px solid ${T.hair}` }}>
                         {(handleProps) => (<>
-                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                          <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{t('sp_room_prefix')} {r.room}</span></td>
-                          <td className="px-3 py-2 font-semibold">{r.plate}</td>
-                          <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
-                          <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
+                          <td className="px-3 py-2"><span className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: T.navyTint, color: T.navy }}>{t('sp_room_prefix')} {r.room}</span></td>
+                          <td className="px-3 py-2 font-semibold f-num" style={{ color: T.ink }}>{r.plate}</td>
+                          <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.type||'—'}</td>
+                          <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.name||'—'}</td>
                           <td className="px-3 py-2">
                             {r.status==='OK'
-                              ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
-                              : <span className="text-gray-400 text-xs">—</span>}
+                              ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: T.sageTint, color: T.sage }}>OK</span>
+                              : <span className="text-xs" style={{ color: T.inkSoft }}>—</span>}
                           </td>
-                          <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                          <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                         </>)}
                       </SortableRow>
                     ))}
@@ -635,16 +645,16 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           </div>
           {showPIModal && (
             <Modal title={t('sp_modal_add_car_in')} onClose={()=>setShowPIModal(false)} onSave={addParkIn} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
-              <Field label={t('sp_field_room_no')}><input className={inputCls} value={newPI.room} onChange={e=>setNewPI(p=>({...p,room:e.target.value}))} placeholder="205"/></Field>
-              <Field label={t('sp_field_plate')}><input className={inputCls} value={newPI.plate} onChange={e=>setNewPI(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
+              <Field label={t('sp_field_room_no')}><input className={inputCls} style={inputStyle} value={newPI.room} onChange={e=>setNewPI(p=>({...p,room:e.target.value}))} placeholder="205"/></Field>
+              <Field label={t('sp_field_plate')}><input className={inputCls} style={inputStyle} value={newPI.plate} onChange={e=>setNewPI(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
               <Field label={t('sp_field_type')}>
-                <select className={inputCls} value={newPI.type} onChange={e=>setNewPI(p=>({...p,type:e.target.value}))}>
+                <select className={inputCls} style={inputStyle} value={newPI.type} onChange={e=>setNewPI(p=>({...p,type:e.target.value}))}>
                   <option value="">—</option>{typeOpts.map(o=><option key={o}>{o}</option>)}
                 </select>
               </Field>
-              <Field label={t('sp_field_contract_name')}><input className={inputCls} value={newPI.name} onChange={e=>setNewPI(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_contract_name')}><input className={inputCls} style={inputStyle} value={newPI.name} onChange={e=>setNewPI(p=>({...p,name:e.target.value}))} /></Field>
               <Field label={t('sp_field_status')}>
-                <select className={inputCls} value={newPI.status} onChange={e=>setNewPI(p=>({...p,status:e.target.value}))}>
+                <select className={inputCls} style={inputStyle} value={newPI.status} onChange={e=>setNewPI(p=>({...p,status:e.target.value}))}>
                   <option value="">—</option><option value="OK">OK</option>
                 </select>
               </Field>
@@ -657,42 +667,42 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {section==='parking-out' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+            <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
               <span className="truncate">Car · Outside</span>
-              <span className="ml-1 text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">{parkingOut.length} {t('sp_cars_unit')}</span>
+              <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.navyTint, color: T.navy }}>{parkingOut.length} {t('sp_cars_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowPOModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
+              <button onClick={()=>setShowPOModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_out', parkingOut)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='parking_out'?'bg-gray-200 text-gray-400':saved==='parking_out'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_out')}>
                 {saving==='parking_out'?'...' : saved==='parking_out'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border shadow-sm">
+          <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
                 <tr>{['#','',t('sp_col_plate'),t('sp_col_type'),t('sp_col_name'),t('sp_col_status'),''].map((h,hi)=>(
-                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500">{h}</th>
+                  <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium" style={{ color: T.inkSoft }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onParkingOutDragEnd}>
                   <SortableContext items={parkingOut.map(r=>r.id)} strategy={verticalListSortingStrategy}>
                     {parkingOut.map((r,i)=>(
-                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                      <SortableRow key={r.id} id={r.id} style={{ borderBottom: `1px solid ${T.hair}` }}>
                         {(handleProps) => (<>
-                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                          <td className="px-3 py-2 font-semibold">{r.plate}</td>
-                          <td className="px-3 py-2 text-gray-500">{r.type||'—'}</td>
-                          <td className="px-3 py-2 text-gray-500">{r.name||'—'}</td>
+                          <td className="px-3 py-2 font-semibold f-num" style={{ color: T.ink }}>{r.plate}</td>
+                          <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.type||'—'}</td>
+                          <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.name||'—'}</td>
                           <td className="px-3 py-2">
                             {r.status==='OK'
-                              ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">OK</span>
-                              : <span className="text-gray-400 text-xs">—</span>}
+                              ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: T.sageTint, color: T.sage }}>OK</span>
+                              : <span className="text-xs" style={{ color: T.inkSoft }}>—</span>}
                           </td>
-                          <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                          <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                         </>)}
                       </SortableRow>
                     ))}
@@ -703,15 +713,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           </div>
           {showPOModal && (
             <Modal title={t('sp_modal_add_car_out')} onClose={()=>setShowPOModal(false)} onSave={addParkOut} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
-              <Field label={t('sp_field_plate')}><input className={inputCls} value={newPO.plate} onChange={e=>setNewPO(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
+              <Field label={t('sp_field_plate')}><input className={inputCls} style={inputStyle} value={newPO.plate} onChange={e=>setNewPO(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
               <Field label={t('sp_field_type')}>
-                <select className={inputCls} value={newPO.type} onChange={e=>setNewPO(p=>({...p,type:e.target.value}))}>
+                <select className={inputCls} style={inputStyle} value={newPO.type} onChange={e=>setNewPO(p=>({...p,type:e.target.value}))}>
                   <option value="">—</option>{typeOpts.map(o=><option key={o}>{o}</option>)}
                 </select>
               </Field>
-              <Field label={t('sp_field_contract_name')}><input className={inputCls} value={newPO.name} onChange={e=>setNewPO(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_contract_name')}><input className={inputCls} style={inputStyle} value={newPO.name} onChange={e=>setNewPO(p=>({...p,name:e.target.value}))} /></Field>
               <Field label={t('sp_field_status')}>
-                <select className={inputCls} value={newPO.status} onChange={e=>setNewPO(p=>({...p,status:e.target.value}))}>
+                <select className={inputCls} style={inputStyle} value={newPO.status} onChange={e=>setNewPO(p=>({...p,status:e.target.value}))}>
                   <option value="">—</option><option value="OK">OK</option>
                 </select>
               </Field>
@@ -725,8 +735,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {section === 'patrol' && (
         <div className="space-y-4">
           {/* Search box */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <div className="rounded-2xl p-4" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
+            <label className="f-thai text-xs font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>
               {t('sp_patrol_search_label')}
             </label>
             <div className="flex gap-2 mt-2">
@@ -735,18 +745,20 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                 onChange={e => { setPatrolSearch(e.target.value); setPatrolSearched(false); }}
                 onKeyDown={e => { if (e.key === 'Enter') setPatrolSearched(true); }}
                 placeholder={t('sp_patrol_plate_placeholder')}
-                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="focus-ring f-num flex-1 rounded-xl px-3 py-2.5 text-sm"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
                 autoCapitalize="characters"
               />
               <button
                 onClick={() => setPatrolSearched(true)}
                 disabled={normQ(patrolSearch).length < 2}
-                className="bg-blue-900 text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-blue-800 disabled:opacity-40 transition-colors"
+                className="press f-thai rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40"
+                style={{ background: T.navy, color: '#fff' }}
               >
                 {t('sp_patrol_search_btn')}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">{t('sp_patrol_search_hint')}</p>
+            <p className="f-thai text-xs mt-1.5" style={{ color: T.inkSoft }}>{t('sp_patrol_search_hint')}</p>
           </div>
 
           {/* Search results */}
@@ -754,38 +766,39 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             const hits = patrolHits();
             if (hits.length > 0) return (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <p className="f-thai text-xs font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>
                   {t('sp_patrol_found_count')} {hits.length}
                 </p>
                 {hits.map((h, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-green-200 shadow-sm p-3 flex items-center gap-3">
+                  <div key={i} className="rounded-2xl p-3 flex items-center gap-3" style={{ background: T.card, border: `1px solid ${T.sage}40` }}>
                     <span className="text-2xl">✅</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-sm text-gray-900">{h.plate}</span>
-                        <span className="bg-green-100 text-green-800 border border-green-200 text-xs px-2 py-0.5 rounded-full font-medium">
+                        <span className="f-num font-bold text-sm" style={{ color: T.ink }}>{h.plate}</span>
+                        <span className="f-thai text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
                           {t('sp_patrol_found_badge')}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">{h.label}{h.extra ? ` · ${h.extra}` : ''}</div>
+                      <div className="f-thai text-xs mt-0.5" style={{ color: T.inkSoft }}>{h.label}{h.extra ? ` · ${h.extra}` : ''}</div>
                     </div>
                   </div>
                 ))}
               </div>
             );
             return (
-              <div className="bg-red-50 rounded-2xl border border-red-200 p-4 text-center space-y-3">
+              <div className="rounded-2xl p-4 text-center space-y-3" style={{ background: T.wineTint, border: `1px solid ${T.wine}30` }}>
                 <div className="text-3xl">🚨</div>
                 <div>
-                  <p className="font-semibold text-red-700">{t('sp_patrol_not_found_title')}</p>
-                  <p className="text-sm text-red-600 mt-0.5">
-                    <span className="font-mono font-bold">{patrolSearch.toUpperCase()}</span>
+                  <p className="f-thai font-semibold" style={{ color: T.wine }}>{t('sp_patrol_not_found_title')}</p>
+                  <p className="f-thai text-sm mt-0.5" style={{ color: T.wine, opacity: 0.85 }}>
+                    <span className="f-num font-bold">{patrolSearch.toUpperCase()}</span>
                     {' '}{t('sp_patrol_not_found_desc')}
                   </p>
                 </div>
                 <button
                   onClick={() => openPatrolForm(patrolSearch)}
-                  className="w-full bg-red-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm"
+                  className="press f-thai w-full rounded-xl py-3 text-sm font-semibold"
+                  style={{ background: T.wine, color: '#fff' }}
                 >
                   📋 {t('sp_patrol_add_unknown_btn')}
                 </button>
@@ -796,21 +809,22 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           {/* Direct log button */}
           <button
             onClick={() => openPatrolForm()}
-            className="w-full bg-white border-2 border-dashed border-gray-300 rounded-2xl py-3 text-sm text-gray-500 hover:border-red-400 hover:text-red-500 transition-colors font-medium"
+            className="press f-thai w-full rounded-2xl py-3 text-sm font-medium"
+            style={{ background: T.card, border: `2px dashed ${T.hair}`, color: T.inkSoft }}
           >
             ➕ {t('sp_patrol_add_direct_btn')}
           </button>
 
           {/* Unknown vehicles log */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <p className="f-thai text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: T.inkSoft }}>
               🚨 {t('sp_patrol_unknown_log_title')} ({patrolUnknowns.length})
             </p>
             {patrolUnknowns.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+              <div className="rounded-2xl p-8 text-center" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                 <div className="text-4xl mb-2">✅</div>
-                <p className="text-gray-600 font-medium">{t('sp_patrol_no_unknown')}</p>
-                <p className="text-sm text-gray-400 mt-1">{t('sp_patrol_no_unknown_desc')}</p>
+                <p className="f-thai font-medium" style={{ color: T.ink }}>{t('sp_patrol_no_unknown')}</p>
+                <p className="f-thai text-sm mt-1" style={{ color: T.inkSoft }}>{t('sp_patrol_no_unknown_desc')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -823,24 +837,24 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
           {/* Reference: all registered plates */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <p className="f-thai text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: T.inkSoft }}>
               {t('sp_patrol_registered_list')} ({parkingIn.length + parkingOut.length})
             </p>
             <div className="space-y-1.5">
               {parkingIn.map(r => (
-                <div key={r.id} className="bg-white rounded-xl border border-gray-200 px-3 py-2 flex items-center gap-2">
+                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                   <span className="text-sm">🚗</span>
-                  <span className="font-mono text-xs font-bold text-blue-800 flex-1 truncate">{r.plate}</span>
-                  <span className="text-xs text-gray-500 shrink-0">{t('sp_room_prefix')} {r.room}</span>
-                  <span className="text-xs text-gray-400 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">{t('sp_patrol_in_building')}</span>
+                  <span className="f-num text-xs font-bold flex-1 truncate" style={{ color: T.navy }}>{r.plate}</span>
+                  <span className="f-thai text-xs shrink-0" style={{ color: T.inkSoft }}>{t('sp_room_prefix')} {r.room}</span>
+                  <span className="f-thai text-xs px-1.5 py-0.5 rounded shrink-0" style={{ color: T.inkSoft, background: T.navyTint }}>{t('sp_patrol_in_building')}</span>
                 </div>
               ))}
               {parkingOut.map(r => (
-                <div key={r.id} className="bg-white rounded-xl border border-gray-200 px-3 py-2 flex items-center gap-2">
+                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                   <span className="text-sm">🚗</span>
-                  <span className="font-mono text-xs font-bold text-amber-800 flex-1 truncate">{r.plate}</span>
-                  {r.name && <span className="text-xs text-gray-500 truncate shrink-0 max-w-[80px]">{r.name}</span>}
-                  <span className="text-xs text-gray-400 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">{t('sp_patrol_outside')}</span>
+                  <span className="f-num text-xs font-bold flex-1 truncate" style={{ color: T.brassDeep }}>{r.plate}</span>
+                  {r.name && <span className="f-thai text-xs truncate shrink-0 max-w-[80px]" style={{ color: T.inkSoft }}>{r.name}</span>}
+                  <span className="f-thai text-xs px-1.5 py-0.5 rounded shrink-0" style={{ color: T.inkSoft, background: T.brassPale }}>{t('sp_patrol_outside')}</span>
                 </div>
               ))}
             </div>
@@ -852,14 +866,14 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {section==='warranty' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 min-w-0">
+            <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
               <span className="truncate">Warranty</span>
-              <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">{warrantyData.length} {t('sp_items_unit')}</span>
+              <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.brassPale, color: T.brassDeep }}>{warrantyData.length} {t('sp_items_unit')}</span>
             </h2>
             <div className="flex gap-2">
-              <button onClick={()=>setShowWModal(true)} className={btnAdd}>{t('sp_add_item')}</button>
+              <button onClick={()=>setShowWModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('warranty_data', warrantyData)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${saving==='warranty_data'?'bg-gray-200 text-gray-400':saved==='warranty_data'?'bg-green-500 text-white':'bg-amber-400 hover:bg-amber-500 text-gray-900'}`}>
+                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('warranty_data')}>
                 {saving==='warranty_data'?'...' : saved==='warranty_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
@@ -868,34 +882,34 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           <div className="flex gap-2 mb-4 flex-wrap">
             {W_CATS.map(c=>(
               <button key={c} onClick={()=>setWCat(c)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition
-                  ${c===wCat ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'}`}>
-                {c} <span className="opacity-70">({warrantyData.filter(r=>r.cat===c).length})</span>
+                className="press f-thai px-3 py-1.5 rounded-xl text-xs font-medium"
+                style={c===wCat ? { background: T.brass, color: T.navyDeep, border: `1px solid ${T.brass}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+                {c} <span style={{ opacity: 0.7 }}>({warrantyData.filter(r=>r.cat===c).length})</span>
               </button>
             ))}
           </div>
-          <div className="overflow-x-auto rounded-2xl border shadow-sm">
+          <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
                 <tr>{['#','',t('sp_col_room'),t('sp_col_brand'),t('sp_col_model'),'Serial No.',t('sp_col_warranty'),t('sp_col_installed'),''].map((h,hi)=>(
-                  <th key={hi} className="text-left px-3 py-2 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                  <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: T.inkSoft }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onWarrantyDragEnd}>
                   <SortableContext items={warrantyData.filter(r=>r.cat===wCat).map(r=>r.id)} strategy={verticalListSortingStrategy}>
                     {warrantyData.filter(r=>r.cat===wCat).map((r,i)=>(
-                      <SortableRow key={r.id} id={r.id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                      <SortableRow key={r.id} id={r.id} style={{ borderBottom: `1px solid ${T.hair}` }}>
                         {(handleProps) => (<>
-                          <td className="px-3 py-2 text-gray-400 text-xs">{i+1}</td>
+                          <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                          <td className="px-3 py-2"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg text-xs font-medium">{r.room}</span></td>
-                          <td className="px-3 py-2 font-semibold">{r.brand}</td>
-                          <td className="px-3 py-2 text-gray-600 text-xs">{r.model}</td>
-                          <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.sn||'—'}</td>
-                          <td className="px-3 py-2 text-gray-500 text-xs max-w-[180px]">{r.warranty||'—'}</td>
-                          <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">{r.installed||'—'}</td>
-                          <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel}>{t('sp_delete')}</button></td>
+                          <td className="px-3 py-2"><span className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: T.navyTint, color: T.navy }}>{r.room}</span></td>
+                          <td className="px-3 py-2 font-semibold f-thai" style={{ color: T.ink }}>{r.brand}</td>
+                          <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{r.model}</td>
+                          <td className="px-3 py-2 f-num text-xs" style={{ color: T.inkSoft }}>{r.sn||'—'}</td>
+                          <td className="px-3 py-2 text-xs max-w-[180px] f-thai" style={{ color: T.inkSoft }}>{r.warranty||'—'}</td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap f-num" style={{ color: T.inkSoft }}>{r.installed||'—'}</td>
+                          <td className="px-3 py-2"><button onClick={()=>delWarranty(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                         </>)}
                       </SortableRow>
                     ))}
@@ -907,16 +921,16 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
           {showWModal && (
             <Modal title={t('sp_modal_add_warranty')} onClose={()=>setShowWModal(false)} onSave={addWarranty} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_category')}>
-                <select className={inputCls} value={newW.cat} onChange={e=>setNewW(p=>({...p,cat:e.target.value as WCat}))}>
+                <select className={inputCls} style={inputStyle} value={newW.cat} onChange={e=>setNewW(p=>({...p,cat:e.target.value as WCat}))}>
                   {W_CATS.map(c=><option key={c}>{c}</option>)}
                 </select>
               </Field>
-              <Field label={t('sp_field_room')}><input className={inputCls} value={newW.room} onChange={e=>setNewW(p=>({...p,room:e.target.value}))} placeholder={t('sp_placeholder_room')}/></Field>
-              <Field label={t('sp_field_brand')}><input className={inputCls} value={newW.brand} onChange={e=>setNewW(p=>({...p,brand:e.target.value}))} /></Field>
-              <Field label={t('sp_field_model')}><input className={inputCls} value={newW.model} onChange={e=>setNewW(p=>({...p,model:e.target.value}))} /></Field>
-              <Field label="Serial No."><input className={inputCls} value={newW.sn} onChange={e=>setNewW(p=>({...p,sn:e.target.value}))} /></Field>
-              <Field label={t('sp_field_warranty')}><input className={inputCls} value={newW.warranty} onChange={e=>setNewW(p=>({...p,warranty:e.target.value}))} placeholder={t('sp_placeholder_warranty')}/></Field>
-              <Field label={t('sp_field_install_date')}><input className={inputCls} type="date" onChange={e=>setNewW(p=>({...p,installed:e.target.value}))} /></Field>
+              <Field label={t('sp_field_room')}><input className={inputCls} style={inputStyle} value={newW.room} onChange={e=>setNewW(p=>({...p,room:e.target.value}))} placeholder={t('sp_placeholder_room')}/></Field>
+              <Field label={t('sp_field_brand')}><input className={inputCls} style={inputStyle} value={newW.brand} onChange={e=>setNewW(p=>({...p,brand:e.target.value}))} /></Field>
+              <Field label={t('sp_field_model')}><input className={inputCls} style={inputStyle} value={newW.model} onChange={e=>setNewW(p=>({...p,model:e.target.value}))} /></Field>
+              <Field label="Serial No."><input className={inputCls} style={inputStyle} value={newW.sn} onChange={e=>setNewW(p=>({...p,sn:e.target.value}))} /></Field>
+              <Field label={t('sp_field_warranty')}><input className={inputCls} style={inputStyle} value={newW.warranty} onChange={e=>setNewW(p=>({...p,warranty:e.target.value}))} placeholder={t('sp_placeholder_warranty')}/></Field>
+              <Field label={t('sp_field_install_date')}><input className={inputCls} style={inputStyle} type="date" onChange={e=>setNewW(p=>({...p,installed:e.target.value}))} /></Field>
             </Modal>
           )}
         </div>
@@ -925,33 +939,34 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
       {/* ── PATROL FORM MODAL ── */}
       {showPatrolForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-between">
+          <div className="f-thai w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ background: T.wine, color: '#fff' }}>
               <span className="font-semibold">🚨 {t('sp_patrol_form_title')}</span>
-              <button onClick={() => setShowPatrolForm(false)} className="text-white/80 hover:text-white text-xl leading-none">✕</button>
+              <button onClick={() => setShowPatrolForm(false)} className="press text-xl leading-none" style={{ color: 'rgba(255,255,255,0.85)' }}>✕</button>
             </div>
             <div className="p-4 space-y-3 max-h-[80vh] overflow-y-auto">
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_timestamp_label')}</label>
-                <div className="mt-1 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">{nowTH()}</div>
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: T.inkSoft }}>{t('sp_patrol_timestamp_label')}</label>
+                <div className="f-num mt-1 rounded-lg px-3 py-2 text-sm" style={{ background: T.bone, color: T.ink }}>{nowTH()}</div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_plate_label')} *</label>
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: T.inkSoft }}>{t('sp_patrol_plate_label')} *</label>
                 <input value={pPlate} onChange={e => setPPlate(e.target.value.toUpperCase())}
                   placeholder="กข 1234 / BT 5678"
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+                  className="focus-ring f-num mt-1 w-full rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_spot_label')}</label>
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: T.inkSoft }}>{t('sp_patrol_spot_label')}</label>
                 <input value={pSpot} onChange={e => setPSpot(e.target.value)}
                   placeholder={t('sp_patrol_spot_placeholder')}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+                  className="focus-ring mt-1 w-full rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_photos_label')} (max 4)</label>
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: T.inkSoft }}>{t('sp_patrol_photos_label')} (max 4)</label>
                 {pPhotos.length < 4 && (
                   <button onClick={() => patrolFileRef.current?.click()}
-                    className="mt-1 w-full border-2 border-dashed border-gray-300 rounded-xl py-4 text-sm text-gray-500 hover:border-red-400 hover:text-red-500 transition-colors flex flex-col items-center gap-1">
+                    className="press mt-1 w-full rounded-xl py-4 text-sm flex flex-col items-center gap-1"
+                    style={{ border: `2px dashed ${T.hair}`, color: T.inkSoft }}>
                     <span className="text-2xl">📷</span>
                     <span>{t('sp_patrol_photo_btn')}</span>
                   </button>
@@ -962,27 +977,27 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {pPhotos.map((p, i) => (
                       <div key={i} className="relative">
-                        <img src={p} alt="" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
+                        <img src={p} alt="" className="h-20 w-20 object-cover rounded-lg" style={{ border: `1px solid ${T.hair}` }} />
                         <button onClick={() => setPPhotos(prev => prev.filter((_, j) => j !== i))}
-                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center leading-none">✕</button>
+                          className="press absolute -top-1.5 -right-1.5 rounded-full w-5 h-5 text-xs flex items-center justify-center leading-none" style={{ background: T.wine, color: '#fff' }}>✕</button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('sp_patrol_notes_label')}</label>
+                <label className="text-xs font-medium uppercase tracking-wide" style={{ color: T.inkSoft }}>{t('sp_patrol_notes_label')}</label>
                 <textarea value={pNotes} onChange={e => setPNotes(e.target.value)}
                   placeholder={t('sp_patrol_notes_placeholder')} rows={2}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+                  className="focus-ring mt-1 w-full rounded-lg px-3 py-2 text-sm resize-none" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} />
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setShowPatrolForm(false)}
-                  className="flex-1 border border-gray-300 rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  className="press flex-1 rounded-xl py-3 text-sm font-medium" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
                   {t('sp_cancel')}
                 </button>
                 <button onClick={savePatrolUnknown}
-                  className="flex-1 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm">
+                  className="press flex-1 rounded-xl py-3 text-sm font-semibold" style={{ background: T.wine, color: '#fff' }}>
                   🚨 {t('sp_patrol_save_btn')}
                 </button>
               </div>

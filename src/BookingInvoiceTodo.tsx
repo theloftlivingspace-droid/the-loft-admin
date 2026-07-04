@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLang } from './LanguageContext';
+import { T } from './theme';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = '/api/gas-proxy?app=todo';
@@ -339,31 +340,31 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
   const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
+      <div className="f-thai flex items-center justify-between px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
             <div className="flex items-center gap-1">
-              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
-              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
-              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
+              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === 0}>‹</button>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{idx + 1}/{docs.length}</span>
+              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">{t('bi_download')}</a>
-          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>{t('bi_download')}</a>
+          <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
       <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
-          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
+          <div className="f-thai rounded-xl p-8 text-center" style={{ background: T.card, color: T.inkSoft }}>
             <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{t('bi_click_to_download')}</a>
+            <div className="font-semibold mb-1" style={{ color: T.ink }}>{doc.fileName}</div>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="underline text-sm" style={{ color: T.navy }}>{t('bi_click_to_download')}</a>
           </div>
         )}
       </div>
@@ -551,14 +552,14 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
   }, [bookingPending, invoicePending, onCountChange]);
 
   if (loading) return (
-    <div className="flex items-center justify-center py-6 text-gray-400">
-      <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
+    <div className="f-thai flex items-center justify-center py-6" style={{ color: T.inkSoft }}>
+      <div className="w-8 h-8 rounded-full animate-spin mr-3" style={{ border: `4px solid ${T.hairGold}`, borderTopColor: T.brass }} />
       {t('bi_loading_data')}
     </div>
   );
   if (error) return (
-    <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-      ⚠️ {error}<button onClick={loadData} className="ml-4 underline">{t('bi_retry')}</button>
+    <div className="f-thai p-6 rounded-2xl text-sm" style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
+      ⚠️ {error}<button onClick={loadData} className="press ml-4 underline">{t('bi_retry')}</button>
     </div>
   );
   if (!data) return null;
@@ -593,58 +594,59 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-blue-950">Booking & Invoice To-Do</h2>
-          <p className="text-xs text-gray-400">{t('bi_today_label')} {data.today}</p>
+          <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>Booking & Invoice To-Do</h2>
+          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('bi_today_label')} {data.today}</p>
         </div>
-        <button onClick={() => { loadData(); refreshDocs(); }} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+        <button onClick={() => { loadData(); refreshDocs(); }} className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
           {t('bi_refresh')}
         </button>
       </div>
 
       {/* Name search */}
       <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: T.inkSoft }}>🔍</span>
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('bi_search_guest')}
-          className="w-full pl-9 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+          className="focus-ring w-full pl-9 pr-8 py-2 text-sm rounded-xl"
+          style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
         />
         {search && (
           <button onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">✕</button>
+            className="press absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: T.inkSoft }}>✕</button>
         )}
       </div>
 
-      <div className="flex border-b mb-4">
+      <div className="flex mb-4" style={{ borderBottom: `1px solid ${T.hair}` }}>
         {([
           { key: 'booking', label: '📅 Booking To Add', count: bookingPending, flag: bookingNewToday },
           { key: 'invoice', label: '🧾 Invoice To Create', count: invoicePending, flag: invoiceNewToday },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 pb-3 pt-2 text-sm font-semibold border-b-2 transition-colors
-              ${activeTab === tab.key ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className="f-thai flex-1 pb-3 pt-2 text-sm font-semibold"
+            style={{ borderBottom: `2px solid ${activeTab === tab.key ? T.brass : 'transparent'}`, color: activeTab === tab.key ? T.navy : T.inkSoft }}>
             {tab.label}
-            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold
-              ${tab.count > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+            <span className="f-num ml-2 text-xs px-2 py-0.5 rounded-full font-bold"
+              style={tab.count > 0 ? { background: T.brassPale, color: T.brassDeep } : { background: T.bone, color: T.inkSoft }}>
               {tab.count}
             </span>
-            {tab.flag > 0 && <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">+{tab.flag}</span>}
+            {tab.flag > 0 && <span className="f-num ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: T.sageTint, color: T.sage }}>+{tab.flag}</span>}
           </button>
         ))}
       </div>
 
       {activeTab === 'booking' && (
         <div>
-          <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+          <div className="f-thai flex justify-between items-center text-xs mb-3" style={{ color: T.inkSoft }}>
             <span>{t('bi_total')} {data.booking.length} • {t('bi_pending')} {bookingPending} • {t('bi_new_today')} {bookingNewToday}</span>
-            <button onClick={() => setShowDoneBooking(v => !v)} className="text-blue-600 underline">
+            <button onClick={() => setShowDoneBooking(v => !v)} className="press underline" style={{ color: T.navy }}>
               {showDoneBooking ? t('bi_hide_done') : t('bi_show_all')}
             </button>
           </div>
           {visibleBooking.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
+            ? <p className="f-thai text-center py-10 text-sm" style={{ color: T.inkSoft }}>{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleBooking.map(item => {
                 const matchedInvoices = findMatches(item, data.invoice);
                 const isHl = highlighted === item.resId;
@@ -654,9 +656,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                 const isCopied = copiedId === item.resId;
                 return (
                   <div key={item.resId} data-itemid={item.resId}
-                    className={`rounded-xl mb-1.5 transition-all overflow-hidden
-                      ${item.done ? 'opacity-40 saturate-50' : th.card}
-                      ${isHl ? 'ring-2 ring-blue-400' : ''}`}>
+                    className={`rounded-xl mb-1.5 overflow-hidden ${item.done ? 'opacity-40 saturate-50' : th.card}`}
+                    style={isHl ? { boxShadow: `0 0 0 2px ${T.brass}` } : undefined}>
                     <div className="px-2 py-1">
                       {/* Row 1: checkbox + room pill + name + channel + new + copy */}
                       <div className="flex items-center gap-1">
@@ -670,7 +671,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                         <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
                         <span className={`text-[13px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
                         {item.isNewToday && !item.done && (
-                          <span className="text-[13px] bg-yellow-200 text-yellow-900 rounded-full px-1 py-px font-bold flex-shrink-0">{t('bi_new_badge')}</span>
+                          <span className="f-thai text-[13px] rounded-full px-1 py-px font-bold flex-shrink-0" style={{ background: T.brassPale, color: T.brassDeep }}>{t('bi_new_badge')}</span>
                         )}
                         <button
                           onClick={() => {
@@ -678,8 +679,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                             setCopiedId(item.resId);
                             setTimeout(() => setCopiedId(''), 2000);
                           }}
-                          className={`flex-shrink-0 text-[13px] border rounded px-1.5 py-px transition font-medium whitespace-nowrap
-                            ${isCopied ? 'bg-green-100 border-green-400 text-green-700' : th.copy}`}>
+                          className={`press flex-shrink-0 text-[13px] border rounded px-1.5 py-px font-medium whitespace-nowrap ${isCopied ? '' : th.copy}`}
+                          style={isCopied ? { background: T.sageTint, borderColor: T.sage, color: T.sage } : undefined}>
                           {isCopied ? '✓ copied!' : '📋 copy'}
                         </button>
                       </div>
@@ -714,12 +715,12 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {itemDocs.length > 0 && (
                           <button onClick={() => setViewerDocs(itemDocs)}
-                            className="text-[13px] border border-indigo-300 text-indigo-700 font-semibold rounded px-1 py-px hover:bg-indigo-50 transition">
+                            className="press f-thai text-[13px] font-semibold rounded px-1 py-px" style={{ border: `1px solid ${T.hairGold}`, color: T.navy }}>
                             🗂 ({itemDocs.length})
                           </button>
                         )}
                         {matchedInvoices.length === 0
-                          ? <span className="text-[13px] border rounded px-1 py-px text-gray-400">{t('bi_no_invoice')}</span>
+                          ? <span className="f-thai text-[13px] rounded px-1 py-px" style={{ border: `1px solid ${T.hair}`, color: T.inkSoft }}>{t('bi_no_invoice')}</span>
                           : matchedInvoices.map(inv => (
                               <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
                                 className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
@@ -727,7 +728,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                               </button>
                             ))
                         }
-                        {item.note && <span className="text-[13px] text-gray-400 italic">📝 {item.note}</span>}
+                        {item.note && <span className="f-thai text-[13px] italic" style={{ color: T.inkSoft }}>📝 {item.note}</span>}
                       </div>
                     </div>
                   </div>
@@ -739,49 +740,50 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
 
       {activeTab === 'invoice' && (
         <div>
-          <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+          <div className="f-thai flex justify-between items-center text-xs mb-3" style={{ color: T.inkSoft }}>
             <span>{t('bi_total')} {data.invoice.length} • {t('bi_pending')} {invoicePending} • {t('bi_detected_today')} {invoiceNewToday}</span>
-            <button onClick={() => setShowDoneInvoice(v => !v)} className="text-blue-600 underline">
+            <button onClick={() => setShowDoneInvoice(v => !v)} className="press underline" style={{ color: T.navy }}>
               {showDoneInvoice ? t('bi_hide_done') : t('bi_show_all')}
             </button>
           </div>
           {visibleInvoice.length === 0
-            ? <p className="text-center text-gray-400 py-10 text-sm">{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
+            ? <p className="f-thai text-center py-10 text-sm" style={{ color: T.inkSoft }}>{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleInvoice.map(item => {
                 const matchedBookings = findMatches(item, data.booking);
                 const isHl = highlighted === item.invoiceKey;
+                const cardBg = isHl ? T.navyTint : item.done ? T.sageTint : item.detectedToday && !item.done ? T.brassPale : T.card;
+                const cardBorder = isHl ? T.navy : item.done ? T.sage : item.detectedToday && !item.done ? T.hairGold : T.hair;
                 return (
                   <div key={item.invoiceKey} data-itemid={item.invoiceKey}
-                    className={`flex gap-3 items-start rounded-2xl border p-4 mb-3 transition-all
-                      ${item.detectedToday && !item.done ? 'bg-amber-50 border-amber-300' : ''}
-                      ${item.done ? 'opacity-50 bg-green-50 border-green-200' : 'bg-white'}
-                      ${isHl ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-50' : ''}`}>
+                    className="f-thai flex gap-3 items-start rounded-2xl p-4 mb-3"
+                    style={{ background: cardBg, border: `1px solid ${cardBorder}`, opacity: item.done ? 0.7 : 1 }}>
                     <input type="checkbox" checked={item.done} disabled={togglingId === item.invoiceKey}
                       onChange={e => toggleInvoiceDone(item.invoiceKey, e.target.checked)}
-                      className="w-5 h-5 mt-0.5 accent-blue-600 flex-shrink-0 cursor-pointer" />
+                      style={{ accentColor: T.navy }}
+                      className="w-5 h-5 mt-0.5 flex-shrink-0 cursor-pointer" />
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-bold text-sm">{t('bi_room_prefix')} {item.room} — {item.guest}</span>
-                        {item.detectedToday && <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">{t('bi_detected_today')}</span>}
-                        {item.isSplitFromMulti && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{t('bi_item_index')} {item.splitIndex}/{item.splitTotal}</span>}
+                        <span className="font-bold text-sm" style={{ color: T.ink }}>{t('bi_room_prefix')} {item.room} — {item.guest}</span>
+                        {item.detectedToday && <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: T.brassPale, color: T.brassDeep }}>{t('bi_detected_today')}</span>}
+                        {item.isSplitFromMulti && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>{t('bi_item_index')} {item.splitIndex}/{item.splitTotal}</span>}
                       </div>
-                      <p className="text-xs text-gray-500 mb-2">
+                      <p className="text-xs mb-2" style={{ color: T.inkSoft }}>
                         {item.checkin} → {item.checkout}{item.nights ? ` (${item.nights} ${t('bi_nights_unit')})` : ''}
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{item.ota}</span>
-                        <span className="text-xs bg-green-100 text-green-700 font-bold rounded-lg px-2 py-0.5 flex items-center gap-1">
+                        <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{item.ota}</span>
+                        <span className="f-num text-xs font-bold rounded-lg px-2 py-0.5 flex items-center gap-1" style={{ background: T.sageTint, color: T.sage }}>
                           NET ฿{formatNum(item.net)}
-                          {item.isSplitFromMulti && <span className="font-normal opacity-60">({t('bi_combined')} ฿{formatNum(item.groupNet)})</span>}
+                          {item.isSplitFromMulti && <span className="font-normal" style={{ opacity: 0.6 }}>({t('bi_combined')} ฿{formatNum(item.groupNet)})</span>}
                           <button onClick={() => { copyToClipboard(String(item.net).replace(/,/g,'')); showToast(t('bi_copied_label') + ' ' + item.net); }}
-                            className="ml-0.5 hover:text-green-900 transition" title={t('bi_copy_amount_title')}>⎘</button>
+                            className="press ml-0.5" title={t('bi_copy_amount_title')}>⎘</button>
                         </span>
-                        <span className="text-xs bg-gray-100 rounded-lg px-2 py-0.5">{t('bi_detected_label')} {item.detectedDate}</span>
+                        <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{t('bi_detected_label')} {item.detectedDate}</span>
                         {matchedBookings.length === 0
-                          ? <button className="text-xs border rounded-lg px-2 py-0.5 text-gray-400 hover:bg-gray-50">{t('bi_no_booking')}</button>
+                          ? <button className="press text-xs rounded-lg px-2 py-0.5" style={{ border: `1px solid ${T.hair}`, color: T.inkSoft }}>{t('bi_no_booking')}</button>
                           : matchedBookings.map(bk => (
                               <button key={bk.resId} onClick={() => jumpTo('booking', bk.resId)}
-                                className="text-xs border border-blue-400 text-blue-700 font-semibold rounded-lg px-2 py-0.5 hover:bg-blue-50 transition">
+                                className="press text-xs font-semibold rounded-lg px-2 py-0.5" style={{ border: `1px solid ${T.navy}40`, color: T.navy }}>
                                 📅 {bk.room} — {bk.guest}
                               </button>
                             ))
@@ -796,7 +798,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none">
+        <div className="f-thai fixed bottom-6 left-1/2 -translate-x-1/2 text-sm px-5 py-2 rounded-full z-50 pointer-events-none" style={{ background: T.navyDeep, color: '#fff', boxShadow: '0 10px 24px rgba(11,30,66,0.4)' }}>
           {toast}
         </div>
       )}

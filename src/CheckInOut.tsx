@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLang } from './LanguageContext';
+import { T } from './theme';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Proxied through /api/gas-proxy (Vercel serverless function) because Google
@@ -69,13 +70,14 @@ function roomNum(r: string): string {
   return m ? m[0] : r;
 }
 
-function channelColor(ch: string): string {
+// Inline-style variant (channel badge) matching the navy/gold theme without relying on Tailwind color utilities
+function channelStyle(ch: string): { bg: string; fg: string } {
   const c = (ch || '').toLowerCase();
-  if (c.includes('airbnb')) return 'bg-rose-100 text-rose-700';
-  if (c.includes('booking')) return 'bg-blue-100 text-blue-700';
-  if (c.includes('trip')) return 'bg-cyan-100 text-cyan-700';
-  if (c.includes('expedia')) return 'bg-yellow-100 text-yellow-700';
-  return 'bg-gray-100 text-gray-600';
+  if (c.includes('airbnb')) return { bg: T.wineTint, fg: T.wine };
+  if (c.includes('booking')) return { bg: T.navyTint, fg: T.navy };
+  if (c.includes('trip')) return { bg: T.sageTint, fg: T.sage };
+  if (c.includes('expedia')) return { bg: T.brassPale, fg: T.brassDeep };
+  return { bg: T.bone, fg: T.inkSoft };
 }
 
 function channelIcon(ch: string): string {
@@ -135,10 +137,10 @@ async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
 }
 
 const STATUS_CONFIG = {
-  'checked-in':        { labelKey: 'ci_checked_in_done',    bg: 'bg-emerald-500', text: 'text-white',        dot: 'bg-white' },
-  'arriving-today':    { labelKey: 'ci_arriving_today',     bg: 'bg-amber-400',   text: 'text-amber-900',    dot: 'bg-amber-900' },
-  'checking-out-today':{ labelKey: 'ci_checking_out_today', bg: 'bg-orange-500',  text: 'text-white',        dot: 'bg-white' },
-  'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: 'bg-sky-400',     text: 'text-white',        dot: 'bg-white' },
+  'checked-in':        { labelKey: 'ci_checked_in_done',    bg: T.sage,      text: '#FFFFFF', dot: '#FFFFFF' },
+  'arriving-today':    { labelKey: 'ci_arriving_today',     bg: T.brass,     text: T.navyDeep, dot: T.navyDeep },
+  'checking-out-today':{ labelKey: 'ci_checking_out_today', bg: T.wine,      text: '#FFFFFF', dot: '#FFFFFF' },
+  'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: T.navy,      text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
 // ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
@@ -165,40 +167,40 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white" onClick={e => e.stopPropagation()}>
+      <div className="f-thai flex items-center justify-between px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {docs.length > 1 && (
             <div className="flex items-center gap-1">
-              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === 0}>‹</button>
-              <span className="text-xs text-gray-300">{idx + 1}/{docs.length}</span>
-              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="px-2 py-1 text-xs bg-gray-700 rounded disabled:opacity-30" disabled={idx === docs.length - 1}>›</button>
+              <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === 0}>‹</button>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{idx + 1}/{docs.length}</span>
+              <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">⬇ {t('ci_download')}</a>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
               setDeleting(true);
               try { await onDelete(idx); if (idx >= docs.length - 1) setIdx(Math.max(0, idx - 1)); }
               finally { setDeleting(false); }
             }}
-            className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700 disabled:opacity-50">
+            className="press px-2 py-1 text-xs rounded disabled:opacity-50" style={{ background: T.wine, color: '#fff' }}>
             {deleting ? '…' : '🗑'}
           </button>
-          <button onClick={onClose} className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500">✕</button>
+          <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
       <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
-          <div className="bg-white rounded-xl p-8 text-center text-gray-500">
+          <div className="f-thai rounded-xl p-8 text-center" style={{ background: T.card, color: T.inkSoft }}>
             <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1">{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">{t('ci_click_download')}</a>
+            <div className="font-semibold mb-1" style={{ color: T.ink }}>{doc.fileName}</div>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="underline text-sm" style={{ color: T.navy }}>{t('ci_click_download')}</a>
           </div>
         )}
       </div>
@@ -573,16 +575,16 @@ export default function CheckInOut() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center py-20 text-gray-400">
-      <div className="w-8 h-8 border-4 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-3" />
+    <div className="f-thai flex items-center justify-center py-20" style={{ color: T.inkSoft }}>
+      <div className="w-8 h-8 rounded-full animate-spin mr-3" style={{ border: `4px solid ${T.hairGold}`, borderTopColor: T.brass }} />
       {t('ci_loading_data')}
     </div>
   );
   if (error) return (
-    <div className="text-center py-16 text-red-500">
+    <div className="f-thai text-center py-16" style={{ color: T.wine }}>
       <div className="text-2xl mb-2">⚠️</div>
       <p className="text-sm">{error}</p>
-      <button onClick={load} className="mt-3 px-4 py-2 text-xs bg-red-50 rounded-xl border border-red-200 text-red-600">{t('ci_retry')}</button>
+      <button onClick={load} className="press mt-3 px-4 py-2 text-xs rounded-xl" style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>{t('ci_retry')}</button>
     </div>
   );
 
@@ -606,16 +608,18 @@ export default function CheckInOut() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-bold text-blue-950">{t('ci_room_status_title')}</h2>
-          <p className="text-xs text-gray-400">{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
+          <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>{t('ci_room_status_title')}</h2>
+          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
         </div>
         <div className="flex items-center gap-2">
           <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl bg-indigo-50 border-indigo-200 hover:bg-indigo-100 transition text-indigo-700 font-medium">
+            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
+            style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
             {t('ci_create_tm30')}
           </a>
           <button onClick={() => { load(); refreshDocs(); }}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-xl hover:bg-gray-50 transition text-gray-600">
+            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
+            style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
             {t('ci_refresh')}
           </button>
         </div>
@@ -624,38 +628,38 @@ export default function CheckInOut() {
       {/* Summary KPI row */}
       <div className="grid grid-cols-4 gap-2 mb-5">
         {[
-          { label: t('ci_in_hotel'), val: counts.checkedin,  icon: '🛏️',  color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-          { label: t('ci_checking_out_today'), val: counts.checkouts, icon: '🧳',  color: 'bg-orange-50 border-orange-200 text-orange-700' },
-          { label: t('ci_arriving_today'),   val: counts.today_ci,  icon: '📥',  color: 'bg-amber-50 border-amber-200 text-amber-700' },
-          { label: t('ci_arriving_soon'), val: counts.arrivals - counts.today_ci, icon: '📅', color: 'bg-sky-50 border-sky-200 text-sky-700' },
+          { label: t('ci_in_hotel'), val: counts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
+          { label: t('ci_checking_out_today'), val: counts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
+          { label: t('ci_arriving_today'),   val: counts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
+          { label: t('ci_arriving_soon'), val: counts.arrivals - counts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
         ].map(k => (
-          <div key={k.label} className={`rounded-2xl border p-3 text-center ${k.color}`}>
+          <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
             <div className="text-xl mb-0.5">{k.icon}</div>
-            <div className="text-2xl font-bold">{k.val}</div>
+            <div className="f-num text-2xl font-bold">{k.val}</div>
             <div className="text-xs leading-tight mt-0.5">{k.label}</div>
           </div>
         ))}
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1.5 mb-4 bg-gray-100 rounded-2xl p-1">
+      <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
         {([
           { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
           { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
           { key: 'checkouts', label: `${t('ci_filter_checkouts')} (${counts.checkouts})` },
           { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
-        ] as const).map(t => (
-          <button key={t.key} onClick={() => setView(t.key)}
-            className={`flex-1 px-2 py-1.5 text-xs rounded-xl font-medium transition
-              ${view === t.key ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>
-            {t.label}
+        ] as const).map(tab => (
+          <button key={tab.key} onClick={() => setView(tab.key)}
+            className="press f-thai flex-1 px-2 py-1.5 text-xs rounded-xl font-medium"
+            style={view === tab.key ? { background: T.card, color: T.navy, boxShadow: '0 1px 4px rgba(11,30,66,0.15)' } : { color: T.inkSoft }}>
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">{t('ci_no_data')}</div>
+        <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
       ) : (
         <div className="space-y-3">
           {filtered.map(s => {
@@ -690,52 +694,52 @@ export default function CheckInOut() {
             const isCheckedOut = checkedOutSet.has(s.resId);
             const isNoShow     = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn && !isCheckedOut;
 
-            // สี: cancelled=แดง | checkedOut=ส้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=ฟ้า | default
-            const cardBorderCls = isCancelled               ? 'border-red-300 bg-red-50'
-                                : isCheckedOut              ? 'border-orange-300 bg-orange-50'
-                                : isCheckedIn               ? 'border-emerald-300 bg-emerald-50'
-                                : isNoShow                  ? 'border-gray-300 bg-gray-100'
-                                : s.status==='arriving-soon'? 'border-sky-300 bg-sky-50'
-                                                            : 'border-gray-100 bg-white';
-            const topBarCls    = isCancelled  ? 'bg-red-500'
-                                : isCheckedOut ? 'bg-orange-500'
-                                : isCheckedIn  ? 'bg-emerald-500'
-                                : isNoShow     ? 'bg-gray-400'
+            // สี: cancelled=แดง(wine) | checkedOut=ทองเข้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
+            const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: T.wineTint }
+                             : isCheckedOut              ? { border: `1px solid ${T.brassDeep}40`, background: T.brassPale }
+                             : isCheckedIn               ? { border: `1px solid ${T.sage}40`, background: T.sageTint }
+                             : isNoShow                  ? { border: `1px solid ${T.hair}`, background: T.bone }
+                             : s.status==='arriving-soon'? { border: `1px solid ${T.navy}30`, background: T.navyTint }
+                                                         : { border: `1px solid ${T.hair}`, background: T.card };
+            const topBarBg     = isCancelled  ? T.wine
+                                : isCheckedOut ? T.brassDeep
+                                : isCheckedIn  ? T.sage
+                                : isNoShow     ? '#9CA3AF'
                                                : cfg.bg;
             const topBarLabel  = isCancelled  ? `🚫 ${t('ci_cancelled_booking')}`
                                 : isCheckedOut ? `🧳 ${t('ci_checked_out_done')}`
                                 : isCheckedIn  ? `✅ ${t('ci_checked_in_done')}`
                                 : isNoShow     ? `⚠️ ${t('ci_no_show')}`
                                                : t(cfg.labelKey);
-            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'text-white' : cfg.text;
-            const dotCls       = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? 'bg-white' : cfg.dot;
+            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? '#FFFFFF' : cfg.text;
 
             return (
               <div key={cardKey}
-                className={`rounded-2xl border shadow-sm overflow-hidden ${cardBorderCls}`}>
+                className="f-thai rounded-2xl overflow-hidden" style={cardStyle}>
                 {/* Top bar */}
-                <div className={`${topBarCls} px-4 py-2 flex items-center justify-between`}>
+                <div className="px-4 py-2 flex items-center justify-between" style={{ background: topBarBg }}>
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${dotCls}`}></span>
-                    <span className={`text-xs font-semibold ${topBarText}`}>{topBarLabel}</span>
+                    <span className="w-2 h-2 rounded-full" style={{ background: topBarText }}></span>
+                    <span className="text-xs font-semibold" style={{ color: topBarText }}>{topBarLabel}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {s.status === 'checked-in' && (
-                      <span className={`text-xs ${cfg.text} opacity-80`}>
+                      <span className="text-xs" style={{ color: topBarText, opacity: 0.8 }}>
                         {t('ci_remaining_nights')} {s.daysLeft} {t('ci_nights')} · {t('ci_checkout_label')} {s.checkout}
                       </span>
                     )}
                     {s.status === 'arriving-soon' && (
-                      <span className={`text-xs ${cfg.text} opacity-90`}>{t('ci_arrives_in')} {s.daysUntil} {t('ci_days')}</span>
+                      <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_arrives_in')} {s.daysUntil} {t('ci_days')}</span>
                     )}
                     {s.status === 'arriving-today' && (
-                      <span className={`text-xs ${cfg.text} opacity-90`}>{t('ci_today_exclaim')}</span>
+                      <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
                     {/* ปุ่มยกเลิกเล็กๆ มุมขวาบน */}
                     {!isCancelled && !isCheckedOut && (
                       <button
                         onClick={e => { e.stopPropagation(); setCancelModal(s); }}
-                        className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center text-white/80 hover:text-white text-[10px] font-bold transition leading-none"
+                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                        style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
                         title="ยกเลิกการจอง">
                         ✕
                       </button>
@@ -748,19 +752,18 @@ export default function CheckInOut() {
                   {/* Room + Guest row */}
                   <div className="flex items-center gap-3 mb-3">
                     {/* Room badge */}
-                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100
-                      flex flex-col items-center justify-center">
-                      <span className="text-2xl font-semibold text-blue-700 leading-none">{s.roomNum}</span>
-                      <span className="text-[10px] text-blue-400 mt-1 tracking-wide uppercase">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center" style={{ background: T.navyDeep }}>
+                      <span className="f-num text-2xl font-semibold leading-none" style={{ color: T.brass }}>{s.roomNum}</span>
+                      <span className="text-[9px] mt-1 tracking-wide uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
                       </span>
                     </div>
 
                     {/* Guest + channel */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 text-base leading-tight truncate">{s.guest}</div>
+                      <div className="f-display font-semibold text-base leading-tight truncate" style={{ color: T.ink }}>{s.guest}</div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span className={`inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium ${channelColor(s.channel)}`}>
+                        <span className="inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: channelStyle(s.channel).bg, color: channelStyle(s.channel).fg }}>
                           {channelIcon(s.channel)} {s.channel}
                         </span>
                       </div>
@@ -771,18 +774,17 @@ export default function CheckInOut() {
                       {(s.status === 'checking-out-today' || s.status === 'checked-in') && (() => {
                         const reallyInspected = co?.inspected;
                         return (
-                          <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                            ${reallyInspected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                              : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+                          <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium"
+                            style={reallyInspected ? { background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` } : { background: T.brassPale, color: T.brassDeep, border: `1px solid ${T.hairGold}` }}>
                             <span className="text-base">{reallyInspected ? '🟢' : '🟡'}</span>
                           </div>
                         );
                       })()}
                       {s.status === 'arriving-today' && (
-                        <div className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium
-                          ${roomReady === true  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : roomReady === false ? 'bg-red-50 text-red-600 border border-red-200'
-                                                : 'bg-white text-gray-400 border border-gray-200'}`}>
+                        <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium"
+                          style={roomReady === true ? { background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }
+                          : roomReady === false ? { background: T.wineTint, color: T.wine, border: `1px solid ${T.wine}30` }
+                                                : { background: T.card, color: '#9CA3AF', border: `1px solid ${T.hair}` }}>
                           <span className="text-base">{roomReady === true ? '🟢' : roomReady === false ? '🔴' : '⚪'}</span>
                         </div>
                       )}
@@ -803,19 +805,19 @@ export default function CheckInOut() {
                     const co2 = fmtDate(s.checkout);
                     const isCheckoutToday = s.status === 'checking-out-today';
                     return (
-                      <div className="flex border border-gray-100 rounded-xl overflow-hidden mb-2">
+                      <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
                         <div className="flex-1 px-3 py-2">
-                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">{t('ci_checkin_label')}</div>
-                          <div className="text-xl font-semibold text-gray-900 leading-none">{ci.day}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{ci.month} {ci.year}</div>
+                          <div className="f-thai text-[9px] font-semibold tracking-widest uppercase mb-1" style={{ color: T.inkSoft }}>{t('ci_checkin_label')}</div>
+                          <div className="f-num text-xl font-semibold leading-none" style={{ color: T.ink }}>{ci.day}</div>
+                          <div className="text-xs mt-0.5" style={{ color: T.inkSoft }}>{ci.month} {ci.year}</div>
                         </div>
-                        <div className="flex items-center justify-center px-3 bg-gray-50 text-[11px] text-gray-400 font-medium border-x border-gray-100">
+                        <div className="flex items-center justify-center px-3 text-[11px] font-medium" style={{ background: T.bone, color: T.brassDeep, borderLeft: `1px solid ${T.hairGold}`, borderRight: `1px solid ${T.hairGold}` }}>
                           {s.nights}<br/>{t('ci_nights')}
                         </div>
                         <div className="flex-1 px-3 py-2">
-                          <div className="text-[9px] text-gray-400 font-semibold tracking-widest uppercase mb-1">{t('ci_checkout_label')}</div>
-                          <div className={`text-xl font-semibold leading-none ${isCheckoutToday ? 'text-orange-600' : 'text-gray-900'}`}>{co2.day}</div>
-                          <div className={`text-xs mt-0.5 ${isCheckoutToday ? 'text-orange-400' : 'text-gray-500'}`}>{co2.month} {co2.year}</div>
+                          <div className="f-thai text-[9px] font-semibold tracking-widest uppercase mb-1" style={{ color: T.inkSoft }}>{t('ci_checkout_label')}</div>
+                          <div className="f-num text-xl font-semibold leading-none" style={{ color: isCheckoutToday ? T.wine : T.ink }}>{co2.day}</div>
+                          <div className="text-xs mt-0.5" style={{ color: isCheckoutToday ? T.wine : T.inkSoft, opacity: isCheckoutToday ? 0.75 : 1 }}>{co2.month} {co2.year}</div>
                         </div>
                       </div>
                     );
@@ -823,9 +825,10 @@ export default function CheckInOut() {
 
                   {/* Note */}
                   <div className="mb-2 flex items-center gap-2">
-                    {s.note && <p className="flex-1 text-xs text-gray-400 italic truncate">📝 {s.note}</p>}
+                    {s.note && <p className="f-thai flex-1 text-xs italic truncate" style={{ color: T.inkSoft }}>📝 {s.note}</p>}
                     <button onClick={() => openNoteModal(s)}
-                      className="text-[11px] border border-yellow-300 text-yellow-700 font-semibold rounded-lg px-2 py-1 hover:bg-yellow-50 transition whitespace-nowrap">
+                      className="press f-thai text-[11px] font-semibold rounded-lg px-2 py-1 whitespace-nowrap"
+                      style={{ border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
                       {s.note ? `✏️ ${t('ci_edit_note')}` : `📝 ${t('ci_add_note')}`}
                     </button>
                   </div>
@@ -837,27 +840,29 @@ export default function CheckInOut() {
                       {!isCheckedIn && !isNoShow && (
                         <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
                           onClick={() => markCheckedIn(s.resId)}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm">
+                          className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                          style={{ background: T.sage, color: '#fff' }}>
                           ✅ {t('ci_checkin_tm30')}
                         </a>
                       )}
                       {/* เช็คอินแล้ว — badge + ปุ่ม checkout */}
                       {isCheckedIn && (
                         <>
-                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                          <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
                             ✅ {t('ci_checked_in_done')}
                           </span>
                           <button
                             disabled={checkoutSaving === s.resId}
                             onClick={() => doCheckout(s)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-sm disabled:opacity-50">
+                            className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+                            style={{ background: T.wine, color: '#fff' }}>
                             {checkoutSaving === s.resId ? '⏳...' : t('ci_checkout_btn')}
                           </button>
                         </>
                       )}
                       {/* No show — badge */}
                       {isNoShow && (
-                        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-300">
+                        <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
                           ⚠️ {t('ci_no_show')}
                         </span>
                       )}
@@ -867,7 +872,7 @@ export default function CheckInOut() {
                   {/* Checked out badge */}
                   {isCheckedOut && (
                     <div className="mb-3">
-                      <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
+                      <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.brassPale, color: T.brassDeep, border: `1px solid ${T.hairGold}` }}>
                         🧳 {t('ci_checked_out_done')}
                       </span>
                     </div>
@@ -878,13 +883,15 @@ export default function CheckInOut() {
                     <button
                       disabled={isUploading}
                       onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
+                      className="press f-thai inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg disabled:opacity-50"
+                      style={{ border: `1px dashed ${T.hair}`, color: T.inkSoft }}>
                       {isUploading ? `⏳ ${t('ci_uploading')}` : `📎 ${t('ci_upload_doc')}`}
                     </button>
                     {!docsLoading && cardDocs.length > 0 && (
                       <button
                         onClick={() => setViewerKey(cardKey)}
-                        className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium hover:bg-blue-100 transition">
+                        className="press f-thai inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg font-medium"
+                        style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
                         🗂 {t('ci_view_docs')} ({cardDocs.length})
                       </button>
                     )}
@@ -893,10 +900,10 @@ export default function CheckInOut() {
 
                 {/* Checkout details (for checkout-today only) */}
                 {s.status === 'checking-out-today' && co && (
-                  <div className="mx-4 mb-3 p-2.5 bg-gray-50 rounded-xl text-[11px] text-gray-500 space-y-0.5">
-                    {co.cleanedBy   && <div>🧹 {t('ci_cleaned_by')}: <span className="text-gray-700">{co.cleanedBy}</span></div>}
-                    {co.inspectedBy && <div>👁️ {t('ci_inspected_by')}: <span className="text-gray-700">{co.inspectedBy}</span></div>}
-                    {co.issues      && <div>⚠️ <span className="text-amber-700">{co.issues}</span></div>}
+                  <div className="f-thai mx-4 mb-3 p-2.5 rounded-xl text-[11px] space-y-0.5" style={{ background: T.bone, color: T.inkSoft }}>
+                    {co.cleanedBy   && <div>🧹 {t('ci_cleaned_by')}: <span style={{ color: T.ink }}>{co.cleanedBy}</span></div>}
+                    {co.inspectedBy && <div>👁️ {t('ci_inspected_by')}: <span style={{ color: T.ink }}>{co.inspectedBy}</span></div>}
+                    {co.issues      && <div>⚠️ <span style={{ color: T.brassDeep }}>{co.issues}</span></div>}
                   </div>
                 )}
               </div>
@@ -906,8 +913,8 @@ export default function CheckInOut() {
       )}
 
       {/* Legend */}
-      <div className="mt-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[11px] text-gray-500">
-        <div className="font-semibold text-gray-600 mb-1.5">{t('ci_legend_title')}</div>
+      <div className="f-thai mt-6 px-4 py-3 rounded-xl text-[11px]" style={{ background: T.bone, border: `1px solid ${T.hair}`, color: T.inkSoft }}>
+        <div className="font-semibold mb-1.5" style={{ color: T.ink }}>{t('ci_legend_title')}</div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <span>{t('ci_legend_ready')}</span>
           <span>{t('ci_legend_not_inspected')}</span>
@@ -919,23 +926,25 @@ export default function CheckInOut() {
       {/* Cancel confirmation modal */}
       {cancelModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">🚫</div>
-              <p className="font-bold text-gray-900 text-base">{t('ci_confirm_cancel_q')}</p>
-              <p className="text-sm text-gray-500 mt-1">ห้อง {cancelModal.room} · {cancelModal.guest}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{cancelModal.checkin} → {cancelModal.checkout}</p>
-              <p className="text-xs text-orange-500 mt-2">⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้</p>
+              <p className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('ci_confirm_cancel_q')}</p>
+              <p className="f-thai text-sm mt-1" style={{ color: T.inkSoft }}>ห้อง {cancelModal.room} · {cancelModal.guest}</p>
+              <p className="f-thai text-xs mt-0.5" style={{ color: T.inkSoft }}>{cancelModal.checkin} → {cancelModal.checkout}</p>
+              <p className="f-thai text-xs mt-2" style={{ color: T.brassDeep }}>⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้</p>
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={() => setCancelModal(null)}
-                className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-medium"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
                 {t('ci_no')}
               </button>
               <button
                 disabled={cancelSaving}
                 onClick={async () => { await confirmCancel(cancelModal); setCancelModal(null); }}
-                className="flex-1 bg-red-500 hover:bg-red-600 rounded-xl py-2.5 text-sm font-bold text-white transition disabled:opacity-50">
+                className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+                style={{ background: T.wine, color: '#fff' }}>
                 {cancelSaving ? '⏳...' : `🚫 ${t('ci_confirm')}`}
               </button>
             </div>
@@ -945,11 +954,12 @@ export default function CheckInOut() {
 
       {noteModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <p className="font-bold text-sm mb-1">📝 {t('ci_note_modal_title')} {noteModal.room}</p>
-            <p className="text-xs text-gray-500 mb-3">{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+            <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>📝 {t('ci_note_modal_title')} {noteModal.room}</p>
+            <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
             <textarea
-              className="w-full border rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              className="focus-ring w-full rounded-lg p-2 text-sm resize-none"
+              style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
               rows={4}
               placeholder={t('ci_note_placeholder')}
               value={noteText}
@@ -958,11 +968,13 @@ export default function CheckInOut() {
             />
             <div className="flex gap-2 mt-3">
               <button onClick={() => setNoteModal(null)}
-                className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
+                className="press f-thai flex-1 rounded-lg py-2 text-sm"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
                 {t('ci_cancel')}
               </button>
               <button onClick={saveNote} disabled={noteSaving}
-                className="flex-1 bg-yellow-400 hover:bg-yellow-500 rounded-lg py-2 text-sm font-bold transition disabled:opacity-50">
+                className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
+                style={{ background: T.brass, color: T.navyDeep }}>
                 {noteSaving ? t('ci_saving') : t('ci_save_notify_line')}
               </button>
             </div>
@@ -971,7 +983,7 @@ export default function CheckInOut() {
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-xl z-50 pointer-events-none">
+        <div className="f-thai fixed bottom-6 left-1/2 -translate-x-1/2 text-sm px-5 py-2 rounded-full z-50 pointer-events-none" style={{ background: T.navyDeep, color: '#fff', boxShadow: '0 10px 24px rgba(11,30,66,0.4)' }}>
           {toast}
         </div>
       )}
