@@ -241,38 +241,6 @@ export default function CheckInOut() {
   const [checkedOutSet,  setCheckedOutSet]  = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ci_checkout') || '[]')); } catch { return new Set(); }
   });
-  const [checkoutSaving, setCheckoutSaving] = useState<string | null>(null); // resId being saved
-
-
-
-  async function doCheckout(s: Stay) {
-    setCheckoutSaving(s.resId);
-    try {
-      const todayStr = today();
-      const isEarly  = todayStr < s.checkout;
-      await fetch(GAS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'earlyCheckout',
-          resId: s.resId,
-          room: s.roomNum,
-          guest: s.guest,
-          originalCheckout: s.checkout,
-          newCheckout: todayStr,
-          isEarly,
-        }),
-      });
-      const next = new Set(checkedOutSet).add(s.resId);
-      setCheckedOutSet(next);
-      localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(isEarly ? `🧳 ${t('ci_checkout_early')}` : `🧳 ${t('ci_checkout_simple')}`);
-    } catch {
-      showToast(`❌ ${t('ci_save_failed')}`);
-    } finally {
-      setCheckoutSaving(null);
-    }
-  }
 
   async function markCheckedIn(resId: string) {
     // Optimistic local update so the UI feels instant on this device.
