@@ -133,6 +133,26 @@ function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: strin
   );
 }
 
+// ── Modal wrapper (module-level: must NOT be redefined on every render of
+//    StockParking, or React remounts it — and its children inputs — on every
+//    keystroke, which is what was breaking typing/adding items) ────────────
+const Modal = ({title,onClose,onSave,children,cancelLabel,saveLabel}:{title:string;onClose:()=>void;onSave:()=>void;children:React.ReactNode;cancelLabel:string;saveLabel:string}) => (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
+    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl my-8 sm:my-0">
+      <h3 className="text-base font-semibold mb-4 text-gray-800">{title}</h3>
+      <div className="space-y-3">{children}</div>
+      <div className="flex gap-2 mt-5 justify-end">
+        <button onClick={onClose} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition">{cancelLabel}</button>
+        <button onClick={onSave}  className="px-5 py-2 rounded-xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition">{saveLabel}</button>
+      </div>
+    </div>
+  </div>
+);
+
+const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
+  <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
+);
+
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
@@ -405,24 +425,6 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const btnDel   = "px-2 py-1 rounded-lg text-xs border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition";
   const btnAdd   = "px-4 py-2 rounded-2xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition";
 
-  // ── Modal wrapper ─────────────────────────────────────────────────────────
-  const Modal = ({title,onClose,onSave,children}:{title:string;onClose:()=>void;onSave:()=>void;children:React.ReactNode}) => (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl my-8 sm:my-0">
-        <h3 className="text-base font-semibold mb-4 text-gray-800">{title}</h3>
-        <div className="space-y-3">{children}</div>
-        <div className="flex gap-2 mt-5 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50 transition">{t('sp_cancel')}</button>
-          <button onClick={onSave}  className="px-5 py-2 rounded-xl bg-blue-900 text-white text-sm font-medium hover:bg-blue-800 transition">{t('sp_save_btn')}</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
-    <div><label className="block text-xs text-gray-500 mb-1">{label}</label>{children}</div>
-  );
-
   const typeOpts = ['Car','Motorcycle'];
 
   return (
@@ -487,7 +489,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             </table>
           </div>
           {showStockModal && (
-            <Modal title={t('sp_modal_add_item')} onClose={()=>setShowStockModal(false)} onSave={addStock}>
+            <Modal title={t('sp_modal_add_item')} onClose={()=>setShowStockModal(false)} onSave={addStock} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_item_name')}><input className={inputCls} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
               <Field label={t('sp_field_qty')}><input className={inputCls} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
@@ -540,7 +542,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             </table>
           </div>
           {showPIModal && (
-            <Modal title={t('sp_modal_add_car_in')} onClose={()=>setShowPIModal(false)} onSave={addParkIn}>
+            <Modal title={t('sp_modal_add_car_in')} onClose={()=>setShowPIModal(false)} onSave={addParkIn} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_room_no')}><input className={inputCls} value={newPI.room} onChange={e=>setNewPI(p=>({...p,room:e.target.value}))} placeholder="205"/></Field>
               <Field label={t('sp_field_plate')}><input className={inputCls} value={newPI.plate} onChange={e=>setNewPI(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
               <Field label={t('sp_field_type')}>
@@ -601,7 +603,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             </table>
           </div>
           {showPOModal && (
-            <Modal title={t('sp_modal_add_car_out')} onClose={()=>setShowPOModal(false)} onSave={addParkOut}>
+            <Modal title={t('sp_modal_add_car_out')} onClose={()=>setShowPOModal(false)} onSave={addParkOut} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_plate')}><input className={inputCls} value={newPO.plate} onChange={e=>setNewPO(p=>({...p,plate:e.target.value}))} placeholder="บธ1234"/></Field>
               <Field label={t('sp_field_type')}>
                 <select className={inputCls} value={newPO.type} onChange={e=>setNewPO(p=>({...p,type:e.target.value}))}>
@@ -797,7 +799,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
             </table>
           </div>
           {showWModal && (
-            <Modal title={t('sp_modal_add_warranty')} onClose={()=>setShowWModal(false)} onSave={addWarranty}>
+            <Modal title={t('sp_modal_add_warranty')} onClose={()=>setShowWModal(false)} onSave={addWarranty} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_category')}>
                 <select className={inputCls} value={newW.cat} onChange={e=>setNewW(p=>({...p,cat:e.target.value as WCat}))}>
                   {W_CATS.map(c=><option key={c}>{c}</option>)}
