@@ -308,6 +308,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [showPIModal, setShowPIModal] = useState(false);
   const [newPI, setNewPI] = useState({room:'',plate:'',type:'',name:'',status:''});
   const delParkIn = (id:number) => setParkingIn(d=>d.filter(r=>r.id!==id));
+  const updateParkInStatus = (id:number, status:string) =>
+    setParkingIn(d=>d.map(r=>r.id===id ? {...r, status} : r));
   const addParkIn = () => {
     if(!newPI.plate.trim()) return;
     setParkingIn(d=>[...d,{id:nextPIId,...newPI}]);
@@ -334,6 +336,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [showPOModal, setShowPOModal] = useState(false);
   const [newPO, setNewPO] = useState({plate:'',type:'',name:'',status:''});
   const delParkOut = (id:number) => setParkingOut(d=>d.filter(r=>r.id!==id));
+  const updateParkOutStatus = (id:number, status:string) =>
+    setParkingOut(d=>d.map(r=>r.id===id ? {...r, status} : r));
   const addParkOut = () => {
     if(!newPO.plate.trim()) return;
     setParkingOut(d=>[...d,{id:nextPOId,...newPO}]);
@@ -708,9 +712,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.type||'—'}</td>
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.name||'—'}</td>
                           <td className="px-3 py-2">
-                            {r.status==='OK'
-                              ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: T.sageTint, color: T.sage }}>OK</span>
-                              : <span className="text-xs" style={{ color: T.inkSoft }}>—</span>}
+                            <select
+                              className="f-thai px-2 py-0.5 rounded-full text-xs font-medium focus-ring"
+                              style={r.status==='OK' ? { background: T.sageTint, color: T.sage, border: '1px solid transparent' } : { background: 'transparent', color: T.inkSoft, border: `1px solid ${T.hairGold}` }}
+                              value={r.status}
+                              onChange={e=>updateParkInStatus(r.id, e.target.value)}
+                            >
+                              <option value="">—</option>
+                              <option value="OK">OK</option>
+                            </select>
                           </td>
                           <td className="px-3 py-2"><button onClick={()=>delParkIn(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                         </>)}
@@ -776,9 +786,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.type||'—'}</td>
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.name||'—'}</td>
                           <td className="px-3 py-2">
-                            {r.status==='OK'
-                              ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: T.sageTint, color: T.sage }}>OK</span>
-                              : <span className="text-xs" style={{ color: T.inkSoft }}>—</span>}
+                            <select
+                              className="f-thai px-2 py-0.5 rounded-full text-xs font-medium focus-ring"
+                              style={r.status==='OK' ? { background: T.sageTint, color: T.sage, border: '1px solid transparent' } : { background: 'transparent', color: T.inkSoft, border: `1px solid ${T.hairGold}` }}
+                              value={r.status}
+                              onChange={e=>updateParkOutStatus(r.id, e.target.value)}
+                            >
+                              <option value="">—</option>
+                              <option value="OK">OK</option>
+                            </select>
                           </td>
                           <td className="px-3 py-2"><button onClick={()=>delParkOut(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                         </>)}
