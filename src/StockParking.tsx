@@ -28,6 +28,40 @@ const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR'
 type WCat = typeof W_CATS[number];
 
 // ── Thai → English translations for stock item names & units ──────────────
+// ── Thai → English translations for stock item names & notes (used for
+// display when switching to EN — editing always writes to the raw field) ──
+const STOCK_NAME_EN: Record<string,string> = {
+  'กระดาษทิชชู': 'Tissue paper',
+  'น้ำดื่ม': 'Drinking water',
+  'ยาสระผม+สบู่': 'Shampoo + Soap',
+  'ถุงขยะ': 'Trash bags',
+  'roller': 'Lint roller',
+  'ไมโครเวฟ': 'Microwave',
+  'เตารีด': 'Iron',
+  'ไดร์เป่าผม': 'Hair dryer',
+  'หมอน': 'Pillow',
+  'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hair towel set',
+  'ผ้าเช็ดตัว': 'Bath towel',
+  'ผ้านวม': 'Comforter',
+  'ผ้าปูที่นอน': 'Bedsheet',
+  'ที่นอน TOPPER': 'Mattress topper',
+  'ทีวี': 'TV',
+  'พัดลม': 'Fan',
+  'กาน้ำร้อน': 'Electric kettle',
+  'ชุดกะทะไฟฟ้า': 'Electric pan set',
+  'สบู่': 'Soap',
+  'แชมพู': 'Shampoo',
+  'เจลอาบน้ำ': 'Shower gel',
+  'พรมเช็ดเท้า': 'Door mat',
+  'หน้ากากอนามัย': 'Face mask',
+  'ฝาชักโคก': 'Toilet seat cover',
+  'หลอดไฟ LED': 'LED light bulb',
+  'Hand Towel': 'Hair Towel / ผ้าเช็ดผม',
+};
+const STOCK_NOTE_EN: Record<string,string> = {
+  'เสีย 1': '1 broken',
+  'ขนาดปกติ 7 / เล็ก 2': 'Standard 7 / Small 2',
+};
 const STOCK_UNIT_EN: Record<string,string> = {
   'ม้วน': 'roll', 'ขวด': 'bottle', 'ชุด': 'set', 'ถุง': 'bag', 'ชิ้น': 'pc',
   'อัน': 'pc', 'ใบ': 'pc', 'ผืน': 'pc', 'เครื่อง': 'unit', 'ตัว': 'unit',
@@ -566,7 +600,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                               <div className="flex items-center gap-1">
                                 {isLow && <span>🔴</span>}
                                 <input
-                                  value={r.name}
+                                  value={lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
                                   onChange={e => updateStockField(r.id, 'name', e.target.value)}
                                   className="w-full min-w-[100px] bg-transparent focus-ring rounded px-1 py-0.5 f-thai"
                                   style={{ color: isLow ? T.wine : T.ink }} />
@@ -585,7 +619,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                             <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
                             <td className="px-3 py-2 text-xs f-thai">
                               <input
-                                value={r.note}
+                                value={lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}
                                 onChange={e => updateStockField(r.id, 'note', e.target.value)}
                                 placeholder={t('sp_col_note')}
                                 className="w-full min-w-[90px] bg-transparent focus-ring rounded px-1 py-0.5 f-thai"
