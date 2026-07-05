@@ -33,7 +33,7 @@ type WCat = typeof W_CATS[number];
 const STOCK_NAME_EN: Record<string,string> = {
   'กระดาษทิชชู': 'Tissue paper',
   'น้ำดื่ม': 'Drinking water',
-  'ยาสระผม+สบู่': 'Shampoo + Soap',
+  'ยาสระผม+เจลอาบน้ำ+สบู่': 'Shampoo + Shower Gel + Soap',
   'ถุงขยะ': 'Trash bags',
   'roller': 'Lint roller',
   'ไมโครเวฟ': 'Microwave',
@@ -228,7 +228,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [stockData, setStockData] = useState<StockItem[]>([
     {id:1, name:'กระดาษทิชชู',    qty:51, unit:'ม้วน', note:'',                          minQty:10},
     {id:2, name:'น้ำดื่ม',         qty:61, unit:'ขวด',  note:'',                          minQty:10},
-    {id:16,name:'ยาสระผม+สบู่',   qty:20, unit:'ชุด',  note:'Shampoo+Shower Gel+Soap',  minQty:10},
+    {id:16,name:'ยาสระผม+เจลอาบน้ำ+สบู่',   qty:20, unit:'ชุด',  note:'Shampoo+Shower Gel+Soap',  minQty:10},
     {id:24,name:'ถุงขยะ',          qty:0,  unit:'ถุง',  note:'',                          minQty:2},
     {id:25,name:'roller',          qty:0,  unit:'ชิ้น', note:'',                          minQty:2},
     {id:3, name:'ไมโครเวฟ',        qty:1,  unit:'อัน',  note:''},
