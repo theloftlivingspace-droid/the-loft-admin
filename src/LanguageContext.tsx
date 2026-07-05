@@ -80,6 +80,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_checkout_btn:      { th: '🧳 Checkout', en: '🧳 Checkout' },
   ci_cancel_booking_btn:{ th: '🚫 Cancel Booking', en: '🚫 Cancel Booking' },
   ci_confirm_cancel_q:  { th: 'ยืนยันยกเลิก?', en: 'Confirm cancel?' },
+  ci_confirm_checkout_q:{ th: 'ยืนยัน Checkout?', en: 'Confirm checkout?' },
   ci_confirm:           { th: 'ยืนยัน', en: 'Confirm' },
   ci_no:                { th: 'ไม่', en: 'No' },
   ci_legend_title:      { th: 'หมายเหตุ', en: 'Legend' },

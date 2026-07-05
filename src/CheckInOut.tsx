@@ -293,6 +293,8 @@ export default function CheckInOut() {
   const [checkedOutSet,  setCheckedOutSet]  = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ci_checkout') || '[]')); } catch { return new Set(); }
   });
+  const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
 
   async function markCheckedIn(resId: string) {
     // Optimistic local update so the UI feels instant on this device.
@@ -330,6 +332,28 @@ export default function CheckInOut() {
       showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCancelSaving(false);
+    }
+  }
+  async function confirmCheckout(s: Stay) {
+    setCheckoutSaving(true);
+    try {
+      const newCheckout = today();
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: true, newCheckout }),
+      });
+      let j: { ok?: boolean; error?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+      const next = new Set(checkedOutSet).add(s.resId);
+      setCheckedOutSet(next);
+      localStorage.setItem('ci_checkout', JSON.stringify([...next]));
+      showToast(`🧳 ${t('ci_checkout_early')}`);
+    } catch {
+      showToast(`❌ ${t('ci_save_failed')}`);
+    } finally {
+      setCheckoutSaving(false);
     }
   }
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -764,8 +788,7 @@ export default function CheckInOut() {
                     {s.status === 'arriving-today' && (
                       <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
-                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น
-                        ไม่มีปุ่ม checkout ด้วยมือแล้ว — สถานะเช็คเอาท์ยืนยันผ่านการตรวจห้องเท่านั้น */}
+                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น */}
                     {!isCancelled && !isCheckedOut && (s.status === 'arriving-today' || s.status === 'arriving-soon') && (
                       <button
                         onClick={e => { e.stopPropagation(); setCancelModal(s); }}
@@ -773,6 +796,17 @@ export default function CheckInOut() {
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
                         title="ยกเลิกการจอง">
                         ✕
+                      </button>
+                    )}
+                    {/* ปุ่ม Checkout (ก่อนกำหนด) — เฉพาะห้องที่กำลังพักอยู่ (checked-in) เท่านั้น
+                        กดแล้วอัปเดตวันเช็คเอาท์ทั้งใน CheckStatus log และ Sheet1 (เลขห้อง col D) เป็นวันนี้ */}
+                    {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setCheckoutModal(s); }}
+                        className="press f-thai inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
+                        title="Checkout ก่อนกำหนด">
+                        🧳 {t('ci_checkout_btn')}
                       </button>
                     )}
                   </div>
@@ -968,6 +1002,35 @@ export default function CheckInOut() {
                 className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
                 style={{ background: T.wine, color: '#fff' }}>
                 {cancelSaving ? '⏳...' : `🚫 ${t('ci_confirm')}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout confirmation modal */}
+      {checkoutModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCheckoutModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🧳</div>
+              <p className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('ci_confirm_checkout_q')}</p>
+              <p className="f-thai text-sm mt-1" style={{ color: T.inkSoft }}>ห้อง {checkoutModal.room} · {checkoutModal.guest}</p>
+              <p className="f-thai text-xs mt-0.5" style={{ color: T.inkSoft }}>{checkoutModal.checkin} → {checkoutModal.checkout}</p>
+              <p className="f-thai text-xs mt-2" style={{ color: T.brassDeep }}>⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้ ({today()}) ใน Sheet1</p>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setCheckoutModal(null)}
+                className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-medium"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+                {t('ci_no')}
+              </button>
+              <button
+                disabled={checkoutSaving}
+                onClick={async () => { await confirmCheckout(checkoutModal); setCheckoutModal(null); }}
+                className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+                style={{ background: T.brassDeep, color: '#fff' }}>
+                {checkoutSaving ? '⏳...' : `🧳 ${t('ci_confirm')}`}
               </button>
             </div>
           </div>
