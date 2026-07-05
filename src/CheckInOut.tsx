@@ -159,6 +159,25 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     return () => { document.body.style.overflow = prevOverflow; };
   }, []);
 
+  // Swipe left/right to move between documents (mobile)
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    // ignore mostly-vertical swipes (scrolling) and short drags
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe left → next
+    else        setIdx(i => Math.max(0, i - 1));               // swipe right → prev
+  };
+
   if (!doc) return null;
   const isImg = doc.mimeType.startsWith('image/');
   const isPdf = doc.mimeType === 'application/pdf';
@@ -193,7 +212,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()}>
+      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
