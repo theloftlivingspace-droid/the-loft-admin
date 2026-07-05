@@ -686,7 +686,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                         {(handleProps) => (<>
                           <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                          <td className="px-3 py-2"><span className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: T.navyTint, color: T.navy }}>{t('sp_room_prefix')} {r.room}</span></td>
+                          <td className="px-3 py-2"><span className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: T.navyTint, color: T.navy }}>{r.room}</span></td>
                           <td className="px-3 py-2 font-semibold f-num" style={{ color: T.ink }}>{r.plate}</td>
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.type||'—'}</td>
                           <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{r.name||'—'}</td>
