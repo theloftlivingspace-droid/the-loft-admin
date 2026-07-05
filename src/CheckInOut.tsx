@@ -383,6 +383,7 @@ export default function CheckInOut() {
   // reloads / re-renders shouldn't cause duplicate server writes).
   const autoCheckoutInFlight = useRef<Set<string>>(new Set());
   async function autoMarkCheckedOut(s: Stay) {
+    if (!s.resId) { console.warn('[auto-checkout] skipped — stay has no resId, cannot match on server', s); return; }
     if (checkedOutSet.has(s.resId) || autoCheckoutInFlight.current.has(s.resId)) return;
     autoCheckoutInFlight.current.add(s.resId);
     try {
@@ -391,16 +392,17 @@ export default function CheckInOut() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: false, newCheckout: s.checkout }),
       });
+      const text = await r.text();
       let j: { ok?: boolean; error?: string } = {};
-      try { j = await r.json(); } catch { /* non-JSON */ }
-      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+      try { j = JSON.parse(text); } catch { /* non-JSON */ }
+      console.log('[auto-checkout] response for', s.resId, r.status, text);
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}: ${text.slice(0, 200)}`);
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
       showToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')}`);
-    } catch {
-      // Silent — this runs in the background; the manual flow still works
-      // as a fallback and this will simply retry on the next data refresh.
+    } catch (e) {
+      console.error('[auto-checkout] failed for', s.resId, e);
     } finally {
       autoCheckoutInFlight.current.delete(s.resId);
     }
@@ -670,6 +672,7 @@ export default function CheckInOut() {
       if (s.status !== 'checking-out-today') continue;
       if (checkedOutSet.has(s.resId)) continue;
       const co = findCoForStay(s, coStatus);
+      console.log('[auto-checkout] checking', s.roomNum, s.resId, 'inspected=', co?.inspected, co);
       if (co?.inspected) autoMarkCheckedOut(s);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
