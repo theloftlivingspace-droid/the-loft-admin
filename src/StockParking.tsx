@@ -272,6 +272,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   const changeQty = (id:number, delta:number) =>
     setStockData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
+  const updateStockNote = (id:number, note:string) =>
+    setStockData(d => d.map(r => r.id===id ? {...r, note} : r));
   const delStock = (id:number) => setStockData(d => d.filter(r=>r.id!==id));
   const addStock = () => {
     if(!newStock.name.trim()) return;
@@ -623,7 +625,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                             </td>
                             <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
                             <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}</td>
-                            <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : (STOCK_NOTE_TH[r.note] || r.note)}</td>
+                            <td className="px-3 py-2 text-xs f-thai">
+                              <input
+                                className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-thai"
+                                style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                                value={lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : (STOCK_NOTE_TH[r.note] || r.note)}
+                                onChange={e=>updateStockNote(r.id, e.target.value)}
+                                placeholder={t('sp_field_note')}
+                              />
+                            </td>
                             <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                           </>)}
                         </SortableRow>
