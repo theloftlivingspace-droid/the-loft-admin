@@ -161,6 +161,19 @@ const Field = ({label,children}:{label:string;children:React.ReactNode}) => (
 // One row wrapper used inside every reorderable <table>: it turns a <tr>
 // into a drag source/target via dnd-kit's useSortable, driven by the handle
 // rendered inside it (via the `handleProps` render-prop).
+// Self-heal any rows that already ended up sharing an id (from the old
+// next-id-counter bug) — keeps the first occurrence's id and reassigns
+// later duplicates to fresh unique ids, so drag-and-drop keys never collide.
+function dedupeIds<T extends { id: number }>(arr: T[]): T[] {
+  const seen = new Set<number>();
+  let nextId = arr.length ? Math.max(...arr.map(r => r.id)) + 1 : 1;
+  return arr.map(r => {
+    if (seen.has(r.id)) { const fixedRow = { ...r, id: nextId }; seen.add(nextId); nextId += 1; return fixedRow; }
+    seen.add(r.id);
+    return r;
+  });
+}
+
 function SortableRow({id, className, style: styleProp, children}:{id:number|string; className?:string; style?: React.CSSProperties; children:(handleProps:{attributes: import('@dnd-kit/core').DraggableAttributes; listeners: ReturnType<typeof useSortable>['listeners']})=>React.ReactNode}) {
   const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({ id });
   const style: React.CSSProperties = {
@@ -435,15 +448,35 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     sbLoad('stock_data').then(d => {
       if (!d) return;
       // one-time migration: bump old minQty=1 to 2 for these items
-      const fixed = (d as StockItem[]).map(r =>
+      const migrated = (d as StockItem[]).map(r =>
         (r.id === 24 || r.id === 25) && r.minQty === 1 ? { ...r, minQty: 2 } : r
       );
+      const fixed = dedupeIds(migrated);
       setStockData(fixed);
+      if (fixed.length) setNextSId(Math.max(...fixed.map(r => r.id)) + 1);
       if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
     });
-    sbLoad('parking_in').then(d => { if (d) setParkingIn(d); });
-    sbLoad('parking_out').then(d => { if (d) setParkingOut(d); });
-    sbLoad('warranty_data').then(d => { if (d) setWarrantyData(d); });
+    sbLoad('parking_in').then(d => {
+      if (!d) return;
+      const fixed = dedupeIds(d as ParkingIn[]);
+      setParkingIn(fixed);
+      if (fixed.length) setNextPIId(Math.max(...fixed.map(r => r.id)) + 1);
+      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_in', fixed);
+    });
+    sbLoad('parking_out').then(d => {
+      if (!d) return;
+      const fixed = dedupeIds(d as ParkingOut[]);
+      setParkingOut(fixed);
+      if (fixed.length) setNextPOId(Math.max(...fixed.map(r => r.id)) + 1);
+      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_out', fixed);
+    });
+    sbLoad('warranty_data').then(d => {
+      if (!d) return;
+      const fixed = dedupeIds(d as Warranty[]);
+      setWarrantyData(fixed);
+      if (fixed.length) setNextWId(Math.max(...fixed.map(r => r.id)) + 1);
+      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
+    });
     sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
   }, []);
 
