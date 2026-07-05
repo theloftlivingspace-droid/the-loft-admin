@@ -15,10 +15,10 @@ const DICT: Record<string, { th: string; en: string }> = {
   online_badge:         { th: '🌐 ออนไลน์', en: '🌐 Online' },
   report_date_label:    { th: 'วันที่รายงาน', en: 'Report date' },
   logout_btn:           { th: '🚪 Logout', en: '🚪 Logout' },
-  tab_dashboard:        { th: '📊 Dashboard', en: '📊 Dashboard' },
-  tab_booking:          { th: '📋 Booking', en: '📋 Booking' },
-  tab_checkinout:       { th: '🏨 Check-in/out', en: '🏨 Check-in/out' },
-  tab_stock:            { th: '📦 Stock', en: '📦 Stock' },
+  tab_dashboard:        { th: 'Dashboard', en: 'Dashboard' },
+  tab_booking:          { th: 'Booking', en: 'Booking' },
+  tab_checkinout:       { th: 'Check-in/out', en: 'Check-in/out' },
+  tab_stock:            { th: 'Stock', en: 'Stock' },
   notif_booking_invoice:{ th: 'booking รอเพิ่ม', en: 'bookings pending' },
   notif_invoice_pending:{ th: 'invoice รอสร้าง', en: 'invoices pending' },
   notif_low_stock:      { th: 'รายการสต๊อกต่ำกว่าขั้นต่ำ', en: 'items below min stock' },
@@ -150,7 +150,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   adm_ip_match:          { th: '✅ IP ปัจจุบันตรงกับ Office', en: '✅ Current IP matches office' },
   adm_ip_mismatch:       { th: '⚠️ IP ปัจจุบันไม่ตรงกับ Office — employee จะ login ไม่ได้', en: "⚠️ Current IP doesn't match office — employees won't be able to log in" },
 
-  adm_tab_users:         { th: '👥 จัดการบัญชี', en: '👥 Manage accounts' },
+  adm_tab_users:         { th: 'จัดการบัญชี', en: 'Manage accounts' },
 
   adm_ql_checklist1:     { th: 'Checklist', en: 'Checklist' },
   adm_ql_checklist2:     { th: 'งานประจำวัน', en: 'Daily tasks' },
