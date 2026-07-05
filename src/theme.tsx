@@ -25,6 +25,35 @@ export const T = {
   hairGold: "rgba(217,178,92,0.4)",
 } as const;
 
+/* =========================================================
+   Surface variants — "positive" (navy base, gold accent, ปกติ)
+   vs "negative" (gold base, navy accent, สลับสำหรับจุดที่อยากให้เด่น
+   เช่น header หลัก / banner โปรโมชัน). ใช้แยกจาก T เดิมเพื่อไม่กระทบ
+   หน้าที่ทำ redesign อยู่แล้ว
+========================================================= */
+export const surface = {
+  positive: {
+    bg: T.navy,
+    bgHeader: T.ink,
+    bgCard: "#0A2650",
+    accent: T.brass,
+    accentSubtle: "rgba(217,178,92,0.12)",
+    text: "#FFFFFF",
+    textAccent: T.brass,
+  },
+  negative: {
+    bg: "#E8C98A",
+    bgHeader: T.brass,
+    bgCard: "#F2DCAC",
+    accent: T.ink,
+    accentSubtle: "rgba(11,30,66,0.10)",
+    text: T.ink,
+    textAccent: T.ink,
+  },
+} as const;
+
+export type SurfaceVariant = keyof typeof surface;
+
 /* Thin brass foil rule — used as a signature accent at the top of cards */
 export function FoilRule() {
   return (
