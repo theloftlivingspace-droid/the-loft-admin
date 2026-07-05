@@ -32,7 +32,7 @@ function Panel({ variant, label }: { variant: 'positive' | 'negative'; label: st
               justifyContent: 'center',
               fontSize: 13,
               fontWeight: 600,
-              color: s.bgHeader,
+              color: s.onAccent,
             }}
           >
             L
@@ -88,7 +88,7 @@ function Panel({ variant, label }: { variant: 'positive' | 'negative'; label: st
           <span
             style={{
               fontSize: 11,
-              color: s.bgHeader,
+              color: s.onAccent,
               background: s.accent,
               padding: '2px 9px',
               borderRadius: 6,
