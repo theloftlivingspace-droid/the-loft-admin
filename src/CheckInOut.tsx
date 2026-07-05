@@ -179,6 +179,19 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     else        setIdx(i => Math.max(0, i - 1));               // swipe/drag right → prev
   };
 
+  // Magic Mouse / trackpad horizontal swipe fires as wheel events with deltaX,
+  // not pointer drags — handle separately, with a short lockout so one swipe
+  // gesture (which fires many wheel events) only advances one page.
+  const wheelLocked = useRef(false);
+  const onWheel = (e: React.WheelEvent) => {
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return; // mostly-vertical scroll, ignore
+    if (Math.abs(e.deltaX) < 12 || wheelLocked.current) return;
+    wheelLocked.current = true;
+    if (e.deltaX > 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe left → next
+    else              setIdx(i => Math.max(0, i - 1));               // swipe right → prev
+    setTimeout(() => { wheelLocked.current = false; }, 400);
+  };
+
   if (!doc) return null;
   const isImg = doc.mimeType.startsWith('image/');
   const isPdf = doc.mimeType === 'application/pdf';
@@ -213,7 +226,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : undefined }}>
+      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onPointerDown={onPointerDown} onPointerUp={onPointerUp} onWheel={onWheel} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : undefined }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
