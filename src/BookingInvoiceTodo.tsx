@@ -209,56 +209,71 @@ function roomNumStr(room: string): string {
   return m ? m[1] : '';
 }
 
-function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string; guest?: string }>(
+// Pairwise eligibility + score for a single (item, candidate) pair.
+// Extracted out of findMatches so the same rules can be reused by
+// claimInvoicesToBookings() for cross-booking arbitration (see below).
+// Returns null when the pair isn't a valid match at all.
+type PairScore = { score: number; hasConf: boolean; hasName: boolean; hasCr: boolean };
+
+function scorePair(
   item: { matchKeys: string[]; checkin: string; checkout: string; room?: string },
-  candidates: T[]
-): T[] {
+  c: { matchKeys: string[]; checkin: string; checkout: string; room?: string }
+): PairScore | null {
   const mySet = new Set(item.matchKeys);
   const itemRoomNums = new Set(
     (item.room || '').split(',').map(r => roomNumStr(r.trim())).filter(Boolean)
   );
 
+  const isCxl = c.room && isCancelledOrNoShow(c.room);
+  const overlap = c.matchKeys.filter(k => mySet.has(k));
+  if (overlap.length === 0) return null;
+
+  const hasConf = overlap.some(k => k.startsWith('conf:'));
+  const hasName = overlap.some(k => k.startsWith('n6:') || k.startsWith('n:'));
+  const hasCr   = overlap.some(k => k.startsWith('cr:'));
+
+  // Cancelled rooms: must have conf or name match, not just room+date
+  if (isCxl && !hasConf && !hasName) return null;
+
+  const cRoomNum = roomNumStr(c.room || '');
+  const roomOk = itemRoomNums.size === 0 || !cRoomNum || itemRoomNums.has(cRoomNum);
+  const ciDiff = daysDiff(item.checkin || '', c.checkin || '');
+
+  let score = 0;
+  if (hasConf) score += 100;
+  if (hasName) score += 20;
+  if (roomOk)  score += 10;
+  if (hasCr)   score += 2;
+  score += Math.max(0, 5 - ciDiff);
+
+  if (hasConf || hasName) {
+    // conf or name match: trust it (with optional room sanity check)
+    if (itemRoomNums.size > 0 && cRoomNum && !roomOk) {
+      // room mismatch — only accept if date ranges overlap (e.g. extension payout)
+      if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
+        return { score, hasConf, hasName, hasCr };
+      }
+      return null;
+    }
+    return { score, hasConf, hasName, hasCr };
+  } else if (hasCr) {
+    // room+date only: require overlapping stay to avoid false positives
+    if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
+      return { score, hasConf, hasName, hasCr };
+    }
+  }
+  return null;
+}
+
+function findMatches<T extends { matchKeys: string[]; checkin: string; checkout: string; room?: string; guest?: string }>(
+  item: { matchKeys: string[]; checkin: string; checkout: string; room?: string },
+  candidates: T[]
+): T[] {
   const scored: Array<{ score: number; c: T }> = [];
 
   for (const c of candidates) {
-    const isCxl = c.room && isCancelledOrNoShow(c.room);
-    const overlap = c.matchKeys.filter(k => mySet.has(k));
-    if (overlap.length === 0) continue;
-
-    const hasConf = overlap.some(k => k.startsWith('conf:'));
-    const hasName = overlap.some(k => k.startsWith('n6:') || k.startsWith('n:'));
-    const hasCr   = overlap.some(k => k.startsWith('cr:'));
-
-    // Cancelled rooms: must have conf or name match, not just room+date
-    if (isCxl && !hasConf && !hasName) continue;
-
-    const cRoomNum = roomNumStr(c.room || '');
-    const roomOk = itemRoomNums.size === 0 || !cRoomNum || itemRoomNums.has(cRoomNum);
-    const ciDiff = daysDiff(item.checkin || '', c.checkin || '');
-
-    let score = 0;
-    if (hasConf) score += 100;
-    if (hasName) score += 20;
-    if (roomOk)  score += 10;
-    if (hasCr)   score += 2;
-    score += Math.max(0, 5 - ciDiff);
-
-    if (hasConf || hasName) {
-      // conf or name match: trust it (with optional room sanity check)
-      if (itemRoomNums.size > 0 && cRoomNum && !roomOk) {
-        // room mismatch — only accept if date ranges overlap (e.g. extension payout)
-        if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
-          scored.push({ score, c });
-        }
-      } else {
-        scored.push({ score, c });
-      }
-    } else if (hasCr) {
-      // room+date only: require overlapping stay to avoid false positives
-      if (rangesOverlap(item.checkin, item.checkout, c.checkin, c.checkout)) {
-        scored.push({ score, c });
-      }
-    }
+    const r = scorePair(item, c);
+    if (r) scored.push({ score: r.score, c });
   }
 
   if (scored.length === 0) return [];
@@ -300,6 +315,66 @@ function findMatches<T extends { matchKeys: string[]; checkin: string; checkout:
     }
   }
   return Array.from(seenNet.values()).map(x => x.c);
+}
+
+// Cross-booking arbitration: makeMatchKeys_() (GAS) builds room+date "cr:" keys
+// across a ±4 day window. Two different-guest bookings in the SAME room only
+// 1–4 days apart (a normal turnover, or a cancelled/rebooked room) end up sharing
+// several of those cr: keys with each other. Since findMatches() is called once
+// per booking independently, one invoice could satisfy the cr:-only eligibility
+// check for BOTH bookings and render on both cards, even though only one of them
+// is the invoice's actual reservation (bug reported 2026-07-05: room 204, guests
+// 佰顺王 / Moritz Reinhardt, invoice ฿-1,661.08 / ฿1,661.08 showing on both).
+//
+// findMatches() already collapses duplicates within a single booking's own
+// candidate list, but has no visibility into what OTHER bookings also claimed
+// the same invoice. This function looks at the whole booking list at once and
+// gives each invoice exactly one "owner" booking:
+//   1. Among all bookings eligible for that invoice, prefer ones with a strong
+//      signal (conf code or name match) over a room+date-only (cr:) coincidence.
+//   2. Break ties by whichever booking's checkin is closest to the invoice's.
+//   3. Break further ties by resId for a stable, deterministic result.
+// A booking can still legitimately show multiple invoices (split payouts) —
+// this only restricts each invoice to a single booking, not the reverse.
+function claimInvoicesToBookings<
+  B extends { resId: string; matchKeys: string[]; checkin: string; checkout: string; room?: string },
+  I extends { invoiceKey: string; matchKeys: string[]; checkin: string; checkout: string; room?: string }
+>(bookings: B[], invoices: I[]): Map<string, string> {
+  const claims = new Map<string, string>();
+
+  for (const inv of invoices) {
+    let best: { booking: B; score: number; strong: boolean; ciDiff: number } | null = null;
+
+    for (const booking of bookings) {
+      const r = scorePair(booking, inv);
+      if (!r) continue;
+      const strong = r.hasConf || r.hasName;
+      const ciDiff = daysDiff(inv.checkin || '', booking.checkin || '');
+      const candidate = { booking, score: r.score, strong, ciDiff };
+
+      if (!best) { best = candidate; continue; }
+
+      // Strong (conf/name) signal always beats a fuzzy room+date-only one,
+      // regardless of score — this is the key fix for the reported bug.
+      if (candidate.strong !== best.strong) {
+        if (candidate.strong) best = candidate;
+        continue;
+      }
+      if (candidate.score !== best.score) {
+        if (candidate.score > best.score) best = candidate;
+        continue;
+      }
+      if (candidate.ciDiff !== best.ciDiff) {
+        if (candidate.ciDiff < best.ciDiff) best = candidate;
+        continue;
+      }
+      if (candidate.booking.resId < best.booking.resId) best = candidate;
+    }
+
+    if (best) claims.set(inv.invoiceKey, best.booking.resId);
+  }
+
+  return claims;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -579,6 +654,10 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     return isNaN(t) ? 0 : t;
   };
   const searchNorm = normNameForSearch(search);
+  // Single source of truth for which booking "owns" each invoice — computed once
+  // over the full lists so cross-booking conflicts (see claimInvoicesToBookings)
+  // are resolved consistently for both tabs.
+  const invoiceClaims = claimInvoicesToBookings(data.booking, data.invoice);
   const visibleBooking = data.booking
     .filter(x => showDoneBooking || !x.done)
     .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
@@ -648,7 +727,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
           {visibleBooking.length === 0
             ? <p className="f-thai text-center py-10 text-sm" style={{ color: T.inkSoft }}>{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleBooking.map(item => {
-                const matchedInvoices = findMatches(item, data.invoice);
+                const matchedInvoices = findMatches(item, data.invoice)
+                  .filter(inv => invoiceClaims.get(inv.invoiceKey) === item.resId);
                 const isHl = highlighted === item.resId;
                 const copyVal = `${item.guest} / ${item.channel || 'Unknown'}`;
                 const itemDocs = findDocsForBooking(item);
@@ -749,7 +829,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
           {visibleInvoice.length === 0
             ? <p className="f-thai text-center py-10 text-sm" style={{ color: T.inkSoft }}>{search ? `${t('bi_no_results_for')} "${search}"` : t('bi_no_items')}</p>
             : visibleInvoice.map(item => {
-                const matchedBookings = findMatches(item, data.booking);
+                const claimedResId = invoiceClaims.get(item.invoiceKey);
+                const matchedBookings = claimedResId ? data.booking.filter(b => b.resId === claimedResId) : [];
                 const isHl = highlighted === item.invoiceKey;
                 const cardBg = isHl ? T.navyTint : item.done ? T.sageTint : item.detectedToday && !item.done ? T.brassPale : T.card;
                 const cardBorder = isHl ? T.navy : item.done ? T.sage : item.detectedToday && !item.done ? T.hairGold : T.hair;
