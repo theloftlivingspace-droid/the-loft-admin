@@ -254,6 +254,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   const changeQty = (id:number, delta:number) =>
     setStockData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
+  const updateStockField = (id:number, field:'name'|'note', value:string) =>
+    setStockData(d => d.map(r => r.id===id ? {...r, [field]: value} : r));
   const delStock = (id:number) => setStockData(d => d.filter(r=>r.id!==id));
   const addStock = () => {
     if(!newStock.name.trim()) return;
@@ -591,8 +593,15 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                           {(handleProps) => (<>
                             <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                             <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                            <td className="px-3 py-2 font-medium f-thai" style={{ color: isLow ? T.wine : T.ink }}>
-                              {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
+                            <td className="px-3 py-2 font-medium f-thai">
+                              <div className="flex items-center gap-1">
+                                {isLow && <span>🔴</span>}
+                                <input
+                                  value={r.name}
+                                  onChange={e => updateStockField(r.id, 'name', e.target.value)}
+                                  className="w-full min-w-[100px] bg-transparent focus-ring rounded px-1 py-0.5 f-thai"
+                                  style={{ color: isLow ? T.wine : T.ink }} />
+                              </div>
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
@@ -605,7 +614,14 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                             </td>
                             <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
                             <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
-                            <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
+                            <td className="px-3 py-2 text-xs f-thai">
+                              <input
+                                value={r.note}
+                                onChange={e => updateStockField(r.id, 'note', e.target.value)}
+                                placeholder={t('sp_col_note')}
+                                className="w-full min-w-[90px] bg-transparent focus-ring rounded px-1 py-0.5 f-thai"
+                                style={{ color: T.inkSoft }} />
+                            </td>
                             <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                           </>)}
                         </SortableRow>
