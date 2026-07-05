@@ -164,15 +164,17 @@ const STATUS_CONFIG = {
 };
 
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
-// Reads the Machine Readable Zone (the two `<`-padded lines at the bottom of
-// a passport bio page) via OCR, then parses it into structured fields with
-// the `mrz` library — far more reliable than trying to OCR the whole page,
-// since the MRZ format is fixed-width and checksum-validated.
-interface MrzScanResult {
-  lines: string[];
+// Reads the whole document image via OCR (general text, not restricted to
+// the MRZ charset) so it still returns something useful even on blurry or
+// oddly-cropped photos. As a bonus, if a valid-looking MRZ (the two
+// `<`-padded lines at the bottom of a passport bio page) is found in the
+// OCR output, it's parsed into structured fields via the `mrz` library —
+// but this is optional and never blocks showing the raw text.
+interface OcrScanResult {
   rawText: string;
-  parsed: ReturnType<typeof parseMRZ> | null;
-  parseError?: string;
+  mrzFields?: ReturnType<typeof parseMRZ>['fields'];
+  mrzValid?: boolean;
+  error?: string;
 }
 
 function cleanMrzLine(line: string, targetLen: number): string {
@@ -182,7 +184,7 @@ function cleanMrzLine(line: string, targetLen: number): string {
   return s;
 }
 
-async function scanPassportMRZ(imageUrl: string): Promise<MrzScanResult> {
+async function scanDocumentOCR(imageUrl: string): Promise<OcrScanResult> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
     el.crossOrigin = 'anonymous';
@@ -191,37 +193,31 @@ async function scanPassportMRZ(imageUrl: string): Promise<MrzScanResult> {
     el.src = imageUrl;
   });
 
-  // Crop the bottom ~24% of the page (MRZ zone on a standard TD3 passport
-  // bio page) and upscale 2.5x — small serif MRZ text OCRs far more
-  // accurately when the source image is magnified first.
-  const cropFrac = 0.24;
-  const scale = 2.5;
-  const sy = Math.floor(img.naturalHeight * (1 - cropFrac));
-  const sw = img.naturalWidth;
-  const sh = img.naturalHeight - sy;
+  // Upscale small photos a bit for better OCR accuracy; leave already-large
+  // photos as-is (further upscaling doesn't help and just slows things down).
+  const scale = img.naturalWidth < 1400 ? 2 : 1;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(sw * scale);
-  canvas.height = Math.round(sh * scale);
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('เบราว์เซอร์ไม่รองรับ canvas');
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(img, 0, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   const worker = await createWorker('eng');
   let rawText = '';
   try {
-    await worker.setParameters({
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
-    });
+    // No character whitelist here — this is general text (names, printed
+    // fields, addresses, etc.), unlike the MRZ zone which is fixed-charset.
     const { data } = await worker.recognize(canvas);
     rawText = data.text || '';
   } finally {
     await worker.terminate();
   }
 
-  // Keep only lines that look like MRZ (mostly A-Z/0-9/<), pick the last two
-  // — the MRZ sits at the very bottom, so any OCR noise from fields above
-  // (address, older passport layouts, etc.) tends to appear first.
+  // Best-effort bonus: look for two MRZ-shaped lines anywhere in the output
+  // and try to parse them. Silently skipped if nothing matches — the raw
+  // text above is always the primary result.
   const candidates = rawText
     .split('\n')
     .map(l => l.trim())
@@ -232,16 +228,14 @@ async function scanPassportMRZ(imageUrl: string): Promise<MrzScanResult> {
       return okChars / Math.max(1, cleaned.length) > 0.85;
     });
   const last2 = candidates.slice(-2);
-  if (last2.length < 2) {
-    return { lines: [], rawText, parsed: null, parseError: 'อ่านแถบ MRZ ไม่ชัดพอ ลองถ่ายรูปให้ตรง/แสงดีขึ้น' };
+  if (last2.length === 2) {
+    try {
+      const lines = last2.map(l => cleanMrzLine(l, 44));
+      const parsed = parseMRZ(lines, { autocorrect: true });
+      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
+    } catch { /* no valid MRZ found — that's fine, rawText still stands */ }
   }
-  const lines = last2.map(l => cleanMrzLine(l, 44));
-  try {
-    const parsed = parseMRZ(lines, { autocorrect: true });
-    return { lines, rawText, parsed };
-  } catch (e) {
-    return { lines, rawText, parsed: null, parseError: e instanceof Error ? e.message : 'parse ไม่สำเร็จ' };
-  }
+  return { rawText };
 }
 
 function formatMrzDate(yymmdd: string | null | undefined, guessCentury: 'birth' | 'expiry'): string {
@@ -285,22 +279,23 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
 
-  // ── Passport MRZ scan state ──────────────────────────────────────────────
+  // ── OCR scan state ────────────────────────────────────────────────────────
   const [scanOpen, setScanOpen]     = useState(false);
   const [scanning, setScanning]     = useState(false);
-  const [scanResult, setScanResult] = useState<MrzScanResult | null>(null);
-  useEffect(() => { setScanOpen(false); setScanResult(null); }, [idx]);
+  const [scanResult, setScanResult] = useState<OcrScanResult | null>(null);
+  const [copiedAll, setCopiedAll]   = useState(false);
+  useEffect(() => { setScanOpen(false); setScanResult(null); setCopiedAll(false); }, [idx]);
 
-  async function handleScanMrz() {
+  async function handleScanOcr() {
     setScanOpen(true);
     setScanning(true);
     setScanResult(null);
     try {
       const proxyUrl = `/api/drive-image-proxy?id=${encodeURIComponent(doc.fileId)}&sz=w1600`;
-      const result = await scanPassportMRZ(proxyUrl);
+      const result = await scanDocumentOCR(proxyUrl);
       setScanResult(result);
     } catch (e) {
-      setScanResult({ lines: [], rawText: '', parsed: null, parseError: e instanceof Error ? e.message : 'สแกนไม่สำเร็จ' });
+      setScanResult({ rawText: '', error: e instanceof Error ? e.message : 'สแกนไม่สำเร็จ' });
     } finally {
       setScanning(false);
     }
@@ -389,9 +384,9 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
             </div>
           )}
           {isImg && (
-            <button onClick={handleScanMrz} disabled={scanning}
+            <button onClick={handleScanOcr} disabled={scanning}
               className="press f-thai px-2 py-1 text-xs rounded disabled:opacity-60" style={{ background: T.sage, color: '#fff' }}>
-              {scanning ? '⏳ กำลังสแกน…' : '🛂 Scan MRZ'}
+              {scanning ? '⏳ กำลังสแกน…' : '🔍 OCR'}
             </button>
           )}
           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
@@ -419,42 +414,52 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
         )}
       </div>
 
-      {/* Passport MRZ scan results */}
+      {/* OCR scan results */}
       {scanOpen && (
         <div className="f-thai px-4 py-3 max-h-[45vh] overflow-auto" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold" style={{ color: T.brass }}>🛂 ผลสแกน MRZ</span>
+            <span className="text-xs font-semibold" style={{ color: T.brass }}>🔍 ผลสแกน OCR</span>
             <button onClick={() => setScanOpen(false)} className="press px-2 py-0.5 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>ปิด</button>
           </div>
-          {scanning && <div className="text-sm py-4 text-center" style={{ color: 'rgba(255,255,255,0.7)' }}>⏳ กำลังอ่านแถบ MRZ...</div>}
-          {!scanning && scanResult && (() => {
-            const fields = scanResult.parsed?.fields;
-            if (!scanResult.parsed || !fields || scanResult.parseError) {
-              return (
-                <div className="text-sm py-2" style={{ color: T.brass }}>
-                  ⚠️ {scanResult.parseError || 'อ่านไม่สำเร็จ'}
-                  {scanResult.rawText && (
-                    <div className="mt-2 text-[11px] whitespace-pre-wrap opacity-60" style={{ color: '#fff' }}>{scanResult.rawText.slice(0, 300)}</div>
-                  )}
+          {scanning && <div className="text-sm py-4 text-center" style={{ color: 'rgba(255,255,255,0.7)' }}>⏳ กำลังอ่านตัวหนังสือ...</div>}
+          {!scanning && scanResult?.error && (
+            <div className="text-sm py-2" style={{ color: T.brass }}>⚠️ {scanResult.error}</div>
+          )}
+          {!scanning && scanResult && !scanResult.error && (
+            <div>
+              {/* Bonus: structured MRZ fields, only shown if a passport MRZ was detected */}
+              {scanResult.mrzFields && (
+                <div className="mb-3">
+                  <div className="text-[11px] mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    🛂 ตรวจพบแถบ MRZ {scanResult.mrzValid ? '' : '— ⚠️ checksum บางช่องไม่ผ่าน ตรวจสอบก่อนใช้'}
+                  </div>
+                  <CopyField label="ชื่อ-นามสกุล" value={`${scanResult.mrzFields.firstName || ''} ${scanResult.mrzFields.lastName || ''}`.replace(/</g, ' ').replace(/\s+/g, ' ').trim()} />
+                  <CopyField label="เลขพาสปอร์ต" value={(scanResult.mrzFields.documentNumber || '').replace(/</g, '')} />
+                  <CopyField label="สัญชาติ" value={scanResult.mrzFields.nationality || ''} />
+                  <CopyField label="วันเกิด" value={formatMrzDate(scanResult.mrzFields.birthDate, 'birth')} />
+                  <CopyField label="เพศ" value={scanResult.mrzFields.sex === 'male' ? 'ชาย (M)' : scanResult.mrzFields.sex === 'female' ? 'หญิง (F)' : (scanResult.mrzFields.sex || '')} />
+                  <CopyField label="วันหมดอายุ" value={formatMrzDate(scanResult.mrzFields.expirationDate, 'expiry')} />
+                  <CopyField label="ประเทศที่ออกเอกสาร" value={scanResult.mrzFields.issuingState || ''} />
                 </div>
-              );
-            }
-            const fullName = `${fields.firstName || ''} ${fields.lastName || ''}`.replace(/</g, ' ').replace(/\s+/g, ' ').trim();
-            return (
-              <div>
-                {!scanResult.parsed.valid && (
-                  <div className="text-[11px] mb-1.5" style={{ color: T.brass }}>⚠️ checksum บางช่องไม่ผ่าน — ตรวจสอบตัวเลขให้ดีก่อนใช้</div>
-                )}
-                <CopyField label="ชื่อ-นามสกุล" value={fullName} />
-                <CopyField label="เลขพาสปอร์ต" value={(fields.documentNumber || '').replace(/</g, '')} />
-                <CopyField label="สัญชาติ" value={fields.nationality || ''} />
-                <CopyField label="วันเกิด" value={formatMrzDate(fields.birthDate, 'birth')} />
-                <CopyField label="เพศ" value={fields.sex === 'male' ? 'ชาย (M)' : fields.sex === 'female' ? 'หญิง (F)' : (fields.sex || '')} />
-                <CopyField label="วันหมดอายุ" value={formatMrzDate(fields.expirationDate, 'expiry')} />
-                <CopyField label="ประเทศที่ออกเอกสาร" value={fields.issuingState || ''} />
+              )}
+              {/* Primary result: raw OCR text of the whole document */}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>ข้อความที่อ่านได้ทั้งหมด</span>
+                <button
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(scanResult.rawText); setCopiedAll(true); setTimeout(() => setCopiedAll(false), 1500); } catch { /* clipboard unavailable */ }
+                  }}
+                  className="press px-2 py-1 text-[11px] rounded"
+                  style={{ background: copiedAll ? T.sage : 'rgba(255,255,255,0.15)', color: '#fff' }}>
+                  {copiedAll ? '✓ คัดลอกแล้ว' : '📋 คัดลอกทั้งหมด'}
+                </button>
               </div>
-            );
-          })()}
+              <textarea readOnly value={scanResult.rawText}
+                className="w-full text-xs rounded-lg p-2"
+                rows={8}
+                style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+          )}
         </div>
       )}
     </div>
