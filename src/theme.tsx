@@ -26,35 +26,15 @@ export const T = {
 } as const;
 
 /* =========================================================
-   Surface variants — "positive" (navy base, gold accent, ปกติ)
-   vs "negative" (gold base, navy accent, สลับสำหรับจุดที่อยากให้เด่น
-   เช่น header หลัก / banner โปรโมชัน). ใช้แยกจาก T เดิมเพื่อไม่กระทบ
-   หน้าที่ทำ redesign อยู่แล้ว
+   Pastel navy variant — ธีมเดิมทั้งหมด (navy header + brass accent)
+   แค่ปรับให้โทนน้ำเงินนุ่ม/หวานขึ้น ไม่เข้มจัดแบบเดิม
 ========================================================= */
-export const surface = {
-  positive: {
-    bg: T.navy,
-    bgHeader: T.ink,
-    bgCard: "#0A2650",
-    accent: T.brass,
-    accentSubtle: "rgba(217,178,92,0.16)",
-    text: "#FFFFFF",
-    textAccent: T.brass,
-    onAccent: T.ink,
-  },
-  negative: {
-    bg: "#8A5F16",
-    bgHeader: "#6B4A10",
-    bgCard: "#9C6E1E",
-    accent: T.navy,
-    accentSubtle: "rgba(20,46,103,0.28)",
-    text: "#FFF6E4",
-    textAccent: "#D9E2F5",
-    onAccent: "#FFF6E4",
-  },
+export const pastelT = {
+  ...T,
+  navy: "#4A6FA0",
+  navyDeep: "#3A5680",
+  navyTint: "#E3EAF6",
 } as const;
-
-export type SurfaceVariant = keyof typeof surface;
 
 /* Thin brass foil rule — used as a signature accent at the top of cards */
 export function FoilRule() {
