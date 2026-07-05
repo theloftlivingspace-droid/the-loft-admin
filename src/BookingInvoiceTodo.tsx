@@ -656,8 +656,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                 const isCopied = copiedId === item.resId;
                 return (
                   <div key={item.resId} data-itemid={item.resId}
-                    className={`rounded-xl mb-1.5 overflow-hidden ${item.done ? 'opacity-40 saturate-50' : th.card}`}
-                    style={isHl ? { boxShadow: `0 0 0 2px ${T.brass}` } : undefined}>
+                    className={`rounded-xl mb-1.5 overflow-hidden ${th.card}`}
+                    style={{ ...(isHl ? { boxShadow: `0 0 0 2px ${T.brass}` } : {}), opacity: item.done ? 0.7 : 1 }}>
                     <div className="px-2 py-1">
                       {/* Row 1: checkbox + room pill + name + channel + new + copy */}
                       <div className="flex items-center gap-1">
