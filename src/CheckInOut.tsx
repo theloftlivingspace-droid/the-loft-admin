@@ -163,6 +163,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   // both touch (mobile) and mouse (desktop) with a single set of handlers.
   const dragStartX = useRef<number | null>(null);
   const dragStartY = useRef<number | null>(null);
+  const wasDrag = useRef(false);
   const onPointerDown = (e: React.PointerEvent) => {
     dragStartX.current = e.clientX;
     dragStartY.current = e.clientY;
@@ -173,10 +174,18 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     const dy = e.clientY - dragStartY.current;
     dragStartX.current = null;
     dragStartY.current = null;
-    // ignore mostly-vertical drags (scrolling) and short drags
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    // ignore mostly-vertical drags (scrolling) and short drags — and treat
+    // these as a plain tap, which closes the viewer (see onClick below)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) { wasDrag.current = false; return; }
+    wasDrag.current = true;
     if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe/drag left → next
     else        setIdx(i => Math.max(0, i - 1));               // swipe/drag right → prev
+  };
+  // Tapping/clicking the image (without dragging/swiping) closes the viewer,
+  // like a lightbox — a genuine swipe should just change page, not close.
+  const onImageAreaClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!wasDrag.current) onClose();
   };
 
   // Magic Mouse / trackpad horizontal swipe fires as wheel events with deltaX.
@@ -236,7 +245,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : undefined }}>
+      <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : 'pointer' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
