@@ -51,6 +51,24 @@ function toLocalDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// Find the housekeeping/inspection log entry for a stay's checkout, scanning
+// only within the stay window (checkin → checkout) so a previous guest's
+// inspection is never misattributed to this booking.
+function findCoForStay(s: Pick<Stay, 'roomNum' | 'checkin' | 'checkout'>, coStatus: Record<string, CheckoutStatus>): CheckoutStatus | undefined {
+  const parseLocal = (s2: string) => {
+    const [y, m, d2] = s2.split('-').map(Number);
+    return new Date(y, m - 1, d2);
+  };
+  const ciD = parseLocal(s.checkin);
+  const coD = parseLocal(s.checkout);
+  for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
+    const ds = toLocalDate(d);
+    const k = `${s.roomNum}_${ds}`;
+    if (coStatus[k]) return coStatus[k];
+  }
+  return undefined;
+}
+
 function today(): string {
   return toLocalDate(new Date());
 }
@@ -356,6 +374,37 @@ export default function CheckInOut() {
       setCheckoutSaving(false);
     }
   }
+
+  // ── Auto checkout on inspection ──────────────────────────────────────────
+  // A stay whose checkout is today and whose room has already been inspected
+  // (co.inspected === true) is auto-flipped to "checked out" — no manual
+  // button needed for on-time checkouts. inFlightRef guards against firing
+  // twice while the request for the same resId is still pending (data
+  // reloads / re-renders shouldn't cause duplicate server writes).
+  const autoCheckoutInFlight = useRef<Set<string>>(new Set());
+  async function autoMarkCheckedOut(s: Stay) {
+    if (checkedOutSet.has(s.resId) || autoCheckoutInFlight.current.has(s.resId)) return;
+    autoCheckoutInFlight.current.add(s.resId);
+    try {
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: false, newCheckout: s.checkout }),
+      });
+      let j: { ok?: boolean; error?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+      const next = new Set(checkedOutSet).add(s.resId);
+      setCheckedOutSet(next);
+      localStorage.setItem('ci_checkout', JSON.stringify([...next]));
+      showToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')}`);
+    } catch {
+      // Silent — this runs in the background; the manual flow still works
+      // as a fallback and this will simply retry on the next data refresh.
+    } finally {
+      autoCheckoutInFlight.current.delete(s.resId);
+    }
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadCtxRef = useRef<{ key: string; room: string; checkin: string; resId: string } | null>(null);
 
@@ -614,6 +663,18 @@ export default function CheckInOut() {
 
   useEffect(() => { load(); refreshDocs(); }, []);
 
+  // Whenever stays or the housekeeping/inspection log update, sweep today's
+  // checkouts and flip any that are inspected but not yet marked checked out.
+  useEffect(() => {
+    for (const s of stays) {
+      if (s.status !== 'checking-out-today') continue;
+      if (checkedOutSet.has(s.resId)) continue;
+      const co = findCoForStay(s, coStatus);
+      if (co?.inspected) autoMarkCheckedOut(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stays, coStatus, checkedOutSet]);
+
   const filtered = stays.filter(s => {
     if (view === 'checkedin')  return s.status === 'checked-in';
     if (view === 'arrivals')   return s.status === 'arriving-today' || s.status === 'arriving-soon';
@@ -718,25 +779,7 @@ export default function CheckInOut() {
         <div className="space-y-3">
           {filtered.map(s => {
             const cfg    = STATUS_CONFIG[s.status];
-            // Find log: date within stay window OR up to 3 days before checkin
-            const coKey = (() => {
-              const parseLocal = (s2: string) => {
-                const [y,m,d2] = s2.split('-').map(Number);
-                return new Date(y, m-1, d2);
-              };
-              const ciD = parseLocal(s.checkin);
-              const coD = parseLocal(s.checkout);
-              // Scan only within the stay window (checkin → checkout).
-              // Inspections before checkin belong to the previous guest's
-              // checkout and must never be attributed to this booking.
-              for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
-                const ds = toLocalDate(d);
-                const k = `${s.roomNum}_${ds}`;
-                if (coStatus[k]) return k;
-              }
-              return null;
-            })();
-            const co     = coKey ? coStatus[coKey] : undefined;
+            const co     = findCoForStay(s, coStatus);
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
