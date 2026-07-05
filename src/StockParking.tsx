@@ -28,41 +28,10 @@ const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR'
 type WCat = typeof W_CATS[number];
 
 // ── Thai → English translations for stock item names & units ──────────────
-const STOCK_NAME_EN: Record<string,string> = {
-  'กระดาษทิชชู': 'Tissue paper',
-  'น้ำดื่ม': 'Drinking water',
-  'ยาสระผม+สบู่': 'Shampoo + Soap',
-  'ถุงขยะ': 'Trash bags',
-  'roller': 'Lint roller',
-  'ไมโครเวฟ': 'Microwave',
-  'เตารีด': 'Iron',
-  'ไดร์เป่าผม': 'Hair dryer',
-  'หมอน': 'Pillow',
-  'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hand towel set',
-  'ผ้าเช็ดตัว': 'Bath towel',
-  'ผ้านวม': 'Comforter',
-  'ผ้าปูที่นอน': 'Bedsheet',
-  'ที่นอน TOPPER': 'Mattress topper',
-  'ทีวี': 'TV',
-  'พัดลม': 'Fan',
-  'กาน้ำร้อน': 'Electric kettle',
-  'ชุดกะทะไฟฟ้า': 'Electric pan set',
-  'สบู่': 'Soap',
-  'แชมพู': 'Shampoo',
-  'เจลอาบน้ำ': 'Shower gel',
-  'พรมเช็ดเท้า': 'Door mat',
-  'หน้ากากอนามัย': 'Face mask',
-  'ฝาชักโคก': 'Toilet seat cover',
-  'หลอดไฟ LED': 'LED light bulb',
-};
 const STOCK_UNIT_EN: Record<string,string> = {
   'ม้วน': 'roll', 'ขวด': 'bottle', 'ชุด': 'set', 'ถุง': 'bag', 'ชิ้น': 'pc',
   'อัน': 'pc', 'ใบ': 'pc', 'ผืน': 'pc', 'เครื่อง': 'unit', 'ตัว': 'unit',
   'ก้อน': 'bar', 'กล่อง/ชิ้น': 'box/pc', 'ดวง': 'pc',
-};
-const STOCK_NOTE_EN: Record<string,string> = {
-  'เสีย 1': '1 broken',
-  'ขนาดปกติ 7 / เล็ก 2': 'Standard 7 / Small 2',
 };
 
 interface StockItem  { id:number; name:string; qty:number; unit:string; note:string; minQty?: number }
