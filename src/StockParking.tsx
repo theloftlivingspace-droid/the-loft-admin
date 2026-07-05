@@ -472,7 +472,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     });
     sbLoad('warranty_data').then(d => {
       if (!d) return;
-      const fixed = dedupeIds(d as WarrantyItem[]);
+      const fixed = dedupeIds(d as Warranty[]);
       setWarrantyData(fixed);
       if (fixed.length) setNextWId(Math.max(...fixed.map(r => r.id)) + 1);
       if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
