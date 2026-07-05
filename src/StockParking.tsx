@@ -27,7 +27,9 @@ async function sbSave(key: string, value: unknown) {
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
 
-// ── Thai → English translations for stock item names & units ──────────────
+// ── Thai ↔ English translations for stock item names & units ──────────────
+// Bidirectional: stored data may be Thai (legacy) or English (newly added items),
+// so both STOCK_*_EN (th->en) and STOCK_*_TH (en->th) are used depending on `lang`.
 const STOCK_NAME_EN: Record<string,string> = {
   'กระดาษทิชชู': 'Tissue paper',
   'น้ำดื่ม': 'Drinking water',
@@ -40,6 +42,7 @@ const STOCK_NAME_EN: Record<string,string> = {
   'หมอน': 'Pillow',
   'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hair towel set',
   'ผ้าเช็ดตัว': 'Bath towel',
+  'ผ้าเช็ดมือ': 'Hand Towel',
   'ผ้านวม': 'Comforter',
   'ผ้าปูที่นอน': 'Bedsheet',
   'ที่นอน TOPPER': 'Mattress topper',
@@ -55,15 +58,28 @@ const STOCK_NAME_EN: Record<string,string> = {
   'ฝาชักโครก': 'Toilet seat cover',
   'หลอดไฟ LED': 'LED light bulb',
 };
+// Reverse (en->th), auto-derived, for items whose stored name is already English
+const STOCK_NAME_TH: Record<string,string> = Object.fromEntries(
+  Object.entries(STOCK_NAME_EN).map(([th, en]) => [en, th])
+);
 const STOCK_UNIT_EN: Record<string,string> = {
   'ม้วน': 'roll', 'ขวด': 'bottle', 'ชุด': 'set', 'ถุง': 'bag', 'ชิ้น': 'pc',
   'อัน': 'pc', 'ใบ': 'pc', 'ผืน': 'pc', 'เครื่อง': 'unit', 'ตัว': 'unit',
   'ก้อน': 'bar', 'กล่อง/ชิ้น': 'box/pc', 'ดวง': 'pc',
 };
+// Reverse (en->th) canonical unit, kept explicit since several Thai units share
+// the same English word (e.g. อัน/ใบ/ผืน/ดวง all -> "pc")
+const STOCK_UNIT_TH: Record<string,string> = {
+  'pc': 'ชิ้น', 'roll': 'ม้วน', 'bottle': 'ขวด', 'set': 'ชุด', 'bag': 'ถุง',
+  'unit': 'เครื่อง', 'bar': 'ก้อน', 'box/pc': 'กล่อง/ชิ้น',
+};
 const STOCK_NOTE_EN: Record<string,string> = {
   'เสีย 1': '1 broken',
   'ขนาดปกติ 7 / เล็ก 2': 'Standard 7 / Small 2',
 };
+const STOCK_NOTE_TH: Record<string,string> = Object.fromEntries(
+  Object.entries(STOCK_NOTE_EN).map(([th, en]) => [en, th])
+);
 
 interface StockItem  { id:number; name:string; qty:number; unit:string; note:string; minQty?: number }
 interface ParkingIn  { id:number; room:string; plate:string; type:string; name:string; status:string }
@@ -592,7 +608,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                             <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                             <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
                             <td className="px-3 py-2 font-medium f-thai" style={{ color: isLow ? T.wine : T.ink }}>
-                              {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : r.name}
+                              {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : (STOCK_NAME_TH[r.name] || r.name)}
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
@@ -604,8 +620,8 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                               </div>
                             </td>
                             <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
-                            <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : r.unit}</td>
-                            <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : r.note}</td>
+                            <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}</td>
+                            <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : (STOCK_NOTE_TH[r.note] || r.note)}</td>
                             <td className="px-3 py-2"><button onClick={()=>delStock(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
                           </>)}
                         </SortableRow>
