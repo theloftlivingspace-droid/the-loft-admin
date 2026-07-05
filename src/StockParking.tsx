@@ -33,7 +33,7 @@ type WCat = typeof W_CATS[number];
 const STOCK_NAME_EN: Record<string,string> = {
   'กระดาษทิชชู': 'Tissue paper',
   'น้ำดื่ม': 'Drinking water',
-  'ยาสระผม+สบู่': 'Shampoo + Soap',
+  'ยาสระผม+เจลอาบน้ำ+สบู่': 'Shampoo + Shower Gel + Soap',
   'ถุงขยะ': 'Trash bags',
   'roller': 'Lint roller',
   'ไมโครเวฟ': 'Microwave',
@@ -238,7 +238,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
   const [stockData, setStockData] = useState<StockItem[]>([
     {id:1, name:'กระดาษทิชชู',    qty:51, unit:'ม้วน', note:'',                          minQty:10},
     {id:2, name:'น้ำดื่ม',         qty:61, unit:'ขวด',  note:'',                          minQty:10},
-    {id:16,name:'ยาสระผม+สบู่',   qty:20, unit:'ชุด',  note:'Shampoo+Shower Gel+Soap',  minQty:10},
+    {id:16,name:'ยาสระผม+เจลอาบน้ำ+สบู่', qty:20, unit:'ชุด',  note:'',                          minQty:10},
     {id:24,name:'ถุงขยะ',          qty:0,  unit:'ถุง',  note:'',                          minQty:2},
     {id:25,name:'roller',          qty:0,  unit:'ชิ้น', note:'',                          minQty:2},
     {id:3, name:'ไมโครเวฟ',        qty:1,  unit:'อัน',  note:''},
@@ -274,6 +274,10 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     setStockData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
   const updateStockNote = (id:number, note:string) =>
     setStockData(d => d.map(r => r.id===id ? {...r, note} : r));
+  const updateStockName = (id:number, name:string) =>
+    setStockData(d => d.map(r => r.id===id ? {...r, name} : r));
+  const updateStockUnit = (id:number, unit:string) =>
+    setStockData(d => d.map(r => r.id===id ? {...r, unit} : r));
   const delStock = (id:number) => setStockData(d => d.filter(r=>r.id!==id));
   const addStock = () => {
     if(!newStock.name.trim()) return;
@@ -612,7 +616,13 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                             <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                             <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
                             <td className="px-3 py-2 font-medium f-thai" style={{ color: isLow ? T.wine : T.ink }}>
-                              {isLow && <span className="mr-1">🔴</span>}{lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : (STOCK_NAME_TH[r.name] || r.name)}
+                              {isLow && <span className="mr-1">🔴</span>}
+                              <input
+                                className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
+                                style={{ color: isLow ? T.wine : T.ink, border: '1px solid transparent', minWidth: '80px' }}
+                                value={lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : (STOCK_NAME_TH[r.name] || r.name)}
+                                onChange={e=>updateStockName(r.id, e.target.value)}
+                              />
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
@@ -624,7 +634,14 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
                               </div>
                             </td>
                             <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
-                            <td className="px-3 py-2 f-thai" style={{ color: T.inkSoft }}>{lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}</td>
+                            <td className="px-3 py-2 f-thai">
+                              <input
+                                className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
+                                style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                                value={lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}
+                                onChange={e=>updateStockUnit(r.id, e.target.value)}
+                              />
+                            </td>
                             <td className="px-3 py-2 text-xs f-thai">
                               <input
                                 className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-thai"
