@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
+import { createWorker } from 'tesseract.js';
+import { parse as parseMRZ } from 'mrz';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Proxied through /api/gas-proxy (Vercel serverless function) because Google
@@ -161,12 +163,143 @@ const STATUS_CONFIG = {
   'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: T.navy,      text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
-// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
+// ─── Passport MRZ scanning ─────────────────────────────────────────────────
+// Reads the whole document image via OCR (general text, not restricted to
+// the MRZ charset) so it still returns something useful even on blurry or
+// oddly-cropped photos. As a bonus, if a valid-looking MRZ (the two
+// `<`-padded lines at the bottom of a passport bio page) is found in the
+// OCR output, it's parsed into structured fields via the `mrz` library —
+// but this is optional and never blocks showing the raw text.
+interface OcrScanResult {
+  rawText: string;
+  mrzFields?: ReturnType<typeof parseMRZ>['fields'];
+  mrzValid?: boolean;
+  error?: string;
+}
+
+function cleanMrzLine(line: string, targetLen: number): string {
+  let s = line.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9<]/g, '<');
+  if (s.length < targetLen) s = s.padEnd(targetLen, '<');
+  else if (s.length > targetLen) s = s.slice(0, targetLen);
+  return s;
+}
+
+async function scanDocumentOCR(imageUrl: string): Promise<OcrScanResult> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('โหลดรูปไม่สำเร็จ'));
+    el.src = imageUrl;
+  });
+
+  // Upscale small photos a bit for better OCR accuracy; leave already-large
+  // photos as-is (further upscaling doesn't help and just slows things down).
+  const scale = img.naturalWidth < 1400 ? 2 : 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('เบราว์เซอร์ไม่รองรับ canvas');
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const worker = await createWorker('eng');
+  let rawText = '';
+  try {
+    // No character whitelist here — this is general text (names, printed
+    // fields, addresses, etc.), unlike the MRZ zone which is fixed-charset.
+    const { data } = await worker.recognize(canvas);
+    rawText = data.text || '';
+  } finally {
+    await worker.terminate();
+  }
+
+  // Best-effort bonus: look for two MRZ-shaped lines anywhere in the output
+  // and try to parse them. Silently skipped if nothing matches — the raw
+  // text above is always the primary result.
+  const candidates = rawText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length >= 20)
+    .filter(l => {
+      const cleaned = l.replace(/\s+/g, '');
+      const okChars = (cleaned.match(/[A-Z0-9<]/gi) || []).length;
+      return okChars / Math.max(1, cleaned.length) > 0.85;
+    });
+  const last2 = candidates.slice(-2);
+  if (last2.length === 2) {
+    try {
+      const lines = last2.map(l => cleanMrzLine(l, 44));
+      const parsed = parseMRZ(lines, { autocorrect: true });
+      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
+    } catch { /* no valid MRZ found — that's fine, rawText still stands */ }
+  }
+  return { rawText };
+}
+
+function formatMrzDate(yymmdd: string | null | undefined, guessCentury: 'birth' | 'expiry'): string {
+  if (!yymmdd || yymmdd.includes('<') || yymmdd.length < 6) return yymmdd || '—';
+  const yy = Number(yymmdd.slice(0, 2));
+  const mm = yymmdd.slice(2, 4);
+  const dd = yymmdd.slice(4, 6);
+  // Expiry dates on currently-valid documents are always in the 2000s.
+  // Birth dates: assume 1900s unless that would put the person's age
+  // below 0 (i.e. yy is close to the current 2-digit year or later).
+  const nowYY = new Date().getFullYear() % 100;
+  let century = 1900;
+  if (guessCentury === 'expiry') century = 2000;
+  else if (yy <= nowYY) century = 2000;
+  return `${dd}/${mm}/${century + yy}`;
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{label}</div>
+        <div className="text-sm font-medium truncate" style={{ color: '#fff' }}>{value || '—'}</div>
+      </div>
+      <button
+        onClick={async () => {
+          try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard unavailable */ }
+        }}
+        className="press flex-shrink-0 px-2 py-1 text-[11px] rounded"
+        style={{ background: copied ? T.sage : 'rgba(255,255,255,0.15)', color: '#fff' }}>
+        {copied ? '✓' : '📋'}
+      </button>
+    </div>
+  );
+}
+
 function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void | Promise<void> }) {
   const { t } = useLang();
   const [idx, setIdx] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
+
+  // ── OCR scan state ────────────────────────────────────────────────────────
+  const [scanOpen, setScanOpen]     = useState(false);
+  const [scanning, setScanning]     = useState(false);
+  const [scanResult, setScanResult] = useState<OcrScanResult | null>(null);
+  const [copiedAll, setCopiedAll]   = useState(false);
+  useEffect(() => { setScanOpen(false); setScanResult(null); setCopiedAll(false); }, [idx]);
+
+  async function handleScanOcr() {
+    setScanOpen(true);
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const proxyUrl = `/api/drive-image-proxy?id=${encodeURIComponent(doc.fileId)}&sz=w1600`;
+      const result = await scanDocumentOCR(proxyUrl);
+      setScanResult(result);
+    } catch (e) {
+      setScanResult({ rawText: '', error: e instanceof Error ? e.message : 'สแกนไม่สำเร็จ' });
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // Reset background page scroll so the fixed overlay always starts visible at the top,
   // regardless of how far down the card list was scrolled when the viewer was opened.
@@ -250,6 +383,12 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
+          {isImg && (
+            <button onClick={handleScanOcr} disabled={scanning}
+              className="press f-thai px-2 py-1 text-xs rounded disabled:opacity-60" style={{ background: T.sage, color: '#fff' }}>
+              {scanning ? '⏳ กำลังสแกน…' : '🔍 OCR'}
+            </button>
+          )}
           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
@@ -274,6 +413,55 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           </div>
         )}
       </div>
+
+      {/* OCR scan results */}
+      {scanOpen && (
+        <div className="f-thai px-4 py-3 max-h-[45vh] overflow-auto" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold" style={{ color: T.brass }}>🔍 ผลสแกน OCR</span>
+            <button onClick={() => setScanOpen(false)} className="press px-2 py-0.5 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>ปิด</button>
+          </div>
+          {scanning && <div className="text-sm py-4 text-center" style={{ color: 'rgba(255,255,255,0.7)' }}>⏳ กำลังอ่านตัวหนังสือ...</div>}
+          {!scanning && scanResult?.error && (
+            <div className="text-sm py-2" style={{ color: T.brass }}>⚠️ {scanResult.error}</div>
+          )}
+          {!scanning && scanResult && !scanResult.error && (
+            <div>
+              {/* Bonus: structured MRZ fields, only shown if a passport MRZ was detected */}
+              {scanResult.mrzFields && (
+                <div className="mb-3">
+                  <div className="text-[11px] mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    🛂 ตรวจพบแถบ MRZ {scanResult.mrzValid ? '' : '— ⚠️ checksum บางช่องไม่ผ่าน ตรวจสอบก่อนใช้'}
+                  </div>
+                  <CopyField label="ชื่อ-นามสกุล" value={`${scanResult.mrzFields.firstName || ''} ${scanResult.mrzFields.lastName || ''}`.replace(/</g, ' ').replace(/\s+/g, ' ').trim()} />
+                  <CopyField label="เลขพาสปอร์ต" value={(scanResult.mrzFields.documentNumber || '').replace(/</g, '')} />
+                  <CopyField label="สัญชาติ" value={scanResult.mrzFields.nationality || ''} />
+                  <CopyField label="วันเกิด" value={formatMrzDate(scanResult.mrzFields.birthDate, 'birth')} />
+                  <CopyField label="เพศ" value={scanResult.mrzFields.sex === 'male' ? 'ชาย (M)' : scanResult.mrzFields.sex === 'female' ? 'หญิง (F)' : (scanResult.mrzFields.sex || '')} />
+                  <CopyField label="วันหมดอายุ" value={formatMrzDate(scanResult.mrzFields.expirationDate, 'expiry')} />
+                  <CopyField label="ประเทศที่ออกเอกสาร" value={scanResult.mrzFields.issuingState || ''} />
+                </div>
+              )}
+              {/* Primary result: raw OCR text of the whole document */}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>ข้อความที่อ่านได้ทั้งหมด</span>
+                <button
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(scanResult.rawText); setCopiedAll(true); setTimeout(() => setCopiedAll(false), 1500); } catch { /* clipboard unavailable */ }
+                  }}
+                  className="press px-2 py-1 text-[11px] rounded"
+                  style={{ background: copiedAll ? T.sage : 'rgba(255,255,255,0.15)', color: '#fff' }}>
+                  {copiedAll ? '✓ คัดลอกแล้ว' : '📋 คัดลอกทั้งหมด'}
+                </button>
+              </div>
+              <textarea readOnly value={scanResult.rawText}
+                className="w-full text-xs rounded-lg p-2"
+                rows={8}
+                style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
