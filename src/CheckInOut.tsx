@@ -159,23 +159,24 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     return () => { document.body.style.overflow = prevOverflow; };
   }, []);
 
-  // Swipe left/right to move between documents (mobile)
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+  // Swipe/drag left/right to move between documents — pointer events cover
+  // both touch (mobile) and mouse (desktop) with a single set of handlers.
+  const dragStartX = useRef<number | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragStartX.current = e.clientX;
+    dragStartY.current = e.clientY;
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
-    // ignore mostly-vertical swipes (scrolling) and short drags
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (dragStartX.current === null || dragStartY.current === null) return;
+    const dx = e.clientX - dragStartX.current;
+    const dy = e.clientY - dragStartY.current;
+    dragStartX.current = null;
+    dragStartY.current = null;
+    // ignore mostly-vertical drags (scrolling) and short drags
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe left → next
-    else        setIdx(i => Math.max(0, i - 1));               // swipe right → prev
+    if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe/drag left → next
+    else        setIdx(i => Math.max(0, i - 1));               // swipe/drag right → prev
   };
 
   if (!doc) return null;
@@ -212,7 +213,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : undefined }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
