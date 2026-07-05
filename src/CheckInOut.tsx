@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
+import { createWorker } from 'tesseract.js';
+import { parse as parseMRZ } from 'mrz';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Proxied through /api/gas-proxy (Vercel serverless function) because Google
@@ -161,12 +163,148 @@ const STATUS_CONFIG = {
   'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: T.navy,      text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
-// ─── Doc Viewer Modal ─────────────────────────────────────────────────────────
+// ─── Passport MRZ scanning ─────────────────────────────────────────────────
+// Reads the Machine Readable Zone (the two `<`-padded lines at the bottom of
+// a passport bio page) via OCR, then parses it into structured fields with
+// the `mrz` library — far more reliable than trying to OCR the whole page,
+// since the MRZ format is fixed-width and checksum-validated.
+interface MrzScanResult {
+  lines: string[];
+  rawText: string;
+  parsed: ReturnType<typeof parseMRZ> | null;
+  parseError?: string;
+}
+
+function cleanMrzLine(line: string, targetLen: number): string {
+  let s = line.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9<]/g, '<');
+  if (s.length < targetLen) s = s.padEnd(targetLen, '<');
+  else if (s.length > targetLen) s = s.slice(0, targetLen);
+  return s;
+}
+
+async function scanPassportMRZ(imageUrl: string): Promise<MrzScanResult> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('โหลดรูปไม่สำเร็จ'));
+    el.src = imageUrl;
+  });
+
+  // Crop the bottom ~24% of the page (MRZ zone on a standard TD3 passport
+  // bio page) and upscale 2.5x — small serif MRZ text OCRs far more
+  // accurately when the source image is magnified first.
+  const cropFrac = 0.24;
+  const scale = 2.5;
+  const sy = Math.floor(img.naturalHeight * (1 - cropFrac));
+  const sw = img.naturalWidth;
+  const sh = img.naturalHeight - sy;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('เบราว์เซอร์ไม่รองรับ canvas');
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, 0, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+  const worker = await createWorker('eng');
+  let rawText = '';
+  try {
+    await worker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+    });
+    const { data } = await worker.recognize(canvas);
+    rawText = data.text || '';
+  } finally {
+    await worker.terminate();
+  }
+
+  // Keep only lines that look like MRZ (mostly A-Z/0-9/<), pick the last two
+  // — the MRZ sits at the very bottom, so any OCR noise from fields above
+  // (address, older passport layouts, etc.) tends to appear first.
+  const candidates = rawText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length >= 20)
+    .filter(l => {
+      const cleaned = l.replace(/\s+/g, '');
+      const okChars = (cleaned.match(/[A-Z0-9<]/gi) || []).length;
+      return okChars / Math.max(1, cleaned.length) > 0.85;
+    });
+  const last2 = candidates.slice(-2);
+  if (last2.length < 2) {
+    return { lines: [], rawText, parsed: null, parseError: 'อ่านแถบ MRZ ไม่ชัดพอ ลองถ่ายรูปให้ตรง/แสงดีขึ้น' };
+  }
+  const lines = last2.map(l => cleanMrzLine(l, 44));
+  try {
+    const parsed = parseMRZ(lines, { autocorrect: true });
+    return { lines, rawText, parsed };
+  } catch (e) {
+    return { lines, rawText, parsed: null, parseError: e instanceof Error ? e.message : 'parse ไม่สำเร็จ' };
+  }
+}
+
+function formatMrzDate(yymmdd: string | null | undefined, guessCentury: 'birth' | 'expiry'): string {
+  if (!yymmdd || yymmdd.includes('<') || yymmdd.length < 6) return yymmdd || '—';
+  const yy = Number(yymmdd.slice(0, 2));
+  const mm = yymmdd.slice(2, 4);
+  const dd = yymmdd.slice(4, 6);
+  // Expiry dates on currently-valid documents are always in the 2000s.
+  // Birth dates: assume 1900s unless that would put the person's age
+  // below 0 (i.e. yy is close to the current 2-digit year or later).
+  const nowYY = new Date().getFullYear() % 100;
+  let century = 1900;
+  if (guessCentury === 'expiry') century = 2000;
+  else if (yy <= nowYY) century = 2000;
+  return `${dd}/${mm}/${century + yy}`;
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{label}</div>
+        <div className="text-sm font-medium truncate" style={{ color: '#fff' }}>{value || '—'}</div>
+      </div>
+      <button
+        onClick={async () => {
+          try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard unavailable */ }
+        }}
+        className="press flex-shrink-0 px-2 py-1 text-[11px] rounded"
+        style={{ background: copied ? T.sage : 'rgba(255,255,255,0.15)', color: '#fff' }}>
+        {copied ? '✓' : '📋'}
+      </button>
+    </div>
+  );
+}
+
 function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () => void; onDelete: (i: number) => void | Promise<void> }) {
   const { t } = useLang();
   const [idx, setIdx] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
+
+  // ── Passport MRZ scan state ──────────────────────────────────────────────
+  const [scanOpen, setScanOpen]     = useState(false);
+  const [scanning, setScanning]     = useState(false);
+  const [scanResult, setScanResult] = useState<MrzScanResult | null>(null);
+  useEffect(() => { setScanOpen(false); setScanResult(null); }, [idx]);
+
+  async function handleScanMrz() {
+    setScanOpen(true);
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const proxyUrl = `/api/drive-image-proxy?id=${encodeURIComponent(doc.fileId)}&sz=w1600`;
+      const result = await scanPassportMRZ(proxyUrl);
+      setScanResult(result);
+    } catch (e) {
+      setScanResult({ lines: [], rawText: '', parsed: null, parseError: e instanceof Error ? e.message : 'สแกนไม่สำเร็จ' });
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // Reset background page scroll so the fixed overlay always starts visible at the top,
   // regardless of how far down the card list was scrolled when the viewer was opened.
@@ -250,6 +388,12 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === docs.length - 1}>›</button>
             </div>
           )}
+          {isImg && (
+            <button onClick={handleScanMrz} disabled={scanning}
+              className="press f-thai px-2 py-1 text-xs rounded disabled:opacity-60" style={{ background: T.sage, color: '#fff' }}>
+              {scanning ? '⏳ กำลังสแกน…' : '🛂 Scan MRZ'}
+            </button>
+          )}
           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
@@ -274,6 +418,45 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           </div>
         )}
       </div>
+
+      {/* Passport MRZ scan results */}
+      {scanOpen && (
+        <div className="f-thai px-4 py-3 max-h-[45vh] overflow-auto" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold" style={{ color: T.brass }}>🛂 ผลสแกน MRZ</span>
+            <button onClick={() => setScanOpen(false)} className="press px-2 py-0.5 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>ปิด</button>
+          </div>
+          {scanning && <div className="text-sm py-4 text-center" style={{ color: 'rgba(255,255,255,0.7)' }}>⏳ กำลังอ่านแถบ MRZ...</div>}
+          {!scanning && scanResult && (() => {
+            const fields = scanResult.parsed?.fields;
+            if (!scanResult.parsed || !fields || scanResult.parseError) {
+              return (
+                <div className="text-sm py-2" style={{ color: T.brass }}>
+                  ⚠️ {scanResult.parseError || 'อ่านไม่สำเร็จ'}
+                  {scanResult.rawText && (
+                    <div className="mt-2 text-[11px] whitespace-pre-wrap opacity-60" style={{ color: '#fff' }}>{scanResult.rawText.slice(0, 300)}</div>
+                  )}
+                </div>
+              );
+            }
+            const fullName = `${fields.firstName || ''} ${fields.lastName || ''}`.replace(/</g, ' ').replace(/\s+/g, ' ').trim();
+            return (
+              <div>
+                {!scanResult.parsed.valid && (
+                  <div className="text-[11px] mb-1.5" style={{ color: T.brass }}>⚠️ checksum บางช่องไม่ผ่าน — ตรวจสอบตัวเลขให้ดีก่อนใช้</div>
+                )}
+                <CopyField label="ชื่อ-นามสกุล" value={fullName} />
+                <CopyField label="เลขพาสปอร์ต" value={(fields.documentNumber || '').replace(/</g, '')} />
+                <CopyField label="สัญชาติ" value={fields.nationality || ''} />
+                <CopyField label="วันเกิด" value={formatMrzDate(fields.birthDate, 'birth')} />
+                <CopyField label="เพศ" value={fields.sex === 'male' ? 'ชาย (M)' : fields.sex === 'female' ? 'หญิง (F)' : (fields.sex || '')} />
+                <CopyField label="วันหมดอายุ" value={formatMrzDate(fields.expirationDate, 'expiry')} />
+                <CopyField label="ประเทศที่ออกเอกสาร" value={fields.issuingState || ''} />
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }
