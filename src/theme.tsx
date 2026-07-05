@@ -11,7 +11,7 @@ export const T = {
   bone: "#EDF1F6",
   paper: "#F7F9FB",
   card: "#FFFFFF",
-  navy: "#123262",
+  navy: "#142E67",
   navyDeep: "#142E67",
   navyTint: "#E4E9F2",
   brass: "#D9B25C",
