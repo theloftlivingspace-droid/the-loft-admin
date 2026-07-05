@@ -159,6 +159,58 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     return () => { document.body.style.overflow = prevOverflow; };
   }, []);
 
+  // Swipe/drag left/right to move between documents — pointer events cover
+  // both touch (mobile) and mouse (desktop) with a single set of handlers.
+  const dragStartX = useRef<number | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const wasDrag = useRef(false);
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragStartX.current = e.clientX;
+    dragStartY.current = e.clientY;
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (dragStartX.current === null || dragStartY.current === null) return;
+    const dx = e.clientX - dragStartX.current;
+    const dy = e.clientY - dragStartY.current;
+    dragStartX.current = null;
+    dragStartY.current = null;
+    // ignore mostly-vertical drags (scrolling) and short drags — and treat
+    // these as a plain tap, which closes the viewer (see onClick below)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) { wasDrag.current = false; return; }
+    wasDrag.current = true;
+    if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe/drag left → next
+    else        setIdx(i => Math.max(0, i - 1));               // swipe/drag right → prev
+  };
+  // Tapping/clicking the image (without dragging/swiping) closes the viewer,
+  // like a lightbox — a genuine swipe should just change page, not close.
+  const onImageAreaClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!wasDrag.current) onClose();
+  };
+
+  // Magic Mouse / trackpad horizontal swipe fires as wheel events with deltaX.
+  // React's onWheel is passive (can't preventDefault), and on macOS a horizontal
+  // swipe also triggers the browser's own "swipe to go back/forward" page
+  // navigation — so we attach a native, non-passive listener and call
+  // preventDefault on any clearly-horizontal swipe to stop that from firing.
+  const wheelLocked = useRef(false);
+  const viewerAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = viewerAreaRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return; // mostly-vertical scroll, let it through
+      e.preventDefault(); // stop macOS swipe-navigation from hijacking this
+      if (Math.abs(e.deltaX) < 12 || wheelLocked.current) return;
+      wheelLocked.current = true;
+      if (e.deltaX > 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe left → next
+      else              setIdx(i => Math.max(0, i - 1));               // swipe right → prev
+      setTimeout(() => { wheelLocked.current = false; }, 400);
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [docs.length]);
+
   if (!doc) return null;
   const isImg = doc.mimeType.startsWith('image/');
   const isPdf = doc.mimeType === 'application/pdf';
@@ -193,7 +245,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={e => e.stopPropagation()}>
+      <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : 'pointer' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={doc.previewUrl} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
