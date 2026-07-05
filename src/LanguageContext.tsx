@@ -318,7 +318,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   sp_placeholder_warranty: { th: 'เช่น ประกัน 5 ปี', en: 'e.g. 5-year warranty' },
   sp_field_install_date:   { th: 'วันติดตั้ง', en: 'Install date' },
   sp_type_car:             { th: 'รถยนต์', en: 'Car' },
-  sp_type_motorcycle:      { th: 'รถมอเตอร์ไซต์', en: 'Motorcycle' },
+  sp_type_motorcycle:      { th: 'รถมอเตอร์ไซค์', en: 'Motorcycle' },
   sp_type_taxi:            { th: 'แท็กซี่', en: 'Taxi' },
   sp_type_motorbike:       { th: 'จักรยานยนต์', en: 'Motorbike' },
 

@@ -38,7 +38,7 @@ const STOCK_NAME_EN: Record<string,string> = {
   'เตารีด': 'Iron',
   'ไดร์เป่าผม': 'Hair dryer',
   'หมอน': 'Pillow',
-  'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hand towel set',
+  'ผ้าปู+ผ้าเช็ดตัว+ผ้าเช็ดผม': 'Bedsheet + Bath towel + Hair towel set',
   'ผ้าเช็ดตัว': 'Bath towel',
   'ผ้านวม': 'Comforter',
   'ผ้าปูที่นอน': 'Bedsheet',
@@ -52,7 +52,7 @@ const STOCK_NAME_EN: Record<string,string> = {
   'เจลอาบน้ำ': 'Shower gel',
   'พรมเช็ดเท้า': 'Door mat',
   'หน้ากากอนามัย': 'Face mask',
-  'ฝาชักโคก': 'Toilet seat cover',
+  'ฝาชักโครก': 'Toilet seat cover',
   'หลอดไฟ LED': 'LED light bulb',
 };
 const STOCK_UNIT_EN: Record<string,string> = {
@@ -241,7 +241,7 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     {id:19,name:'เจลอาบน้ำ',      qty:4,  unit:'ขวด',  note:''},
     {id:20,name:'พรมเช็ดเท้า',     qty:8,  unit:'ผืน',  note:''},
     {id:21,name:'หน้ากากอนามัย',   qty:0,  unit:'กล่อง/ชิ้น',note:''},
-    {id:22,name:'ฝาชักโคก',        qty:2,  unit:'อัน',  note:''},
+    {id:22,name:'ฝาชักโครก',       qty:2,  unit:'อัน',  note:''},
     {id:23,name:'หลอดไฟ LED',     qty:8,  unit:'ดวง',  note:'ขนาดปกติ 7 / เล็ก 2'},
   ]);
   const [nextSId, setNextSId] = useState(26);
