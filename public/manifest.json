@@ -1,0 +1,20 @@
+{
+  "name": "The Loft Living Space — Admin",
+  "short_name": "Loft Admin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071B3D",
+  "theme_color": "#142E67",
+  "icons": [
+    {
+      "src": "/icons/icon-admin.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-admin.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

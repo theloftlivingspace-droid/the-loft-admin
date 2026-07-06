@@ -6,7 +6,8 @@ import UserManagement from './UserManagement';
 import { useLang } from './LanguageContext';
 import { T, FoilRule, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Users2 } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Users2, Bell, BellRing } from 'lucide-react';
+import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // IP prefix โหลดจาก Supabase settings table
@@ -277,6 +278,19 @@ export default function AdminDailyDashboard() {
     const timer = setInterval(fetchNotif, 10 * 60 * 1000);
     return () => clearInterval(timer);
   }, [loggedIn]);
+
+  // Keep the iOS home-screen app badge in sync while the app is open.
+  // (When the app is closed, a server-side Web Push updates the badge instead.)
+  const [pushPerm, setPushPerm] = useState<string>('default');
+  useEffect(() => { setPushPerm(getPushPermissionState()); }, []);
+  useEffect(() => {
+    setForegroundBadge(notifBooking + notifInvoice + notifLowStock);
+  }, [notifBooking, notifInvoice, notifLowStock]);
+  const handleEnableNotifications = async () => {
+    const res = await subscribeToPush();
+    setPushPerm(getPushPermissionState());
+    if (!res.ok) console.log('[push] subscribe failed:', res.reason);
+  };
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
@@ -560,6 +574,9 @@ export default function AdminDailyDashboard() {
                   <p className="f-thai" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
                   <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-xl px-3 py-2 text-sm focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
                 </div>
+                <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'} className="press focus-ring flex items-center gap-2 px-3 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                  {pushPerm === 'granted' ? <BellRing size={16} /> : <Bell size={16} />}
+                </button>
                 <button onClick={handleLogout} className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
                   {t('logout_btn')}
                 </button>
@@ -655,6 +672,9 @@ export default function AdminDailyDashboard() {
                   </button>
                 </div>
                 <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-lg px-2 py-1 text-xs focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
+                <button onClick={handleEnableNotifications} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                  {pushPerm === 'granted' ? <BellRing size={14} /> : <Bell size={14} />}
+                </button>
                 <button onClick={handleLogout} className="press focus-ring flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
                   🚪
                 </button>
