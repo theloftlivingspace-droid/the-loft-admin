@@ -169,6 +169,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   adm_stat_user:         { th: 'ผู้ใช้งาน', en: 'User' },
   adm_stat_done_tasks:   { th: 'งานเสร็จ', en: 'Tasks done' },
   adm_stat_checkin_today:{ th: 'Check-in วันนี้', en: 'Check-in today' },
+  adm_stat_checkout_today:{ th: 'Check-out วันนี้', en: 'Check-out today' },
   adm_stat_rooms:        { th: 'ห้อง', en: 'rooms' },
   adm_stat_all_reports:  { th: 'รายงานทั้งหมด', en: 'Total reports' },
   adm_stat_docs_unit:    { th: 'ฉบับ', en: 'docs' },

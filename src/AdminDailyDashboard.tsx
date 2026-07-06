@@ -279,6 +279,38 @@ export default function AdminDailyDashboard() {
     return () => clearInterval(timer);
   }, [loggedIn]);
 
+  // Live check-in/check-out counts — same GAS endpoint & date logic as
+  // CheckInOut.tsx, so the overview cards stay in sync with the actual
+  // checkout button state instead of drifting from it. Auto-refresh every 2 min.
+  useEffect(() => {
+    if (!loggedIn) return;
+    const fetchRoomCounts = () => {
+      fetch(`/api/gas-proxy?app=checkinout&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then((json: { today: string; stays: Array<{ checkin: string; checkout: string; checkedInAt?: string; checkedOutAt?: string }> }) => {
+          if (!Array.isArray(json.stays)) return;
+          const tod = json.today;
+          let arrivingToday = 0, checkedInToday = 0, checkingOutToday = 0, checkedOutToday = 0, currentlyIn = 0;
+          for (const row of json.stays) {
+            const ciStr = (row.checkin || '').substring(0, 10);
+            const coStr = (row.checkout || '').substring(0, 10);
+            if (!ciStr || !coStr) continue;
+            const isArrivingToday    = ciStr === tod;
+            const isCheckingOutToday = coStr === tod && ciStr < tod;
+            const isCurrentlyIn      = ciStr <= tod && coStr > tod;
+            if (isArrivingToday) { arrivingToday++; if (row.checkedInAt) checkedInToday++; }
+            if (isCheckingOutToday) { checkingOutToday++; if (row.checkedOutAt) checkedOutToday++; }
+            if (isCurrentlyIn) currentlyIn++;
+          }
+          setRoomCounts({ arrivingToday, checkedInToday, checkingOutToday, checkedOutToday, currentlyIn });
+        })
+        .catch((e) => console.log('[roomCounts] fetch error:', e));
+    };
+    fetchRoomCounts();
+    const timer = setInterval(fetchRoomCounts, 2 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [loggedIn]);
+
   // Keep the iOS home-screen app badge in sync while the app is open.
   // (When the app is closed, a server-side Web Push updates the badge instead.)
   const [pushPerm, setPushPerm] = useState<string>('default');
@@ -306,11 +338,20 @@ export default function AdminDailyDashboard() {
   const [taskChecked, setTaskChecked] = useState<Record<number, boolean>>({});
   const [taskStatus, setTaskStatus]   = useState<Record<number, string>>({});
 
-  // Form — check-in/out
+  // Form — check-in/out (manual report text, kept for the submitted daily report)
   const [checkInGuests, setCheckInGuests]   = useState('');
   const [checkInRooms, setCheckInRooms]     = useState('');
   const [checkOutGuests, setCheckOutGuests] = useState('');
   const [checkOutRooms, setCheckOutRooms]   = useState('');
+
+  // Live room-status counts — real source of truth, shared with CheckInOut.tsx
+  // via the same GAS endpoint, so the overview stat cards always reflect the
+  // actual checked-in/checked-out state instead of the manually-typed report fields.
+  const [roomCounts, setRoomCounts] = useState({
+    arrivingToday: 0, checkedInToday: 0,
+    checkingOutToday: 0, checkedOutToday: 0,
+    currentlyIn: 0,
+  });
 
   // Form — TM30 / booking
   const [tm30Status, setTm30Status]           = useState('');
@@ -866,12 +907,15 @@ export default function AdminDailyDashboard() {
           </div>
         )}
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Stat Cards — check-in/out counts are live-synced from the same GAS
+            endpoint CheckInOut.tsx uses, so they always match the real
+            checked-in/checked-out state (not the manually-typed report fields). */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           {[
             { icon: '👤', label: t('adm_stat_user'), value: currentUser?.full_name || '-' },
             { icon: '📋', label: t('adm_stat_done_tasks'), value: `${Object.values(taskStatus).filter(s => s === 'เสร็จแล้ว').length} / ${TASKS.length}` },
-            { icon: '🏠', label: t('adm_stat_checkin_today'), value: `${checkInGuests || '0'} ${t('adm_stat_rooms')}` },
+            { icon: '🏠', label: t('adm_stat_checkin_today'), value: `${roomCounts.checkedInToday} / ${roomCounts.arrivingToday} ${t('adm_stat_rooms')}` },
+            { icon: '🧳', label: t('adm_stat_checkout_today'), value: `${roomCounts.checkedOutToday} / ${roomCounts.checkingOutToday} ${t('adm_stat_rooms')}` },
             { icon: '📄', label: t('adm_stat_all_reports'), value: `${reports.length} ${t('adm_stat_docs_unit')}` },
           ].map((c, i) => (
             <div key={i} className="rounded-2xl p-4" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
