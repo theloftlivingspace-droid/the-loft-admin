@@ -53,17 +53,22 @@ function toLocalDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Find the housekeeping/inspection log entry for a stay's checkout, scanning
-// only within the stay window (checkin → checkout) so a previous guest's
-// inspection is never misattributed to this booking.
+// Find the housekeeping/inspection log entry for a stay's checkout.
+// Inspection can only ever happen ON or AFTER the guest's checkout date
+// (never before), so we scan forward from checkout (allowing a few days'
+// grace for late logging) rather than from checkin. Scanning from checkin
+// would risk matching a *previous* guest's same-day turnover inspection
+// (e.g. logged on this stay's check-in date) to this booking instead.
 function findCoForStay(s: Pick<Stay, 'roomNum' | 'checkin' | 'checkout'>, coStatus: Record<string, CheckoutStatus>): CheckoutStatus | undefined {
   const parseLocal = (s2: string) => {
     const [y, m, d2] = s2.split('-').map(Number);
     return new Date(y, m - 1, d2);
   };
-  const ciD = parseLocal(s.checkin);
   const coD = parseLocal(s.checkout);
-  for (let d = new Date(ciD); d <= coD; d.setDate(d.getDate() + 1)) {
+  const LATE_LOG_GRACE_DAYS = 3; // inspector may log a day or two after actual checkout
+  for (let i = 0; i <= LATE_LOG_GRACE_DAYS; i++) {
+    const d = new Date(coD);
+    d.setDate(d.getDate() + i);
     const ds = toLocalDate(d);
     const k = `${s.roomNum}_${ds}`;
     if (coStatus[k]) return coStatus[k];
