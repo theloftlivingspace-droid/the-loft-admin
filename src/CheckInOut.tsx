@@ -922,6 +922,19 @@ export default function CheckInOut() {
     today_ci:   stays.filter(s => s.status === 'arriving-today').length,
   };
 
+  // KPI summary cards only cover this property's 10 rooms — the underlying
+  // sheet can contain stays for other properties (e.g. room 363 "MyCondo")
+  // that still render as normal cards below via `counts`/`filtered`, but
+  // shouldn't skew the top KPI totals.
+  const loftRoomNums = new Set(ROOM_LIST.map(r => r.num));
+  const loftStays = stays.filter(s => loftRoomNums.has(s.roomNum));
+  const kpiCounts = {
+    checkedin:  loftStays.filter(s => s.status === 'checked-in').length,
+    arrivals:   loftStays.filter(s => s.status === 'arriving-today' || s.status === 'arriving-soon').length,
+    checkouts:  loftStays.filter(s => s.status === 'checking-out-today').length,
+    today_ci:   loftStays.filter(s => s.status === 'arriving-today').length,
+  };
+
   // ── Room-status grid: derive live status for every physical room ────────
   // Scans `stays` (always the full, unfiltered set) so the grid stays
   // accurate regardless of which filter tab is active. Priority when a room
@@ -1024,10 +1037,10 @@ export default function CheckInOut() {
       {/* Summary KPI row */}
       <div className="grid grid-cols-4 gap-2 mb-5">
         {[
-          { label: t('ci_in_hotel'), val: counts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
-          { label: t('ci_checking_out_today'), val: counts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
-          { label: t('ci_arriving_today'),   val: counts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
-          { label: t('ci_arriving_soon'), val: counts.arrivals - counts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
+          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
+          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
+          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
+          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
         ].map(k => (
           <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
             <div className="text-xl mb-0.5">{k.icon}</div>
