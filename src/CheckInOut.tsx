@@ -1035,12 +1035,13 @@ export default function CheckInOut() {
       </div>
 
       {/* Summary KPI row */}
-      <div className="grid grid-cols-4 gap-2 mb-5">
+      <div className="grid grid-cols-5 gap-2 mb-5">
         {[
           { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
           { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
           { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
           { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
+          { label: 'ห้องว่าง', val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
         ].map(k => (
           <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
             <div className="text-xl mb-0.5">{k.icon}</div>
