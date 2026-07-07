@@ -960,24 +960,6 @@ export default function CheckInOut() {
     return { ...room, status, targetKey };
   });
 
-  // eslint-disable-next-line no-console
-  console.log('[room-grid-debug]', roomGrid.map(r => {
-    const roomStays = stays.filter(s => s.roomNum === r.num && !cancelledSet.has(s.resId));
-    return {
-      room: r.num,
-      status: r.status,
-      stays: roomStays.map(s => ({
-        resId: s.resId,
-        guest: s.guest,
-        stayStatus: s.status,
-        checkin: s.checkin,
-        checkout: s.checkout,
-        isCheckedOut: checkedOutSet.has(s.resId),
-        isCheckedIn: ciDoneSet.has(s.resId),
-      })),
-    };
-  }));
-
   function goToRoomCard(targetKey: string | null, roomLabel: string) {
     if (!targetKey) { showToast(`ห้อง ${roomLabel} ว่าง — ไม่มีการ์ดให้เปิด`); return; }
     setView('all');
