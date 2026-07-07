@@ -855,7 +855,7 @@ export default function AdminDailyDashboard() {
         <button
           onClick={() => setShowBillingModal(true)}
           className="press focus-ring f-thai w-full mb-5 rounded-2xl px-5 py-3 flex items-center justify-center gap-2 font-semibold"
-          style={{ background: '#3A6B51', color: '#FFFFFF' }}
+          style={{ background: '#3A817D', color: '#FFFFFF' }}
         >
           <span className="text-lg">💳</span>
           <span>{t('adm_billing_btn')}</span>
