@@ -539,6 +539,7 @@ export default function CheckInOut() {
   });
   const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
+  const [checkoutArmed,  setCheckoutArmed]  = useState(false);
 
   // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
   const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1173,7 +1174,7 @@ export default function CheckInOut() {
                         และแจ้งกลุ่มแม่บ้านผ่าน LINE */}
                     {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
                       <button
-                        onClick={e => { e.stopPropagation(); setCheckoutModal(s); }}
+                        onClick={e => { e.stopPropagation(); setCheckoutArmed(false); setCheckoutModal(s); }}
                         className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] leading-none"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
                         title="Checkout แล้ว">
@@ -1381,27 +1382,35 @@ export default function CheckInOut() {
 
       {/* Checkout confirmation modal */}
       {checkoutModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCheckoutModal(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setCheckoutModal(null); setCheckoutArmed(false); }}>
           <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">🧳</div>
               <p className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('ci_confirm_checkout_q')}</p>
               <p className="f-thai text-sm mt-1" style={{ color: T.inkSoft }}>ห้อง {checkoutModal.room} · {checkoutModal.guest}</p>
               <p className="f-thai text-xs mt-0.5" style={{ color: T.inkSoft }}>{checkoutModal.checkin} → {checkoutModal.checkout}</p>
-              <p className="f-thai text-xs mt-2" style={{ color: T.brassDeep }}>⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้ ({today()}) ใน Sheet1</p>
+              <p className="f-thai text-xs mt-2" style={{ color: T.brassDeep }}>⚠️ วันเช็คเอาท์จะถูกเปลี่ยนเป็นวันนี้ ({today()}) ใน Sheet1 และแจ้งกลุ่มแม่บ้านทันที</p>
+              {checkoutArmed && (
+                <p className="f-thai text-xs mt-2 font-bold" style={{ color: T.wine }}>⚠️ แตะ "ยืนยันอีกครั้ง" เพื่อดำเนินการ — ทำแล้วย้อนกลับไม่ได้</p>
+              )}
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => setCheckoutModal(null)}
+              <button onClick={() => { setCheckoutModal(null); setCheckoutArmed(false); }}
                 className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-medium"
                 style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
                 {t('ci_no')}
               </button>
               <button
                 disabled={checkoutSaving}
-                onClick={async () => { await confirmCheckout(checkoutModal); setCheckoutModal(null); }}
+                onClick={async () => {
+                  if (!checkoutArmed) { setCheckoutArmed(true); return; }
+                  await confirmCheckout(checkoutModal);
+                  setCheckoutModal(null);
+                  setCheckoutArmed(false);
+                }}
                 className="press f-thai flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
-                style={{ background: T.brassDeep, color: '#fff' }}>
-                {checkoutSaving ? '⏳...' : `🧳 ${t('ci_confirm')}`}
+                style={{ background: checkoutArmed ? T.wine : T.brassDeep, color: '#fff' }}>
+                {checkoutSaving ? '⏳...' : checkoutArmed ? `⚠️ ${t('ci_confirm')}อีกครั้ง` : `🧳 ${t('ci_confirm')}`}
               </button>
             </div>
           </div>
