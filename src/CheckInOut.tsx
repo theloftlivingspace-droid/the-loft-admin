@@ -1169,14 +1169,15 @@ export default function CheckInOut() {
                       </button>
                     )}
                     {/* ปุ่ม Checkout (ก่อนกำหนด) — เฉพาะห้องที่กำลังพักอยู่ (checked-in) เท่านั้น
-                        กดแล้วอัปเดตวันเช็คเอาท์ทั้งใน CheckStatus log และ Sheet1 (เลขห้อง col D) เป็นวันนี้ */}
+                        กดแล้วอัปเดตวันเช็คเอาท์ทั้งใน CheckStatus log, Sheet1 (col เช็คเอาท์)
+                        และแจ้งกลุ่มแม่บ้านผ่าน LINE */}
                     {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
                       <button
                         onClick={e => { e.stopPropagation(); setCheckoutModal(s); }}
-                        className="press f-thai inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] leading-none"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
                         title="Checkout ก่อนกำหนด">
-                        🧳 {t('ci_checkout_btn')}
+                        🧳
                       </button>
                     )}
                   </div>
