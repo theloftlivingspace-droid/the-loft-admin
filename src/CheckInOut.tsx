@@ -187,11 +187,18 @@ const ROOM_LIST: { num: string; type: string }[] = [
 
 type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning';
 
+// Reuses the exact same colors already used elsewhere in this file:
+// occupied      → same green as the "checked-in" status card (STATUS_CONFIG)
+// checkout-today→ same wine/red as the "checking-out-today" status card
+// needs-cleaning→ same gold as the "checked-out done" card style (isCheckedOut)
+// vacant        → neutral gray (no matching status color exists for "nothing going on")
+// Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
+// Summary KPI row above, rather than the solid saturated blocks used before.
 const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
-  vacant:          { bg: T.sage,  fg: '#FFFFFF' },
-  occupied:        { bg: T.navy,  fg: '#FFFFFF' },
-  'checkout-today':{ bg: T.brass, fg: T.navyDeep },
-  'needs-cleaning':{ bg: T.wine,  fg: '#FFFFFF' },
+  vacant:          { bg: '#E7E9ED', fg: '#5B6472' },
+  occupied:        { bg: T.sageTint,  fg: T.sage },
+  'checkout-today':{ bg: T.wineTint,  fg: T.wine },
+  'needs-cleaning':{ bg: T.brassPale, fg: T.brassDeep },
 };
 
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
@@ -1040,7 +1047,7 @@ export default function CheckInOut() {
             ['needs-cleaning', 'ต้องทำความสะอาด'],
           ] as [RoomGridStatus, string][]).map(([key, label]) => (
             <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
-              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].bg }} />
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />
               {label}
             </span>
           ))}
@@ -1049,8 +1056,8 @@ export default function CheckInOut() {
           {roomGrid.map(r => (
             <button key={r.num}
               onClick={() => goToRoomCard(r.targetKey, r.num)}
-              className="press f-thai rounded-xl py-2.5 text-center"
-              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg }}>
+              className="press f-thai rounded-2xl py-2.5 text-center"
+              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
               <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
               <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
             </button>
