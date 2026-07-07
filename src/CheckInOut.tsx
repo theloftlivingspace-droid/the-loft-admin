@@ -168,6 +168,32 @@ const STATUS_CONFIG = {
   'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: T.navy,      text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
+// ─── Physical room list (all 10 units) ─────────────────────────────────────
+// Static — room numbers/types don't change at runtime. Used to render the
+// always-complete room-status grid (unlike `stays`, which only contains
+// rooms that currently have a booking record).
+const ROOM_LIST: { num: string; type: string }[] = [
+  { num: '300', type: 'Luxury' },
+  { num: '108', type: 'Retro' },
+  { num: '103', type: 'Elegance' },
+  { num: '204', type: 'Elegance' },
+  { num: '203', type: 'Allure' },
+  { num: '205', type: 'Allure' },
+  { num: '113', type: 'Legacy' },
+  { num: '214', type: 'Legacy' },
+  { num: '209', type: 'Radiance' },
+  { num: '210', type: 'Radiance' },
+];
+
+type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning';
+
+const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
+  vacant:          { bg: T.sage,  fg: '#FFFFFF' },
+  occupied:        { bg: T.navy,  fg: '#FFFFFF' },
+  'checkout-today':{ bg: T.brass, fg: T.navyDeep },
+  'needs-cleaning':{ bg: T.wine,  fg: '#FFFFFF' },
+};
+
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
 // Reads the whole document image via OCR (general text, not restricted to
 // the MRZ charset) so it still returns something useful even on blurry or
@@ -506,6 +532,10 @@ export default function CheckInOut() {
   });
   const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
+
+  // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
+  const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
 
   async function markCheckedIn(resId: string) {
     // Optimistic local update so the UI feels instant on this device.
@@ -885,6 +915,54 @@ export default function CheckInOut() {
     today_ci:   stays.filter(s => s.status === 'arriving-today').length,
   };
 
+  // ── Room-status grid: derive live status for every physical room ────────
+  // Scans `stays` (always the full, unfiltered set) so the grid stays
+  // accurate regardless of which filter tab is active. Priority when a room
+  // has multiple relevant records: occupied > checkout-today > needs-cleaning
+  // > vacant. `targetKey` is the cardKey of the stay that explains the
+  // status, used to scroll to that exact card when the tile is clicked.
+  const roomGrid = ROOM_LIST.map(room => {
+    const roomStays = stays.filter(s => s.roomNum === room.num && !cancelledSet.has(s.resId));
+
+    let status: RoomGridStatus = 'vacant';
+    let targetKey: string | null = null;
+
+    for (const s of roomStays) {
+      const isCheckedIn  = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
+      const isCheckedOut = checkedOutSet.has(s.resId);
+      const inHouse = (s.status === 'checked-in' || (s.status === 'arriving-today' && isCheckedIn)) && !isCheckedOut;
+
+      if (inHouse) {
+        status = 'occupied';
+        targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+        break; // occupied always wins — no need to keep scanning this room
+      }
+      if (status !== 'checkout-today' && s.status === 'checking-out-today' && !isCheckedOut) {
+        status = 'checkout-today';
+        targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+      }
+      if (status === 'vacant' && isCheckedOut) {
+        const co = findCoForStay(s, coStatus);
+        if (!co?.inspected) {
+          status = 'needs-cleaning';
+          targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+        }
+      }
+    }
+
+    return { ...room, status, targetKey };
+  });
+
+  function goToRoomCard(targetKey: string | null, roomLabel: string) {
+    if (!targetKey) { showToast(`ห้อง ${roomLabel} ว่าง — ไม่มีการ์ดให้เปิด`); return; }
+    setView('all');
+    setHighlightKey(targetKey);
+    setTimeout(() => {
+      roomCardRefs.current[targetKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+    setTimeout(() => setHighlightKey(k => (k === targetKey ? null : k)), 2200);
+  }
+
   if (loading) return (
     <div className="f-thai flex items-center justify-center py-20" style={{ color: T.inkSoft }}>
       <div className="w-8 h-8 rounded-full animate-spin mr-3" style={{ border: `4px solid ${T.hairGold}`, borderTopColor: T.brass }} />
@@ -952,6 +1030,34 @@ export default function CheckInOut() {
         ))}
       </div>
 
+      {/* Room status grid — every physical room, colored by live status */}
+      <div className="mb-5">
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
+          {([
+            ['vacant', 'ว่าง'],
+            ['occupied', 'เข้าพักอยู่'],
+            ['checkout-today', 'เช็คเอาท์วันนี้'],
+            ['needs-cleaning', 'ต้องทำความสะอาด'],
+          ] as [RoomGridStatus, string][]).map(([key, label]) => (
+            <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].bg }} />
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {roomGrid.map(r => (
+            <button key={r.num}
+              onClick={() => goToRoomCard(r.targetKey, r.num)}
+              className="press f-thai rounded-xl py-2.5 text-center"
+              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg }}>
+              <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
+              <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
         {([
@@ -1006,9 +1112,13 @@ export default function CheckInOut() {
                                                : t(cfg.labelKey);
             const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? '#FFFFFF' : cfg.text;
 
+            const isHighlighted = highlightKey === cardKey;
+
             return (
               <div key={cardKey}
-                className="f-thai rounded-2xl overflow-hidden" style={cardStyle}>
+                ref={el => { roomCardRefs.current[cardKey] = el; }}
+                className="f-thai rounded-2xl overflow-hidden transition-shadow duration-300"
+                style={{ ...cardStyle, ...(isHighlighted ? { boxShadow: `0 0 0 3px ${T.brass}` } : {}) }}>
                 {/* Top bar */}
                 <div className="px-4 py-2 flex items-center justify-between" style={{ background: topBarBg }}>
                   <div className="flex items-center gap-2">
