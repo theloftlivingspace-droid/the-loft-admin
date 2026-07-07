@@ -1176,7 +1176,7 @@ export default function CheckInOut() {
                         onClick={e => { e.stopPropagation(); setCheckoutModal(s); }}
                         className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] leading-none"
                         style={{ background: 'rgba(255,255,255,0.2)', color: topBarText }}
-                        title="Checkout ก่อนกำหนด">
+                        title="Checkout แล้ว">
                         🧳
                       </button>
                     )}
