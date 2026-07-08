@@ -909,15 +909,31 @@ export default function CheckInOut() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stays, coStatus, checkedOutSet]);
 
+  // ── Single source of truth for "is this stay physically in-house right
+  // now" ───────────────────────────────────────────────────────────────────
+  // A stay counts as in-house if its status is 'checked-in', OR it's a
+  // same-day arrival that staff have already checked in (ciDoneSet) even
+  // though the status field hasn't flipped to 'checked-in' yet — unless it
+  // was subsequently checked out or cancelled. This is the exact rule the
+  // room-status grid uses to color a tile green; every other "in hotel"
+  // count (KPI card, filter-tab count, filtered list) must use the same
+  // rule or the numbers will drift apart, as they did before this fix.
+  const isInHouse = (s: Stay) => {
+    if (cancelledSet.has(s.resId))  return false;
+    if (checkedOutSet.has(s.resId)) return false;
+    const isCheckedInEarly = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
+    return s.status === 'checked-in' || isCheckedInEarly;
+  };
+
   const filtered = stays.filter(s => {
-    if (view === 'checkedin')  return s.status === 'checked-in';
+    if (view === 'checkedin')  return isInHouse(s);
     if (view === 'arrivals')   return s.status === 'arriving-today' || s.status === 'arriving-soon';
     if (view === 'checkouts')  return s.status === 'checking-out-today';
     return true;
   });
 
   const counts = {
-    checkedin:  stays.filter(s => s.status === 'checked-in').length,
+    checkedin:  stays.filter(isInHouse).length,
     arrivals:   stays.filter(s => s.status === 'arriving-today' || s.status === 'arriving-soon').length,
     checkouts:  stays.filter(s => s.status === 'checking-out-today').length,
     today_ci:   stays.filter(s => s.status === 'arriving-today').length,
@@ -930,7 +946,7 @@ export default function CheckInOut() {
   const loftRoomNums = new Set(ROOM_LIST.map(r => r.num));
   const loftStays = stays.filter(s => loftRoomNums.has(s.roomNum));
   const kpiCounts = {
-    checkedin:  loftStays.filter(s => s.status === 'checked-in').length,
+    checkedin:  loftStays.filter(isInHouse).length,
     arrivals:   loftStays.filter(s => s.status === 'arriving-today' || s.status === 'arriving-soon').length,
     checkouts:  loftStays.filter(s => s.status === 'checking-out-today').length,
     today_ci:   loftStays.filter(s => s.status === 'arriving-today').length,
@@ -949,9 +965,8 @@ export default function CheckInOut() {
     let targetKey: string | null = null;
 
     for (const s of roomStays) {
-      const isCheckedIn  = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
       const isCheckedOut = checkedOutSet.has(s.resId);
-      const inHouse = (s.status === 'checked-in' || (s.status === 'arriving-today' && isCheckedIn)) && !isCheckedOut;
+      const inHouse = isInHouse(s);
 
       if (inHouse) {
         status = 'occupied';
