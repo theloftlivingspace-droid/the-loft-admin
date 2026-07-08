@@ -1042,7 +1042,7 @@ export default function CheckInOut() {
           { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
           { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
           { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
-          { label: 'ห้องว่าง', val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
+          { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
         ].map(k => (
           <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
             <div className="text-xl mb-0.5">{k.icon}</div>
@@ -1056,10 +1056,10 @@ export default function CheckInOut() {
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-2 flex-wrap">
           {([
-            ['vacant', 'ว่าง'],
-            ['occupied', 'เข้าพักอยู่'],
-            ['checkout-today', 'เช็คเอาท์วันนี้'],
-            ['needs-cleaning', 'ต้องทำความสะอาด'],
+            ['vacant', t('ci_legend_vacant')],
+            ['occupied', t('ci_legend_occupied')],
+            ['checkout-today', t('ci_legend_checkout_today')],
+            ['needs-cleaning', t('ci_legend_needs_cleaning')],
           ] as [RoomGridStatus, string][]).map(([key, label]) => (
             <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
               <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />

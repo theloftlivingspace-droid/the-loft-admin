@@ -95,6 +95,11 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_save_notify_line:  { th: '💾 บันทึก + แจ้ง LINE', en: '💾 Save + Notify LINE' },
   ci_download:          { th: 'ดาวน์โหลด', en: 'Download' },
   ci_click_download:    { th: 'คลิกเพื่อดาวน์โหลด', en: 'Click to download' },
+  ci_kpi_vacant:        { th: 'ห้องว่าง', en: 'Vacant rooms' },
+  ci_legend_vacant:     { th: 'ว่าง', en: 'Vacant' },
+  ci_legend_occupied:   { th: 'เข้าพักอยู่', en: 'Occupied' },
+  ci_legend_checkout_today:{ th: 'เช็คเอาท์วันนี้', en: 'Checkout today' },
+  ci_legend_needs_cleaning:{ th: 'ต้องทำความสะอาด', en: 'Needs cleaning' },
 
   // ── AdminDailyDashboard.tsx ──
   adm_task_reply:        { th: 'ตอบข้อความลูกค้า', en: 'Reply to customer messages' },
