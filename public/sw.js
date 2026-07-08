@@ -30,6 +30,8 @@ self.addEventListener('push', (event) => {
         console.error('[sw] badge error', e);
       }
 
+      if (data.silent) return; // count went to 0 — clear badge only, no banner
+
       await self.registration.showNotification(data.title || 'Loft Admin', {
         body: data.body || '',
         icon: '/icons/icon-admin.png',
