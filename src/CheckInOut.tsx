@@ -717,7 +717,7 @@ export default function CheckInOut() {
 
   async function saveExtend() {
     if (!extendModal) return;
-    const { resId, roomNum: room, guest, checkin, checkout: oldCheckout } = extendModal;
+    const { resId, roomNum: room, guest, checkin, checkout: oldCheckout, status: extendStatus } = extendModal;
     if (!extendDate || extendDate === oldCheckout) { setExtendError(t('ci_extend_pick_diff_date')); return; }
     setExtendSaving(true);
     setExtendError('');
@@ -747,15 +747,19 @@ export default function CheckInOut() {
         ? `🗓️ ${t('ci_extend_saved_synced')}`
         : `🗓️ ${t('ci_extend_saved_no_sync')}`);
 
-      // 3. Notify maid group via LINE (fire-and-forget, same relay as notes)
-      fetch('/api/maid-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resId, room, guest, checkin, checkout: extendDate,
-          note: extendLineNote_(oldCheckout, extendDate),
-        }),
-      }).catch(() => { /* non-fatal — date is already saved */ });
+      // 3. Notify maid group via LINE — only for cards checking out today.
+      //    A "checked-in" card extending its stay doesn't need an immediate
+      //    ping; the regular 19:00 daily maid summary already covers it.
+      if (extendStatus === 'checking-out-today') {
+        fetch('/api/maid-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resId, room, guest, checkin, checkout: extendDate,
+            note: extendLineNote_(oldCheckout, extendDate),
+          }),
+        }).catch(() => { /* non-fatal — date is already saved */ });
+      }
     } catch (e) {
       setExtendError(String(e));
     } finally {
