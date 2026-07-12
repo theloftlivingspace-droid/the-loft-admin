@@ -1316,7 +1316,7 @@ export default function CheckInOut() {
                     const ci = fmtDate(s.checkin);
                     const co2 = fmtDate(s.checkout);
                     const isCheckoutToday = s.status === 'checking-out-today';
-                    const canEditCheckout = !isCancelled && !isCheckedOut && s.status === 'checked-in';
+                    const canEditCheckout = !isCancelled && !isCheckedOut && (s.status === 'checked-in' || s.status === 'checking-out-today');
                     return (
                       <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
                         <div className="flex-1 px-3 py-2">
