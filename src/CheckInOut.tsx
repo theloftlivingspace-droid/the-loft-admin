@@ -540,6 +540,12 @@ export default function CheckInOut() {
   const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [checkoutArmed,  setCheckoutArmed]  = useState(false);
+  // แก้ไข/ต่อพัก — สำหรับกรณี Little Hotelier เปลี่ยนวันเช็คเอาท์แล้วแต่ไม่ส่งอีเมล
+  // แจ้ง (ระบบ auto-sync จากอีเมลเลยไม่รู้) ต้องแก้มือผ่านหน้านี้แทน
+  const [extendModal,   setExtendModal]     = useState<Stay | null>(null);
+  const [extendDate,    setExtendDate]      = useState('');
+  const [extendSaving,  setExtendSaving]    = useState(false);
+  const [extendError,   setExtendError]     = useState('');
 
   // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
   const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -686,6 +692,60 @@ export default function CheckInOut() {
       showToast(t('ci_save_failed_colon') + String(e));
     } finally {
       setNoteSaving(false);
+    }
+  }
+
+  function openExtendModal(s: Stay) {
+    setExtendModal(s);
+    setExtendDate(s.checkout);
+    setExtendError('');
+  }
+
+  async function saveExtend() {
+    if (!extendModal) return;
+    const { resId, roomNum: room, guest, checkin, checkout: oldCheckout } = extendModal;
+    if (!extendDate || extendDate === oldCheckout) { setExtendError(t('ci_extend_pick_diff_date')); return; }
+    setExtendSaving(true);
+    setExtendError('');
+    try {
+      // 1. Write new checkout date to Sheet1 (+ Apartmentery sync if possible)
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateCheckout', resId, newCheckout: extendDate }),
+      });
+      let j: { ok?: boolean; error?: string; conflict?: { guest: string; checkin: string }; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) {
+        if (j.error === 'conflict' && j.conflict) {
+          setExtendError(`${t('ci_extend_conflict')} — ${j.conflict.guest} (${j.conflict.checkin})`);
+        } else {
+          setExtendError(j.error || `HTTP ${r.status}`);
+        }
+        setExtendSaving(false);
+        return;
+      }
+
+      // 2. Update local UI immediately
+      setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x));
+      setExtendModal(null);
+      showToast(j.apartmenterySynced
+        ? `🗓️ ${t('ci_extend_saved_synced')}`
+        : `🗓️ ${t('ci_extend_saved_no_sync')}`);
+
+      // 3. Notify maid group via LINE (fire-and-forget, same relay as notes)
+      fetch('/api/maid-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resId, room, guest, checkin, checkout: extendDate,
+          note: `${t('ci_extend_line_note')} ${oldCheckout} → ${extendDate}`,
+        }),
+      }).catch(() => { /* non-fatal — date is already saved */ });
+    } catch (e) {
+      setExtendError(String(e));
+    } finally {
+      setExtendSaving(false);
     }
   }
 
@@ -1285,6 +1345,18 @@ export default function CheckInOut() {
                     </button>
                   </div>
 
+                  {/* แก้ไขวันเช็คเอาท์ (ต่อพัก/OTA เปลี่ยนวันแต่ไม่มีอีเมลแจ้ง) —
+                      แสดงเฉพาะห้องที่กำลังพักอยู่ ยังไม่ยกเลิก/เช็คเอาท์ */}
+                  {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
+                    <div className="mb-2">
+                      <button onClick={() => openExtendModal(s)}
+                        className="press f-thai text-[11px] font-semibold rounded-lg px-2 py-1 whitespace-nowrap"
+                        style={{ border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
+                        🗓️ {t('ci_edit_checkout_date')}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Check-in / No-show / Checkout / Cancel — arriving-today only */}
                   {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
                     <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -1456,6 +1528,44 @@ export default function CheckInOut() {
                 className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
                 style={{ background: T.brass, color: T.navyDeep }}>
                 {noteSaving ? t('ci_saving') : t('ci_save_notify_line')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* แก้ไขวันเช็คเอาท์ modal */}
+      {extendModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !extendSaving && setExtendModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+            <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🗓️ {t('ci_edit_checkout_date')} — {t('ci_room_word')} {extendModal.roomNum}</p>
+            <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{extendModal.guest} · {t('ci_checkin_label')} {extendModal.checkin}</p>
+            <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+              {t('ci_extend_new_checkout_label')} ({t('ci_checkout_label')} {t('ci_extend_current')}: {extendModal.checkout})
+            </label>
+            <input
+              type="date"
+              className="focus-ring w-full rounded-lg p-2 text-sm"
+              style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+              min={extendModal.checkin}
+              value={extendDate}
+              onChange={e => { setExtendDate(e.target.value); setExtendError(''); }}
+              autoFocus
+            />
+            {extendError && (
+              <p className="f-thai text-xs mt-2" style={{ color: T.wine }}>⚠️ {extendError}</p>
+            )}
+            <p className="f-thai text-[11px] mt-2" style={{ color: T.inkSoft }}>{t('ci_extend_helper_text')}</p>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setExtendModal(null)} disabled={extendSaving}
+                className="press f-thai flex-1 rounded-lg py-2 text-sm disabled:opacity-50"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+                {t('ci_cancel')}
+              </button>
+              <button onClick={saveExtend} disabled={extendSaving}
+                className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
+                style={{ background: T.brass, color: T.navyDeep }}>
+                {extendSaving ? t('ci_saving') : t('ci_save_notify_line')}
               </button>
             </div>
           </div>
