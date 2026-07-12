@@ -13,6 +13,20 @@ const CHECKOUT_LOG_ID = '1hP26o_5W4IuqqE9wJyMPuttoPB4m6EIRfkC4ePMzrGE';
 const CHECKOUT_GID = '335713576';
 const TM30_URL = 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a';
 
+// Maid group LINE notes are always Thai (not run through t()) — matches
+// existing messages like "🧳 Checkout แล้ว" / "🚫 ยกเลิกการจอง" which are
+// hardcoded Thai regardless of admin UI language. Summarizes a checkout
+// date change as a day-count ("อยู่ต่อ1วัน" / "เช็คเอาท์เร็วขึ้น2วัน") rather
+// than spelling out both raw dates.
+function extendLineNote_(oldCheckout: string, newCheckout: string): string {
+  const days = Math.round(
+    (new Date(newCheckout + 'T00:00:00').getTime() - new Date(oldCheckout + 'T00:00:00').getTime()) / 86400000
+  );
+  if (days > 0) return `อยู่ต่อ${days}วัน`;
+  if (days < 0) return `เช็คเอาท์เร็วขึ้น${Math.abs(days)}วัน`;
+  return 'แก้ไขวันเช็คเอาท์';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
   room: string;
@@ -739,7 +753,7 @@ export default function CheckInOut() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resId, room, guest, checkin, checkout: extendDate,
-          note: `${t('ci_extend_line_note')} ${oldCheckout} → ${extendDate}`,
+          note: extendLineNote_(oldCheckout, extendDate),
         }),
       }).catch(() => { /* non-fatal — date is already saved */ });
     } catch (e) {
