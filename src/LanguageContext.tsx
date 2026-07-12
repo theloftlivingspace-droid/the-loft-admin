@@ -98,7 +98,6 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_edit_checkout_date: { th: 'แก้ไขวันเช็คเอาท์', en: 'Edit check-out date' },
   ci_extend_new_checkout_label: { th: 'วันเช็คเอาท์ใหม่', en: 'New check-out date' },
   ci_extend_current:    { th: 'เดิม', en: 'current' },
-  ci_extend_helper_text:{ th: 'ใช้เมื่อ Little Hotelier เปลี่ยนวันให้แล้วแต่ไม่ส่งอีเมลแจ้ง ระบบจะอัปเดต Sheet1 และซิงก์ Apartmentery (ถ้ามี booking แล้ว) เสมอ ส่วนการแจ้งกลุ่มแม่บ้านทาง LINE จะส่งเฉพาะห้องที่เช็คเอาท์วันนี้เท่านั้น — ถ้ายังไม่ถึงวันเช็คเอาท์ รอสรุปประจำวัน 19:00 ตามปกติ', en: 'Use this when Little Hotelier already changed the date but sent no notification email. This always updates Sheet1 and syncs Apartmentery (if a booking already exists there). The housekeeping LINE ping only fires for rooms checking out today — if it\'s not checkout day yet, it\'ll show up in the regular 19:00 daily summary instead.' },
   ci_extend_pick_diff_date: { th: 'กรุณาเลือกวันที่ต่างจากเดิม', en: 'Please pick a date different from the current one' },
   ci_extend_conflict:   { th: 'ชนกับบุ๊คกิ้งอื่นในห้องเดียวกัน', en: 'Conflicts with another booking in the same room' },
   ci_extend_saved_synced:   { th: 'บันทึกวันเช็คเอาท์ใหม่แล้ว และซิงก์ Apartmentery เรียบร้อย', en: 'New check-out date saved and synced to Apartmentery' },

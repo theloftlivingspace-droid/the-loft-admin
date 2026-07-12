@@ -1577,7 +1577,6 @@ export default function CheckInOut() {
             {extendError && (
               <p className="f-thai text-xs mt-2" style={{ color: T.wine }}>⚠️ {extendError}</p>
             )}
-            <p className="f-thai text-[11px] mt-2" style={{ color: T.inkSoft }}>{t('ci_extend_helper_text')}</p>
             <div className="flex gap-2 mt-3">
               <button onClick={() => setExtendModal(null)} disabled={extendSaving}
                 className="press f-thai flex-1 rounded-lg py-2 text-sm disabled:opacity-50"
