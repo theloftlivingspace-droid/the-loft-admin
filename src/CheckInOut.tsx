@@ -743,9 +743,18 @@ export default function CheckInOut() {
       // 2. Update local UI immediately
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x));
       setExtendModal(null);
-      showToast(j.apartmenterySynced
-        ? `🗓️ ${t('ci_extend_saved_synced')}`
-        : `🗓️ ${t('ci_extend_saved_no_sync')}`);
+      if (j.apartmenterySynced) {
+        showToast(`🗓️ ${t('ci_extend_saved_synced')}`);
+      } else {
+        // Surface the *actual* reason instead of a generic "not synced" —
+        // common cases: booking not yet created on apartmentery (next
+        // hourly automation run will pick up the new date automatically),
+        // apartmentery session expired (needs manual re-login), or some
+        // other apartmentery-side error. Longer duration since this is
+        // diagnostic text, not a quick confirmation.
+        setToast(`🗓️ ${t('ci_extend_saved_no_sync')}${j.apartmenteryNote ? ' — ' + j.apartmenteryNote : ''}`);
+        setTimeout(() => setToast(''), 6000);
+      }
 
       // 3. Notify maid group via LINE — only for cards checking out today.
       //    A "checked-in" card extending its stay doesn't need an immediate
