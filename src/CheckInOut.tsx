@@ -22,8 +22,8 @@ function extendLineNote_(oldCheckout: string, newCheckout: string): string {
   const days = Math.round(
     (new Date(newCheckout + 'T00:00:00').getTime() - new Date(oldCheckout + 'T00:00:00').getTime()) / 86400000
   );
-  if (days > 0) return `อยู่ต่อ${days}วัน`;
-  if (days < 0) return `เช็คเอาท์เร็วขึ้น${Math.abs(days)}วัน`;
+  if (days > 0) return `อยู่ต่อ ${days} วัน`;
+  if (days < 0) return `เช็คเอาท์เร็วขึ้น ${Math.abs(days)} วัน`;
   return 'แก้ไขวันเช็คเอาท์';
 }
 
