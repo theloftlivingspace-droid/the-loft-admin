@@ -1316,6 +1316,7 @@ export default function CheckInOut() {
                     const ci = fmtDate(s.checkin);
                     const co2 = fmtDate(s.checkout);
                     const isCheckoutToday = s.status === 'checking-out-today';
+                    const canEditCheckout = !isCancelled && !isCheckedOut && s.status === 'checked-in';
                     return (
                       <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
                         <div className="flex-1 px-3 py-2">
@@ -1326,10 +1327,16 @@ export default function CheckInOut() {
                         <div className="flex items-center justify-center px-3 text-[11px] font-medium" style={{ background: T.bone, color: T.brassDeep, borderLeft: `1px solid ${T.hairGold}`, borderRight: `1px solid ${T.hairGold}` }}>
                           {s.nights}<br/>{t('ci_nights')}
                         </div>
-                        <div className="flex-1 px-3 py-2">
+                        <div
+                          onClick={canEditCheckout ? (e => { e.stopPropagation(); openExtendModal(s); }) : undefined}
+                          className={`flex-1 px-3 py-2 relative${canEditCheckout ? ' press cursor-pointer' : ''}`}
+                          title={canEditCheckout ? t('ci_edit_checkout_date') : undefined}>
                           <div className="f-thai text-[9px] font-semibold tracking-widest uppercase mb-1" style={{ color: T.inkSoft }}>{t('ci_checkout_label')}</div>
                           <div className="f-num text-xl font-semibold leading-none" style={{ color: isCheckoutToday ? T.wine : T.ink }}>{co2.day}</div>
                           <div className="text-xs mt-0.5" style={{ color: isCheckoutToday ? T.wine : T.inkSoft, opacity: isCheckoutToday ? 0.75 : 1 }}>{co2.month} {co2.year}</div>
+                          {canEditCheckout && (
+                            <span className="absolute top-1.5 right-1.5 text-[10px]" style={{ color: T.brassDeep, opacity: 0.6 }}>✏️</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -1344,18 +1351,6 @@ export default function CheckInOut() {
                       {s.note ? `✏️ ${t('ci_edit_note')}` : `📝 ${t('ci_add_note')}`}
                     </button>
                   </div>
-
-                  {/* แก้ไขวันเช็คเอาท์ (ต่อพัก/OTA เปลี่ยนวันแต่ไม่มีอีเมลแจ้ง) —
-                      แสดงเฉพาะห้องที่กำลังพักอยู่ ยังไม่ยกเลิก/เช็คเอาท์ */}
-                  {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
-                    <div className="mb-2">
-                      <button onClick={() => openExtendModal(s)}
-                        className="press f-thai text-[11px] font-semibold rounded-lg px-2 py-1 whitespace-nowrap"
-                        style={{ border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
-                        🗓️ {t('ci_edit_checkout_date')}
-                      </button>
-                    </div>
-                  )}
 
                   {/* Check-in / No-show / Checkout / Cancel — arriving-today only */}
                   {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
