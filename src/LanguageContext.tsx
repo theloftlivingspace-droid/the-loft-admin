@@ -100,8 +100,6 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_extend_current:    { th: 'เดิม', en: 'current' },
   ci_extend_pick_diff_date: { th: 'กรุณาเลือกวันที่ต่างจากเดิม', en: 'Please pick a date different from the current one' },
   ci_extend_conflict:   { th: 'ชนกับบุ๊คกิ้งอื่นในห้องเดียวกัน', en: 'Conflicts with another booking in the same room' },
-  ci_extend_saved_synced:   { th: 'บันทึกวันเช็คเอาท์ใหม่แล้ว และซิงก์ Apartmentery เรียบร้อย', en: 'New check-out date saved and synced to Apartmentery' },
-  ci_extend_saved_no_sync:  { th: 'บันทึกวันเช็คเอาท์ใหม่แล้ว (ยังไม่ได้ซิงก์ Apartmentery — เช็คด้วยตัวเองถ้าจำเป็น)', en: 'New check-out date saved (not yet synced to Apartmentery — check manually if needed)' },
   ci_download:          { th: 'ดาวน์โหลด', en: 'Download' },
   ci_click_download:    { th: 'คลิกเพื่อดาวน์โหลด', en: 'Click to download' },
   ci_kpi_vacant:        { th: 'ห้องว่าง', en: 'Vacant rooms' },

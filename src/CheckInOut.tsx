@@ -27,6 +27,23 @@ function extendLineNote_(oldCheckout: string, newCheckout: string): string {
   return 'แก้ไขวันเช็คเอาท์';
 }
 
+// Translates the raw (English, GAS-internal) apartmenteryNote reason
+// codes from updateCheckoutDate_ into a short Thai sentence Nathan can
+// actually read at a glance, instead of showing the debug string as-is.
+function apartmenteryNoteTH_(note?: string): string {
+  if (!note) return '';
+  if (note.indexOf('no apartmentery bookingId yet') !== -1) {
+    return 'ยังไม่มี booking นี้ใน Apartmentery — รอบอัตโนมัติชั่วโมงถัดไปจะสร้างให้เอง';
+  }
+  if (note.indexOf('session expired') !== -1) {
+    return 'เซสชัน Apartmentery หมดอายุ ต้องเข้าไปล็อกอินใหม่';
+  }
+  if (note.indexOf('sync failed') !== -1) {
+    return 'ซิงก์ Apartmentery ไม่สำเร็จ ลองใหม่อีกครั้งหรือแก้เองในเว็บ';
+  }
+  return 'ซิงก์ Apartmentery ไม่สำเร็จ เช็คด้วยตัวเองถ้าจำเป็น';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Stay {
   room: string;
@@ -744,15 +761,16 @@ export default function CheckInOut() {
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x));
       setExtendModal(null);
       if (j.apartmenterySynced) {
-        showToast(`🗓️ ${t('ci_extend_saved_synced')}`);
+        showToast(`🗓️ บันทึกวันเช็คเอาท์ใหม่แล้ว ซิงก์ Apartmentery เรียบร้อย`);
       } else {
         // Surface the *actual* reason instead of a generic "not synced" —
         // common cases: booking not yet created on apartmentery (next
         // hourly automation run will pick up the new date automatically),
         // apartmentery session expired (needs manual re-login), or some
-        // other apartmentery-side error. Longer duration since this is
-        // diagnostic text, not a quick confirmation.
-        setToast(`🗓️ ${t('ci_extend_saved_no_sync')}${j.apartmenteryNote ? ' — ' + j.apartmenteryNote : ''}`);
+        // other apartmentery-side error. Translated to plain Thai so it's
+        // actually readable, not the raw GAS debug string. Longer duration
+        // since this is diagnostic text, not a quick confirmation.
+        setToast(`🗓️ บันทึกวันเช็คเอาท์ใหม่แล้ว — ${apartmenteryNoteTH_(j.apartmenteryNote)}`);
         setTimeout(() => setToast(''), 6000);
       }
 
@@ -1594,7 +1612,7 @@ export default function CheckInOut() {
       )}
 
       {toast && (
-        <div className="f-thai fixed bottom-6 left-1/2 -translate-x-1/2 text-sm px-5 py-2 rounded-full z-50 pointer-events-none" style={{ background: T.navyDeep, color: '#fff', boxShadow: '0 10px 24px rgba(11,30,66,0.4)' }}>
+        <div className="f-thai fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[88vw] sm:max-w-sm text-sm text-center px-5 py-3 rounded-2xl z-50 pointer-events-none" style={{ background: T.navyDeep, color: '#fff', boxShadow: '0 10px 24px rgba(11,30,66,0.4)' }}>
           {toast}
         </div>
       )}
