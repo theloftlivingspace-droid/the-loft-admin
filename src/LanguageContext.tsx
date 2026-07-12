@@ -93,6 +93,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_cancel:            { th: 'ยกเลิก', en: 'Cancel' },
   ci_saving:            { th: 'กำลังบันทึก...', en: 'Saving...' },
   ci_save_notify_line:  { th: '💾 บันทึก + แจ้ง LINE', en: '💾 Save + Notify LINE' },
+  ci_save_only:          { th: '💾 บันทึก', en: '💾 Save' },
   ci_room_word:          { th: 'ห้อง', en: 'Room' },
   ci_edit_checkout_date: { th: 'แก้ไขวันเช็คเอาท์', en: 'Edit check-out date' },
   ci_extend_new_checkout_label: { th: 'วันเช็คเอาท์ใหม่', en: 'New check-out date' },

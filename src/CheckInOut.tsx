@@ -1587,7 +1587,7 @@ export default function CheckInOut() {
               <button onClick={saveExtend} disabled={extendSaving}
                 className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
                 style={{ background: T.brass, color: T.navyDeep }}>
-                {extendSaving ? t('ci_saving') : t('ci_save_notify_line')}
+                {extendSaving ? t('ci_saving') : (extendModal.status === 'checking-out-today' ? t('ci_save_notify_line') : t('ci_save_only'))}
               </button>
             </div>
           </div>
