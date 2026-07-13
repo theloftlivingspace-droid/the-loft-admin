@@ -36,13 +36,13 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
-      const badgeApiAvailable = 'setAppBadge' in self.registration;
+      const badgeApiAvailable = 'setAppBadge' in self.navigator;
       try {
         if (count > 0 && badgeApiAvailable) {
-          await self.registration.setAppBadge(count);
+          await self.navigator.setAppBadge(count);
           await reportBadgeDebug({ event: 'setAppBadge_ok', count, badgeApiAvailable });
-        } else if ('clearAppBadge' in self.registration) {
-          await self.registration.clearAppBadge();
+        } else if ('clearAppBadge' in self.navigator) {
+          await self.navigator.clearAppBadge();
           await reportBadgeDebug({ event: 'clearAppBadge_ok', count, badgeApiAvailable });
         } else {
           await reportBadgeDebug({ event: 'no_badge_api', count, badgeApiAvailable });
