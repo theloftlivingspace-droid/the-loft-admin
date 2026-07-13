@@ -9,6 +9,22 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+const PUSH_API_BASE = 'https://hotel-line-bot.onrender.com';
+
+// Reports what happened when trying to set the badge, since iOS gives no
+// visible error to the user and Safari Web Inspector isn't always handy.
+function reportBadgeDebug(fields) {
+  return fetch(`${PUSH_API_BASE}/push/debug-log`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userAgent: self.navigator ? self.navigator.userAgent : null,
+      standalone: self.matchMedia ? self.matchMedia('(display-mode: standalone)').matches : null,
+      ...fields,
+    }),
+  }).catch(() => {});
+}
+
 self.addEventListener('push', (event) => {
   let data = {};
   try {
@@ -20,14 +36,20 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
+      const badgeApiAvailable = 'setAppBadge' in self.registration;
       try {
-        if (count > 0 && 'setAppBadge' in self.registration) {
+        if (count > 0 && badgeApiAvailable) {
           await self.registration.setAppBadge(count);
+          await reportBadgeDebug({ event: 'setAppBadge_ok', count, badgeApiAvailable });
         } else if ('clearAppBadge' in self.registration) {
           await self.registration.clearAppBadge();
+          await reportBadgeDebug({ event: 'clearAppBadge_ok', count, badgeApiAvailable });
+        } else {
+          await reportBadgeDebug({ event: 'no_badge_api', count, badgeApiAvailable });
         }
       } catch (e) {
         console.error('[sw] badge error', e);
+        await reportBadgeDebug({ event: 'badge_error', count, badgeApiAvailable, error: String(e && e.message || e) });
       }
 
       if (data.silent) return; // count went to 0 — clear badge only, no banner
