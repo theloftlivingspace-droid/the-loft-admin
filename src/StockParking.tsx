@@ -228,8 +228,15 @@ function useDndSensors() {
 export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
+  const SECTION_GROUPS = {
+    stock:   ['stock', 'warranty'],
+    parking: ['parking-in', 'parking-out', 'patrol'],
+  } as const;
+  const groupOf = (s: typeof section): 'stock'|'parking' =>
+    (SECTION_GROUPS.stock as readonly string[]).includes(s) ? 'stock' : 'parking';
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>(initialTab ?? 'stock');
-  useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
+  const [group, setGroup] = useState<'stock'|'parking'>(() => groupOf(initialTab ?? 'stock'));
+  useEffect(() => { if (initialTab) { setSection(initialTab); setGroup(groupOf(initialTab)); } }, [initialTab]);
   useEffect(() => { window.scrollTo(0, 0); }, [section]);
   const [saving, setSaving] = useState('');
   const [saved,  setSaved]  = useState('');
@@ -521,6 +528,22 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     </div>
   );
 
+  const groupNav = (
+    <div className="flex gap-2 mb-3">
+      {([
+        { key: 'stock' as const,   label: t('sp_group_stock'),   emoji: '📦' },
+        { key: 'parking' as const, label: t('sp_group_parking'), emoji: '🚗' },
+      ]).map(g => (
+        <button key={g.key}
+          onClick={() => { setGroup(g.key); setSection(SECTION_GROUPS[g.key][0]); }}
+          className="f-thai flex-1 px-3 py-2 rounded-xl text-sm font-semibold press"
+          style={group===g.key ? { background: T.navy, color: '#fff', border: `1px solid ${T.navy}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+          {g.emoji} {g.label}
+        </button>
+      ))}
+    </div>
+  );
+
   const inputCls = "focus-ring w-full rounded-xl px-3 py-2 text-sm";
   const inputStyle = { border: `1px solid ${T.hairGold}`, color: T.ink };
   const btnDel   = "press f-thai px-2 py-1 rounded-lg text-xs";
@@ -578,13 +601,17 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   return (
     <div className="pb-24">
-      {sectionNav([
-        {key:'stock',      label:'Stock',        emoji:'📦'},
-        {key:'parking-in', label:'Car · In',      emoji:'🚗'},
-        {key:'parking-out',label:'Car · Out',     emoji:'🅿️'},
-        {key:'patrol',     label:t('sp_patrol_tab'),  emoji:'🚨'},
-        {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
-      ])}
+      {groupNav}
+      {group==='stock'
+        ? sectionNav([
+            {key:'stock',      label:'Stock',        emoji:'📦'},
+            {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
+          ])
+        : sectionNav([
+            {key:'parking-in', label:'Car · In',      emoji:'🚗'},
+            {key:'parking-out',label:'Car · Out',     emoji:'🅿️'},
+            {key:'patrol',     label:t('sp_patrol_tab'),  emoji:'🚨'},
+          ])}
 
       {/* ── STOCK ── */}
       {section==='stock' && (

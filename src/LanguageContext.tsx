@@ -285,6 +285,8 @@ const DICT: Record<string, { th: string; en: string }> = {
   adm_checking_network:  { th: 'กำลังตรวจสอบเครือข่าย...', en: 'Checking network...' },
 
   // ── StockParking.tsx ──
+  sp_group_stock:          { th: 'ของใช้', en: 'Stock' },
+  sp_group_parking:        { th: 'จอดรถ', en: 'Parking' },
   sp_items_unit:           { th: 'รายการ', en: 'items' },
   sp_cars_unit:            { th: 'คัน', en: 'cars' },
   sp_add_item:             { th: '+ เพิ่มรายการ', en: '+ Add item' },
