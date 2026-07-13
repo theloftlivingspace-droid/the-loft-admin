@@ -258,7 +258,7 @@ export default function AdminDailyDashboard() {
 
   // Notification counts from BookingInvoiceTodo GAS — auto-refresh every 10 min
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn || currentUser?.role !== 'admin') return;
     const fetchNotif = () => {
       fetch('/api/gas-proxy?app=todo&action=getData')
         .then(r => r.json())
@@ -277,7 +277,7 @@ export default function AdminDailyDashboard() {
     fetchNotif();
     const timer = setInterval(fetchNotif, 10 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [loggedIn]);
+  }, [loggedIn, currentUser]);
 
   // Live check-in/check-out counts — same GAS endpoint & date logic as
   // CheckInOut.tsx, so the overview cards stay in sync with the actual
@@ -633,9 +633,9 @@ export default function AdminDailyDashboard() {
               </div>
             </div>
             {/* Desktop notification row */}
-            {(notifBooking > 0 || notifInvoice > 0 || notifLowStock > 0) && (
+            {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
               <div className="hidden md:flex flex-wrap items-center gap-2 mt-3">
-                {(notifBooking > 0 || notifInvoice > 0) && (
+                {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                   <button
                     onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
                     className="press focus-ring flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
@@ -672,9 +672,9 @@ export default function AdminDailyDashboard() {
                 </div>
             </div>
             {/* Mobile notification banners */}
-            {(notifBooking > 0 || notifInvoice > 0 || notifLowStock > 0) && (
+            {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
               <div className="md:hidden flex flex-col gap-1.5 mt-3">
-                {(notifBooking > 0 || notifInvoice > 0) && (
+                {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                   <button
                     onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
                     className="press focus-ring w-full flex items-center justify-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold"
@@ -739,7 +739,7 @@ export default function AdminDailyDashboard() {
         <div className="flex-shrink-0 hidden md:flex px-6 md:px-8 overflow-x-auto" style={{ borderBottom: `1px solid ${T.hair}` }}>
           {([
             { key: 'dashboard',    Icon: LayoutGrid,    label: t('tab_dashboard') },
-            { key: 'todo',         Icon: ClipboardList, label: t('tab_booking') },
+            ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
             { key: 'checkinout',   Icon: Building2,     label: t('tab_checkinout') },
             { key: 'stockparking', Icon: Package,       label: t('tab_stock') },
             ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
@@ -760,7 +760,7 @@ export default function AdminDailyDashboard() {
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex pb-safe" style={{ background: T.card, borderTop: `1px solid ${T.hair}` }}>
           {([
             { key: 'dashboard',    Icon: LayoutGrid,    label: 'Dashboard' },
-            { key: 'todo',         Icon: ClipboardList, label: 'Booking' },
+            ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: 'Booking' }] : []),
             { key: 'checkinout',   Icon: Building2,     label: 'Check-in/out' },
             { key: 'stockparking', Icon: Package,       label: 'Stock' },
             ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: 'Users' }] : []),
@@ -819,7 +819,7 @@ export default function AdminDailyDashboard() {
         )}
 
         {/* To-Do Tab */}
-        {adminTab === 'todo' && (
+        {isAdmin && adminTab === 'todo' && (
           <BookingInvoiceTodo key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
         {adminTab === 'checkinout' && (
