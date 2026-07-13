@@ -319,9 +319,18 @@ export default function AdminDailyDashboard() {
     setForegroundBadge(notifBooking + notifInvoice + notifLowStock);
   }, [notifBooking, notifInvoice, notifLowStock]);
   const handleEnableNotifications = async () => {
-    const res = await subscribeToPush();
+    // Force a fresh subscription every time — fixes the case where a stale
+    // subscription silently stops working and re-pressing the bell did nothing.
+    const res = await subscribeToPush(true);
     setPushPerm(getPushPermissionState());
-    if (!res.ok) console.log('[push] subscribe failed:', res.reason);
+    if (!res.ok) {
+      console.log('[push] subscribe failed:', res.reason);
+      alert(res.reason === 'denied'
+        ? t('push_denied_alert')
+        : t('push_failed_alert'));
+    } else {
+      alert(t('push_enabled_alert'));
+    }
   };
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');

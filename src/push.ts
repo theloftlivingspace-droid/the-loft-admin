@@ -23,7 +23,7 @@ export function getPushPermissionState(): NotificationPermission | 'unsupported'
   return Notification.permission;
 }
 
-export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
+export async function subscribeToPush(force = false): Promise<{ ok: boolean; reason?: string }> {
   if (!isPushSupported()) return { ok: false, reason: 'unsupported' };
 
   const reg = await navigator.serviceWorker.register('/sw.js');
@@ -33,6 +33,18 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
   if (perm !== 'granted') return { ok: false, reason: 'denied' };
 
   let sub = await reg.pushManager.getSubscription();
+  if (sub && force) {
+    // Drop the old subscription first — it may be stale/broken (e.g. tied to
+    // an old sw.js registration), so pressing "enable" again should actually
+    // fix things instead of silently re-saving the same possibly-dead sub.
+    await fetch(`${PUSH_API_BASE}/push/unsubscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    }).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+    sub = null;
+  }
   if (!sub) {
     const keyRes = await fetch(`${PUSH_API_BASE}/push/vapid-public-key`);
     const { publicKey } = await keyRes.json();
