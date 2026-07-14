@@ -19,6 +19,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   tab_booking:          { th: 'Booking', en: 'Booking' },
   tab_checkinout:       { th: 'Check-in/out', en: 'Check-in/out' },
   tab_stock:            { th: 'Stock', en: 'Stock' },
+  tab_parking:          { th: 'Parking', en: 'Parking' },
   notif_booking_invoice:{ th: 'booking รอเพิ่ม', en: 'bookings pending' },
   notif_invoice_pending:{ th: 'invoice รอสร้าง', en: 'invoices pending' },
   notif_low_stock:      { th: 'รายการสต๊อกต่ำกว่าขั้นต่ำ', en: 'items below min stock' },

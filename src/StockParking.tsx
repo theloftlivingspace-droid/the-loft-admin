@@ -225,18 +225,20 @@ function useDndSensors() {
 }
 
 
-export default function StockParking({ initialTab, onLowStockChange }: { initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void } = {}) {
+export default function StockParking({ group, initialTab, onLowStockChange }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void }) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const SECTION_GROUPS = {
     stock:   ['stock', 'warranty'],
     parking: ['parking-in', 'parking-out', 'patrol'],
   } as const;
-  const groupOf = (s: typeof section): 'stock'|'parking' =>
-    (SECTION_GROUPS.stock as readonly string[]).includes(s) ? 'stock' : 'parking';
-  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>(initialTab ?? 'stock');
-  const [group, setGroup] = useState<'stock'|'parking'>(() => groupOf(initialTab ?? 'stock'));
-  useEffect(() => { if (initialTab) { setSection(initialTab); setGroup(groupOf(initialTab)); } }, [initialTab]);
+  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>(initialTab ?? SECTION_GROUPS[group][0]);
+  useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
+  // If the active main tab (group) changes and the current sub-tab doesn't
+  // belong to it, snap to that group's first sub-tab.
+  useEffect(() => {
+    setSection(s => (SECTION_GROUPS[group] as readonly string[]).includes(s) ? s : SECTION_GROUPS[group][0]);
+  }, [group]);
   useEffect(() => { window.scrollTo(0, 0); }, [section]);
   const [saving, setSaving] = useState('');
   const [saved,  setSaved]  = useState('');
@@ -528,22 +530,6 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
     </div>
   );
 
-  const groupNav = (
-    <div className="flex gap-2 mb-3">
-      {([
-        { key: 'stock' as const,   label: t('sp_group_stock'),   emoji: '📦' },
-        { key: 'parking' as const, label: t('sp_group_parking'), emoji: '🚗' },
-      ]).map(g => (
-        <button key={g.key}
-          onClick={() => { setGroup(g.key); setSection(SECTION_GROUPS[g.key][0]); }}
-          className="f-thai flex-1 px-3 py-2 rounded-xl text-sm font-semibold press"
-          style={group===g.key ? { background: T.navy, color: '#fff', border: `1px solid ${T.navy}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
-          {g.emoji} {g.label}
-        </button>
-      ))}
-    </div>
-  );
-
   const inputCls = "focus-ring w-full rounded-xl px-3 py-2 text-sm";
   const inputStyle = { border: `1px solid ${T.hairGold}`, color: T.ink };
   const btnDel   = "press f-thai px-2 py-1 rounded-lg text-xs";
@@ -601,7 +587,6 @@ export default function StockParking({ initialTab, onLowStockChange }: { initial
 
   return (
     <div className="pb-24">
-      {groupNav}
       {group==='stock'
         ? sectionNav([
             {key:'stock',      label:'Stock',        emoji:'📦'},

@@ -6,7 +6,7 @@ import UserManagement from './UserManagement';
 import { useLang } from './LanguageContext';
 import { T, FoilRule, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Users2, Bell, BellRing } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ interface Report {
   created_at?: string;
 }
 
-const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stockparking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'parking-in' | 'parking-out' | 'warranty' }[] = [
+const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stock' | 'parking'; todoTab?: 'booking' | 'invoice'; stockTab?: 'stock' | 'parking-in' | 'parking-out' | 'patrol' | 'warranty' }[] = [
   { label: 'ตอบข้อความลูกค้า', url: 'https://chat.line.biz/' },
   { label: 'อัปเดตราคา รายวัน', url: 'https://theloftlivingspace-droid.github.io/loft-pricing/' },
   { label: 'ลงทะเบียนแขก Check-in', tab: 'checkinout' },
@@ -81,8 +81,8 @@ const TASKS: { label: string; url?: string; tab?: 'checkinout' | 'todo' | 'stock
   { label: 'ลงทะเบียน TM30', url: 'https://tm30.immigration.go.th/tm30api/loginExternal.jsp?value=EXT&id=d0c6b56279430512156a619772ece25a' },
   { label: 'บันทึกการจองเพิ่ม', tab: 'todo', todoTab: 'booking' },
   { label: 'สร้างใบแจ้งหนี้ / ใบเสร็จ', tab: 'todo', todoTab: 'invoice' },
-  { label: 'ตรวจสอบสต๊อก', tab: 'stockparking', stockTab: 'stock' },
-  { label: 'ตรวจสอบทะเบียนรถ', tab: 'stockparking', stockTab: 'parking-out' },
+  { label: 'ตรวจสอบสต๊อก', tab: 'stock', stockTab: 'stock' },
+  { label: 'ตรวจสอบทะเบียนรถ', tab: 'parking', stockTab: 'patrol' },
   { label: 'เตรียมเอกสาร' },
   { label: 'สแกน / จัดเก็บไฟล์' },
   { label: 'สรุปรายงานประจำวัน' },
@@ -242,7 +242,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking' | 'users'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>('dashboard');
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
   const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
@@ -648,7 +648,7 @@ export default function AdminDailyDashboard() {
                 )}
                 {notifLowStock > 0 && (
                   <button
-                    onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
+                    onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
                     className="press focus-ring flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
                     style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
                     🔴 {notifLowStock} {t('notif_low_stock')}
@@ -687,7 +687,7 @@ export default function AdminDailyDashboard() {
                 )}
                 {notifLowStock > 0 && (
                   <button
-                    onClick={() => { setStockInitialTab('stock'); setAdminTab('stockparking'); }}
+                    onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
                     className="press focus-ring w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
                     style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
                     🔴 {notifLowStock} {t('notif_low_stock')}
@@ -702,7 +702,7 @@ export default function AdminDailyDashboard() {
             <div className="flex md:hidden items-center justify-between gap-1.5 mt-2.5">
               <span className="f-thai" style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
                 {(() => {
-                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stockparking: t('tab_stock'), users: t('adm_tab_users') } as Record<string, string>;
+                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stock: t('tab_stock'), parking: t('tab_parking'), users: t('adm_tab_users') } as Record<string, string>;
                   return activeLabel[adminTab] || '';
                 })()}
               </span>
@@ -741,7 +741,8 @@ export default function AdminDailyDashboard() {
             { key: 'dashboard',    Icon: LayoutGrid,    label: t('tab_dashboard') },
             ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
             { key: 'checkinout',   Icon: Building2,     label: t('tab_checkinout') },
-            { key: 'stockparking', Icon: Package,       label: t('tab_stock') },
+            { key: 'stock',        Icon: Package,       label: t('tab_stock') },
+            { key: 'parking',      Icon: Car,           label: t('tab_parking') },
             ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
           ] as const).map(t2 => (
             <button key={t2.key} onClick={() => { setAdminTab(t2.key); scrollToTop(); }}
@@ -762,7 +763,8 @@ export default function AdminDailyDashboard() {
             { key: 'dashboard',    Icon: LayoutGrid,    label: 'Dashboard' },
             ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: 'Booking' }] : []),
             { key: 'checkinout',   Icon: Building2,     label: 'Check-in/out' },
-            { key: 'stockparking', Icon: Package,       label: 'Stock' },
+            { key: 'stock',        Icon: Package,       label: 'Stock' },
+            { key: 'parking',      Icon: Car,           label: 'Parking' },
             ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: 'Users' }] : []),
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => { setAdminTab(tab.key); scrollToTop(); }}
@@ -826,8 +828,8 @@ export default function AdminDailyDashboard() {
           <CheckInOut />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
-        <div className={adminTab === 'stockparking' ? '' : 'hidden'}>
-          <StockParking initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
+        <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
+          <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} />
         </div>
         {isAdmin && adminTab === 'users' && (
           <UserManagement />
@@ -840,8 +842,8 @@ export default function AdminDailyDashboard() {
         <div className="grid grid-cols-3 gap-3 mb-5">
           {([
             { icon: '✅', line1: t('adm_ql_checklist1'), line2: t('adm_ql_checklist2'), tab: 'dashboard' as const, scroll: 'checklist' },
-            { icon: '📦', line1: t('adm_ql_check'),  line2: t('adm_ql_stock'),       tab: 'stockparking' as const, scroll: '' },
-            { icon: '🚨', line1: t('adm_ql_check'),  line2: t('adm_ql_car'),   tab: 'stockparking' as const, scroll: 'patrol' },
+            { icon: '📦', line1: t('adm_ql_check'),  line2: t('adm_ql_stock'),       tab: 'stock' as const, scroll: '' },
+            { icon: '🚨', line1: t('adm_ql_check'),  line2: t('adm_ql_car'),   tab: 'parking' as const, scroll: 'patrol' },
           ]).map((q, i) => (
             <button key={i}
               onClick={() => {
