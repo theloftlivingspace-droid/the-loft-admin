@@ -244,7 +244,7 @@ export default function AdminDailyDashboard() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stockparking' | 'users'>('dashboard');
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
-  const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'warranty'>('stock');
+  const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [billingToken, setBillingToken]     = useState(() => localStorage.getItem('billing_token') || '');
@@ -841,11 +841,11 @@ export default function AdminDailyDashboard() {
           {([
             { icon: '✅', line1: t('adm_ql_checklist1'), line2: t('adm_ql_checklist2'), tab: 'dashboard' as const, scroll: 'checklist' },
             { icon: '📦', line1: t('adm_ql_check'),  line2: t('adm_ql_stock'),       tab: 'stockparking' as const, scroll: '' },
-            { icon: '🚗', line1: t('adm_ql_check'),  line2: t('adm_ql_car'),   tab: 'stockparking' as const, scroll: 'car' },
+            { icon: '🚨', line1: t('adm_ql_check'),  line2: t('adm_ql_car'),   tab: 'stockparking' as const, scroll: 'patrol' },
           ]).map((q, i) => (
             <button key={i}
               onClick={() => {
-                if (q.scroll === 'car') setStockInitialTab('parking-out');
+                if (q.scroll === 'patrol') setStockInitialTab('patrol');
                 else if (q.scroll === '') setStockInitialTab('stock');
                 setAdminTab(q.tab);
                 if (q.scroll === 'checklist') {
