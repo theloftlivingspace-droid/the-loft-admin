@@ -55,10 +55,17 @@ interface InvoiceRaw {
 interface BookingItem extends BookingRaw { matchKeys: string[]; isNewToday: boolean; done: boolean; }
 interface InvoiceItem extends InvoiceRaw { matchKeys: string[]; invoiceKey: string; detectedToday: boolean; done: boolean; detectedDate: string; }
 
+interface PendingMatchItem {
+  ota: string; guest: string; room: string;
+  detectedDate: string; checkin: string; checkout: string;
+  net: string | number; status: string; note: string;
+}
+
 interface DashboardData {
   today: string;
   booking: BookingItem[];
   invoice: InvoiceItem[];
+  pendingMatch: PendingMatchItem[];
 }
 
 // ─── Key format helpers (must match GAS BookingInvoiceTodo.gs exactly) ────────
@@ -133,10 +140,11 @@ function buildInvoiceMatchKeysFallback(inv: InvoiceRaw): string[] {
   return keys;
 }
 
-function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: InvoiceRaw[]; bookings?: BookingRaw[]; ledger?: InvoiceRaw[] }): DashboardData {
+function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: InvoiceRaw[]; bookings?: BookingRaw[]; ledger?: InvoiceRaw[]; pendingMatch?: PendingMatchItem[] }): DashboardData {
   const today = raw.today || new Date().toISOString().substring(0, 10);
   const bookingsRaw: BookingRaw[] = Array.isArray(raw.booking) ? raw.booking : Array.isArray(raw.bookings) ? raw.bookings : [];
   const invoicesRaw: InvoiceRaw[] = Array.isArray(raw.invoice) ? raw.invoice : Array.isArray(raw.ledger) ? raw.ledger : [];
+  const pendingMatch: PendingMatchItem[] = Array.isArray(raw.pendingMatch) ? raw.pendingMatch : [];
 
   const booking: BookingItem[] = bookingsRaw.map(b => ({
     ...b,
@@ -171,7 +179,7 @@ function enrichData(raw: { today?: string; booking?: BookingRaw[]; invoice?: Inv
     invoice.push(item);
   });
 
-  return { today, booking, invoice };
+  return { today, booking, invoice, pendingMatch };
 }
 
 // ─── Matching ─────────────────────────────────────────────────────────────────
@@ -529,12 +537,12 @@ function otaTheme(channel: string) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function BookingInvoiceTodo({ initialTab, onCountChange }: { initialTab?: 'booking' | 'invoice'; onCountChange?: (booking: number, invoice: number) => void } = {}) {
+export default function BookingInvoiceTodo({ initialTab, onCountChange }: { initialTab?: 'booking' | 'invoice' | 'pending'; onCountChange?: (booking: number, invoice: number) => void } = {}) {
   const { t } = useLang();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'booking' | 'invoice'>(initialTab ?? 'booking');
+  const [activeTab, setActiveTab] = useState<'booking' | 'invoice' | 'pending'>(initialTab ?? 'booking');
   const [showDoneBooking, setShowDoneBooking] = useState(true);
   const [showDoneInvoice, setShowDoneInvoice] = useState(true);
   const [toast, setToast] = useState('');
@@ -666,6 +674,8 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
     .filter(x => showDoneInvoice || !x.done)
     .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm))
     .sort((a, b) => b.detectedDate > a.detectedDate ? 1 : -1);
+  const visiblePending = data.pendingMatch
+    .filter(x => !searchNorm || normNameForSearch(x.guest).includes(searchNorm));
 
   return (
     <div className="relative pb-24">
@@ -702,6 +712,7 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
         {([
           { key: 'booking', label: '📅 Booking To Add', count: bookingPending, flag: bookingNewToday },
           { key: 'invoice', label: '🧾 Invoice To Create', count: invoicePending, flag: invoiceNewToday },
+          { key: 'pending', label: '⏳ Pending Match', count: data.pendingMatch.length, flag: 0 },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className="f-thai flex-1 pb-3 pt-2 text-sm font-semibold"
@@ -874,6 +885,44 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
                   </div>
                 );
               })
+          }
+        </div>
+      )}
+
+      {activeTab === 'pending' && (
+        <div>
+          <div className="f-thai flex justify-between items-center text-xs mb-3" style={{ color: T.inkSoft }}>
+            <span>{t('bi_total')} {data.pendingMatch.length} — เงินเข้าแล้วแต่ยังไม่ match กับ booking</span>
+          </div>
+          {visiblePending.length === 0
+            ? <p className="f-thai text-center py-10 text-sm" style={{ color: T.inkSoft }}>{search ? `${t('bi_no_results_for')} "${search}"` : 'ไม่มียอดค้าง match'}</p>
+            : visiblePending.map((item, i) => (
+                <div key={item.ota + item.guest + item.detectedDate + i}
+                  className="f-thai flex gap-3 items-start rounded-2xl p-4 mb-3"
+                  style={{ background: T.card, border: `1px solid ${T.hairGold}` }}>
+                  <span className="text-xl flex-shrink-0">⏳</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-bold text-sm" style={{ color: T.ink }}>{item.guest || '(ไม่ทราบชื่อ)'}</span>
+                      {item.room && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>{t('bi_room_prefix')} {item.room}</span>}
+                    </div>
+                    {(item.checkin || item.checkout) && (
+                      <p className="text-xs mb-2" style={{ color: T.inkSoft }}>
+                        {item.checkin} → {item.checkout}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{item.ota}</span>
+                      <span className="f-num text-xs font-bold rounded-lg px-2 py-0.5" style={{ background: T.brassPale, color: T.brassDeep }}>
+                        NET ฿{formatNum(item.net)}
+                      </span>
+                      <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{item.status}</span>
+                      <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{t('bi_detected_label')} {item.detectedDate}</span>
+                    </div>
+                    {item.note && <p className="f-thai text-[13px] italic mt-1" style={{ color: T.inkSoft }}>📝 {item.note}</p>}
+                  </div>
+                </div>
+              ))
           }
         </div>
       )}
