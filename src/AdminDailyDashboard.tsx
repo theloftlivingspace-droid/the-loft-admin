@@ -777,7 +777,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Scrollable content */}
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-0 md:pt-6">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-4 md:pt-6">
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3" style={{ background: T.navyTint, border: `1px solid ${T.hairGold}` }}>
