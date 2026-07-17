@@ -280,16 +280,29 @@ export default function AdminDailyDashboard() {
   const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>>(
     ['dashboard', 'checkinout', 'stock', 'parking']
   );
+  // Kept in sync with the visible tab set on every render (cheap, no need for
+  // an effect) — must not live after any early `return`, or it'd violate the
+  // Rules of Hooks... actually this isn't a hook at all, just a ref mutation,
+  // so it's safe here regardless, but we compute it where isAdmin is easy to
+  // derive without depending on the later `isAdmin` const.
+  {
+    const isAdminNow = currentUser?.role === 'admin';
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'> = ['dashboard'];
+    if (isAdminNow) order.push('todo');
+    order.push('checkinout', 'stock', 'parking');
+    if (isAdminNow) order.push('users');
+    mobileTabOrderRef.current = order;
+  }
 
   function handlePtrTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     const el = scrollAreaRef.current;
     swipeDir.current = 'none';
     swipeStartX.current = e.touches[0].clientX;
+    ptrStartY.current = e.touches[0].clientY;
     swipeBlocked.current = !!findHScrollAncestor(e.target, el);
 
     if (!ptrRefreshableTab || !el || el.scrollTop > 0 || ptrRefreshing) { ptrActive.current = false; return; }
     ptrActive.current = true;
-    ptrStartY.current = e.touches[0].clientY;
   }
 
   function handlePtrTouchMove(e: React.TouchEvent<HTMLDivElement>) {
@@ -671,14 +684,6 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
-
-  useEffect(() => {
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'> = ['dashboard'];
-    if (isAdmin) order.push('todo');
-    order.push('checkinout', 'stock', 'parking');
-    if (isAdmin) order.push('users');
-    mobileTabOrderRef.current = order;
-  }, [isAdmin]);
 
   return (
     <div className="h-screen overflow-hidden p-0 md:p-6" style={{ background: T.bone }}>
