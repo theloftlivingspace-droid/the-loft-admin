@@ -173,6 +173,18 @@ function generateSummary(data: {
   };
 }
 
+// Walks up from a touch target to find an element that can scroll
+// horizontally (tables, pill-tab rows) so swipe-to-change-tab doesn't hijack
+// gestures meant for those elements.
+function findHScrollAncestor(el: EventTarget | null, root: HTMLElement | null): HTMLElement | null {
+  let node = el as HTMLElement | null;
+  while (node && node !== root && node !== document.body) {
+    if (node.scrollWidth > node.clientWidth + 2) return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminDailyDashboard() {
   const { lang, setLang, t } = useLang();
@@ -260,25 +272,65 @@ export default function AdminDailyDashboard() {
 
   const ptrRefreshableTab = adminTab === 'checkinout' || adminTab === 'todo';
 
+  // ── Swipe left/right to change tabs (mobile) ──────────────────────────────
+  const swipeStartX = useRef(0);
+  const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
+  const swipeBlocked = useRef(false);
+  const SWIPE_THRESHOLD = 60;
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>>(
+    ['dashboard', 'checkinout', 'stock', 'parking']
+  );
+
   function handlePtrTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     const el = scrollAreaRef.current;
+    swipeDir.current = 'none';
+    swipeStartX.current = e.touches[0].clientX;
+    swipeBlocked.current = !!findHScrollAncestor(e.target, el);
+
     if (!ptrRefreshableTab || !el || el.scrollTop > 0 || ptrRefreshing) { ptrActive.current = false; return; }
     ptrActive.current = true;
     ptrStartY.current = e.touches[0].clientY;
   }
 
   function handlePtrTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    const dx = e.touches[0].clientX - swipeStartX.current;
+    const dy = e.touches[0].clientY - ptrStartY.current;
+
+    if (swipeDir.current === 'none' && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      swipeDir.current = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'horizontal' : 'vertical';
+    }
+    if (swipeDir.current === 'horizontal') return; // handled on release; don't fight vertical pull state
+
     if (!ptrActive.current) return;
     const el = scrollAreaRef.current;
     if (el && el.scrollTop > 0) { ptrActive.current = false; setPtrDist(0); setPtrPulling(false); return; }
-    const dy = e.touches[0].clientY - ptrStartY.current;
     if (dy > 0) {
       setPtrPulling(true);
       setPtrDist(Math.min(dy * 0.5, PTR_MAX));
     }
   }
 
-  async function handlePtrTouchEnd() {
+  async function handlePtrTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const dir = swipeDir.current;
+    swipeDir.current = 'none';
+
+    if (dir === 'horizontal' && !swipeBlocked.current) {
+      const endX = e.changedTouches[0]?.clientX ?? swipeStartX.current;
+      const dx = endX - swipeStartX.current;
+      if (Math.abs(dx) > SWIPE_THRESHOLD) {
+        const order = mobileTabOrderRef.current;
+        const idx = order.indexOf(adminTab);
+        if (idx !== -1) {
+          const nextIdx = Math.max(0, Math.min(order.length - 1, dx < 0 ? idx + 1 : idx - 1));
+          if (nextIdx !== idx) { setAdminTab(order[nextIdx]); scrollToTop(); }
+        }
+      }
+      ptrActive.current = false;
+      setPtrPulling(false);
+      setPtrDist(0);
+      return;
+    }
+
     if (!ptrActive.current) return;
     ptrActive.current = false;
     setPtrPulling(false);
@@ -619,6 +671,14 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'> = ['dashboard'];
+    if (isAdmin) order.push('todo');
+    order.push('checkinout', 'stock', 'parking');
+    if (isAdmin) order.push('users');
+    mobileTabOrderRef.current = order;
+  }, [isAdmin]);
 
   return (
     <div className="h-screen overflow-hidden p-0 md:p-6" style={{ background: T.bone }}>
