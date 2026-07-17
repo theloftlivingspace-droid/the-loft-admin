@@ -9,3 +9,7 @@
     font-family: 'Prompt', ui-sans-serif, system-ui, sans-serif;
   }
 }
+
+@keyframes ptrSpin {
+  to { transform: rotate(360deg); }
+}

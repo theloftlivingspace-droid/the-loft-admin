@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
 
@@ -537,7 +537,10 @@ function otaTheme(channel: string) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function BookingInvoiceTodo({ initialTab, onCountChange }: { initialTab?: 'booking' | 'invoice' | 'pending'; onCountChange?: (booking: number, invoice: number) => void } = {}) {
+export type BookingInvoiceTodoHandle = { refresh: () => void };
+
+const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: 'booking' | 'invoice' | 'pending'; onCountChange?: (booking: number, invoice: number) => void }>(
+  function BookingInvoiceTodo({ initialTab, onCountChange }, ref) {
   const { t } = useLang();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -597,6 +600,10 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useImperativeHandle(ref, () => ({
+    refresh: () => { loadData(); refreshDocs(); }
+  }));
 
   const toggleBookingDone = async (resId: string, done: boolean) => {
     if (!data) return;
@@ -934,7 +941,9 @@ export default function BookingInvoiceTodo({ initialTab, onCountChange }: { init
       )}
     </div>
   );
-}
+});
+
+export default BookingInvoiceTodo;
 
 
 

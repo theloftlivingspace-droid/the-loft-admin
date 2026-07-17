@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
 import { createWorker } from 'tesseract.js';
@@ -536,7 +536,9 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function CheckInOut() {
+export type CheckInOutHandle = { refresh: () => void };
+
+const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, ref) {
   const { t } = useLang();
   const [stays, setStays]           = useState<Stay[]>([]);
   const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
@@ -1000,6 +1002,10 @@ export default function CheckInOut() {
   }
 
   useEffect(() => { load(); refreshDocs(); }, []);
+
+  useImperativeHandle(ref, () => ({
+    refresh: () => { load(); refreshDocs(); }
+  }));
 
   // Whenever stays or the housekeeping/inspection log update, sweep today's
   // checkouts and flip any that are inspected but not yet marked checked out.
@@ -1619,6 +1625,8 @@ export default function CheckInOut() {
 
     </div>
   );
-}
+});
+
+export default CheckInOut;
 
 

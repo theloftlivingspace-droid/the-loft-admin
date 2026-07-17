@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import BookingInvoiceTodo from './BookingInvoiceTodo';
-import CheckInOut from './CheckInOut';
+import BookingInvoiceTodo, { type BookingInvoiceTodoHandle } from './BookingInvoiceTodo';
+import CheckInOut, { type CheckInOutHandle } from './CheckInOut';
 import StockParking from './StockParking';
 import UserManagement from './UserManagement';
 import { useLang } from './LanguageContext';
@@ -186,6 +186,8 @@ export default function AdminDailyDashboard() {
     scrollAreaRef.current?.scrollTo({ top: 0 });
   }
 
+
+
   useEffect(() => {
     const existingLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
     const link: HTMLLinkElement = existingLink ?? document.createElement('link') as HTMLLinkElement;
@@ -243,6 +245,59 @@ export default function AdminDailyDashboard() {
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>('dashboard');
+
+  // ── Pull-to-refresh (mobile only) — wired to whichever tab has a manual
+  // refresh button (Check-in/out, Booking/Invoice To-Do). Other tabs ignore it.
+  const checkInOutRef = useRef<CheckInOutHandle>(null);
+  const bookingTodoRef = useRef<BookingInvoiceTodoHandle>(null);
+  const [ptrPulling, setPtrPulling] = useState(false);
+  const [ptrDist, setPtrDist] = useState(0);
+  const [ptrRefreshing, setPtrRefreshing] = useState(false);
+  const ptrStartY = useRef(0);
+  const ptrActive = useRef(false);
+  const PTR_THRESHOLD = 64;
+  const PTR_MAX = 96;
+
+  const ptrRefreshableTab = adminTab === 'checkinout' || adminTab === 'todo';
+
+  function handlePtrTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    const el = scrollAreaRef.current;
+    if (!ptrRefreshableTab || !el || el.scrollTop > 0 || ptrRefreshing) { ptrActive.current = false; return; }
+    ptrActive.current = true;
+    ptrStartY.current = e.touches[0].clientY;
+  }
+
+  function handlePtrTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (!ptrActive.current) return;
+    const el = scrollAreaRef.current;
+    if (el && el.scrollTop > 0) { ptrActive.current = false; setPtrDist(0); setPtrPulling(false); return; }
+    const dy = e.touches[0].clientY - ptrStartY.current;
+    if (dy > 0) {
+      setPtrPulling(true);
+      setPtrDist(Math.min(dy * 0.5, PTR_MAX));
+    }
+  }
+
+  async function handlePtrTouchEnd() {
+    if (!ptrActive.current) return;
+    ptrActive.current = false;
+    setPtrPulling(false);
+    if (ptrDist >= PTR_THRESHOLD) {
+      setPtrRefreshing(true);
+      setPtrDist(PTR_THRESHOLD);
+      try {
+        if (adminTab === 'checkinout') checkInOutRef.current?.refresh();
+        else if (adminTab === 'todo') bookingTodoRef.current?.refresh();
+        // give the refresh a moment to visibly spin even if it resolves instantly
+        await new Promise(r => setTimeout(r, 500));
+      } finally {
+        setPtrRefreshing(false);
+        setPtrDist(0);
+      }
+    } else {
+      setPtrDist(0);
+    }
+  }
   const [todoInitialTab, setTodoInitialTab] = useState<'booking' | 'invoice'>('booking');
   const [stockInitialTab, setStockInitialTab] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>('stock');
   const [notifBooking, setNotifBooking]     = useState(0);
@@ -777,7 +832,31 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Scrollable content */}
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-4 md:pt-6">
+        <div
+          ref={scrollAreaRef}
+          className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-4 md:pt-6"
+          onTouchStart={handlePtrTouchStart}
+          onTouchMove={handlePtrTouchMove}
+          onTouchEnd={handlePtrTouchEnd}
+        >
+        {ptrRefreshableTab && (
+          <div
+            className="md:hidden flex items-center justify-center overflow-hidden"
+            style={{ height: ptrRefreshing ? PTR_THRESHOLD : ptrDist, transition: ptrPulling ? 'none' : 'height 0.2s ease' }}
+          >
+            <div
+              className="rounded-full"
+              style={{
+                width: 22, height: 22,
+                border: `2.5px solid ${T.brass}`,
+                borderTopColor: 'transparent',
+                animation: (ptrRefreshing || ptrDist >= PTR_THRESHOLD) ? 'ptrSpin 0.7s linear infinite' : 'none',
+                transform: ptrRefreshing ? 'none' : `rotate(${ptrDist * 3}deg)`,
+                opacity: ptrDist > 4 || ptrRefreshing ? 1 : 0,
+              }}
+            />
+          </div>
+        )}
         {/* Admin IP Management */}
         {isAdmin && adminTab === 'dashboard' && (
           <div className="rounded-2xl px-5 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-3" style={{ background: T.navyTint, border: `1px solid ${T.hairGold}` }}>
@@ -822,10 +901,10 @@ export default function AdminDailyDashboard() {
 
         {/* To-Do Tab */}
         {isAdmin && adminTab === 'todo' && (
-          <BookingInvoiceTodo key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
+          <BookingInvoiceTodo ref={bookingTodoRef} key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
         {adminTab === 'checkinout' && (
-          <CheckInOut />
+          <CheckInOut ref={checkInOutRef} />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
         <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
