@@ -541,6 +541,12 @@ export type CheckInOutHandle = { refresh: () => void };
 const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, ref) {
   const { t } = useLang();
   const [stays, setStays]           = useState<Stay[]>([]);
+  // Every row from the sheet, unfiltered by the 5-day arrival window — kept
+  // separately so the manual search/cancel panel can find and cancel any
+  // booking regardless of check-in date, not just ones arriving soon.
+  const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }>>([]);
+  const [manualSearchOpen, setManualSearchOpen] = useState(false);
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
   const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
@@ -848,6 +854,16 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
       if (!res.ok) throw new Error(t('ci_load_room_failed'));
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
+
+      setAllStaysRaw(json.stays.map(row => ({
+        room:     row.room || '',
+        guest:    row.guest || '',
+        checkin:  (row.checkin || '').substring(0, 10),
+        checkout: (row.checkout || '').substring(0, 10),
+        channel:  row.channel || '',
+        resId:    row.resId || '',
+        note:     row.note || '',
+      })));
 
       // Merge server-side (shared) check-in/checkout status into local sets.
       // This is the source of truth across devices; localStorage is only an
@@ -1158,10 +1174,71 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
             style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
             {t('ci_refresh')}
           </button>
+          <button onClick={() => setManualSearchOpen(v => !v)}
+            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
+            style={{ background: manualSearchOpen ? T.navy : T.navyTint, border: `1px solid ${T.navy}`, color: manualSearchOpen ? '#FFFFFF' : T.navy }}>
+            {t('ci_manual_search_btn')}
+          </button>
         </div>
       </div>
 
-      {/* Summary KPI row */}
+      {/* Manual search / cancel — works for ANY booking regardless of the
+          5-day arrival window the card grid below is limited to. */}
+      {manualSearchOpen && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: T.navyTint, border: `1px solid ${T.navy}30` }}>
+          <p className="f-thai text-xs font-bold mb-2" style={{ color: T.navy }}>{t('ci_manual_search_title')}</p>
+          <input
+            autoFocus
+            value={manualSearchQuery}
+            onChange={e => setManualSearchQuery(e.target.value)}
+            placeholder={t('ci_manual_search_placeholder')}
+            className="f-thai w-full px-3 py-2 rounded-xl text-sm mb-2"
+            style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+          />
+          {manualSearchQuery.trim().length < 2 ? (
+            <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_hint')}</p>
+          ) : (() => {
+            const q = manualSearchQuery.trim().toLowerCase();
+            const results = allStaysRaw.filter(row =>
+              row.guest.toLowerCase().includes(q) ||
+              row.resId.toLowerCase().includes(q) ||
+              row.room.toLowerCase().includes(q)
+            ).slice(0, 20);
+            if (!results.length) return <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_no_results')}</p>;
+            return (
+              <div className="flex flex-col gap-2">
+                {results.map(row => {
+                  const isCxl = /ยกเลิก|cancel/i.test(row.room);
+                  return (
+                    <div key={row.resId + row.checkin} className="flex items-center justify-between rounded-xl px-3 py-2"
+                      style={{ background: '#FFFFFF', border: `1px solid ${T.hairGold}` }}>
+                      <div className="min-w-0">
+                        <p className="f-thai text-sm font-medium truncate" style={{ color: T.ink }}>{row.guest} · {row.room}</p>
+                        <p className="f-thai text-xs truncate" style={{ color: T.inkSoft }}>{row.checkin} → {row.checkout} · {row.resId}</p>
+                      </div>
+                      {isCxl || cancelledSet.has(row.resId) ? (
+                        <span className="f-thai text-xs shrink-0 ml-2" style={{ color: T.wine }}>{t('ci_manual_search_already_cancelled')}</span>
+                      ) : (
+                        <button
+                          onClick={() => setCancelModal({
+                            room: row.room, roomNum: roomNum(row.room), guest: row.guest,
+                            checkin: row.checkin, checkout: row.checkout, channel: row.channel,
+                            resId: row.resId, note: row.note, nights: diffDays(row.checkin, row.checkout),
+                            status: 'arriving-soon', daysLeft: diffDays(today(), row.checkout), daysUntil: diffDays(today(), row.checkin),
+                          })}
+                          className="press f-thai text-xs shrink-0 ml-2 px-3 py-1.5 rounded-xl font-medium"
+                          style={{ background: T.wineTint, border: `1px solid ${T.wine}`, color: T.wine }}>
+                          {t('ci_cancel_booking_btn')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       <div className="grid grid-cols-5 gap-2 mb-5">
         {[
           { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
