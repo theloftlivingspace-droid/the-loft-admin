@@ -9,10 +9,14 @@
 //   GET  /api/gas-proxy?app=checkinout&action=getRoomStatus
 //   GET  /api/gas-proxy?app=checkinout&action=getAllDocs
 //   POST /api/gas-proxy?app=checkinout   (body forwarded as-is)
+//   GET  /api/gas-proxy?app=rate&action=pushRates&token=...       (queue pushRatesToLH now)
+//   GET  /api/gas-proxy?app=rate&action=computeAndPush&token=...  (queue computeTargetRates + push now)
 
 const GAS_ENDPOINTS = {
   todo:       'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec',
   checkinout: 'https://script.google.com/macros/s/AKfycbzb5T7x7qBw35LwX_bufF9oDjMRQAkI2WAqukQqkH4tNjyhCy-CCuWDDmPaiwxbN6M/exec',
+  // Same Web App deployment as lh-rate-automation's SessionSync doPost (rate-push doGet lives there too).
+  rate:       'https://script.google.com/macros/s/AKfycbx_z1v7FEqmthTKfZPoLsyqdIc4NJENXpfsZ315dDLzdIHwznSsOQqnG1UxkyqhOCk/exec',
 };
 
 export default async function handler(req, res) {
