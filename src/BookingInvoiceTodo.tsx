@@ -904,6 +904,7 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                 const claimedResId = invoiceClaims.get(item.invoiceKey);
                 const matchedBookings = claimedResId ? data.booking.filter(b => b.resId === claimedResId) : [];
                 const isHl = highlighted === item.invoiceKey;
+                const aptInvoiceUrl = getApartmenteryInvoiceUrl(item.room, item.apartmenteryBookingId, item.apartmenteryInvoiceId);
                 const cardBg = isHl ? T.navyTint : item.done ? T.sageTint : item.detectedToday && !item.done ? T.brassPale : T.card;
                 const cardBorder = isHl ? T.navy : item.done ? T.sage : item.detectedToday && !item.done ? T.hairGold : T.hair;
                 return (
@@ -926,7 +927,13 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                       <div className="flex flex-wrap gap-2">
                         <span className="text-xs rounded-lg px-2 py-0.5" style={{ background: T.bone, color: T.inkSoft }}>{item.ota}</span>
                         <span className="f-num text-xs font-bold rounded-lg px-2 py-0.5 flex items-center gap-1" style={{ background: T.sageTint, color: T.sage }}>
-                          NET ฿{formatNum(item.net)}
+                          {aptInvoiceUrl ? (
+                            <a href={aptInvoiceUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">
+                              NET ฿{formatNum(item.net)}
+                            </a>
+                          ) : (
+                            <>NET ฿{formatNum(item.net)}</>
+                          )}
                           {item.isSplitFromMulti && <span className="font-normal" style={{ opacity: 0.6 }}>({t('bi_combined')} ฿{formatNum(item.groupNet)})</span>}
                           <button onClick={() => { copyToClipboard(String(item.net).replace(/,/g,'')); showToast(t('bi_copied_label') + ' ' + item.net); }}
                             className="press ml-0.5" title={t('bi_copy_amount_title')}>⎘</button>
