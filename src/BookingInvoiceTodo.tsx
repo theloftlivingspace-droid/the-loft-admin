@@ -864,22 +864,12 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                         )}
                         {matchedInvoices.length === 0
                           ? <span className="f-thai text-[13px] rounded px-1 py-px" style={{ border: `1px solid ${T.hair}`, color: T.inkSoft }}>{t('bi_no_invoice')}</span>
-                          : matchedInvoices.map(inv => {
-                              const aptInvoiceUrl = getApartmenteryInvoiceUrl(inv.room, inv.apartmenteryBookingId, inv.apartmenteryInvoiceId)
-                                ?? getApartmenteryBookingUrl(inv.room, inv.apartmenteryBookingId);
-                              return aptInvoiceUrl ? (
-                                <a key={inv.invoiceKey} href={aptInvoiceUrl} target="_blank" rel="noopener noreferrer"
-                                  onClick={e => e.stopPropagation()}
-                                  className={`text-[13px] border font-semibold rounded px-1 py-px transition underline decoration-dotted ${th.inv}`}>
-                                  🧾 ฿{formatNum(inv.net)}
-                                </a>
-                              ) : (
-                                <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
-                                  className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
-                                  🧾 ฿{formatNum(inv.net)}
-                                </button>
-                              );
-                            })
+                          : matchedInvoices.map(inv => (
+                              <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
+                                className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
+                                🧾 ฿{formatNum(inv.net)}
+                              </button>
+                            ))
                         }
                         {item.note && <span className="f-thai text-[13px] italic" style={{ color: T.inkSoft }}>📝 {item.note}</span>}
                       </div>
