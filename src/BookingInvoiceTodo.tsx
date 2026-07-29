@@ -865,7 +865,8 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                         {matchedInvoices.length === 0
                           ? <span className="f-thai text-[13px] rounded px-1 py-px" style={{ border: `1px solid ${T.hair}`, color: T.inkSoft }}>{t('bi_no_invoice')}</span>
                           : matchedInvoices.map(inv => {
-                              const aptInvoiceUrl = getApartmenteryInvoiceUrl(inv.room, inv.apartmenteryBookingId, inv.apartmenteryInvoiceId);
+                              const aptInvoiceUrl = getApartmenteryInvoiceUrl(inv.room, inv.apartmenteryBookingId, inv.apartmenteryInvoiceId)
+                                ?? getApartmenteryBookingUrl(inv.room, inv.apartmenteryBookingId);
                               return aptInvoiceUrl ? (
                                 <a key={inv.invoiceKey} href={aptInvoiceUrl} target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
@@ -904,7 +905,8 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                 const claimedResId = invoiceClaims.get(item.invoiceKey);
                 const matchedBookings = claimedResId ? data.booking.filter(b => b.resId === claimedResId) : [];
                 const isHl = highlighted === item.invoiceKey;
-                const aptInvoiceUrl = getApartmenteryInvoiceUrl(item.room, item.apartmenteryBookingId, item.apartmenteryInvoiceId);
+                const aptInvoiceUrl = getApartmenteryInvoiceUrl(item.room, item.apartmenteryBookingId, item.apartmenteryInvoiceId)
+                  ?? getApartmenteryBookingUrl(item.room, item.apartmenteryBookingId);
                 const cardBg = isHl ? T.navyTint : item.done ? T.sageTint : item.detectedToday && !item.done ? T.brassPale : T.card;
                 const cardBorder = isHl ? T.navy : item.done ? T.sage : item.detectedToday && !item.done ? T.hairGold : T.hair;
                 return (
