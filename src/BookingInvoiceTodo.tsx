@@ -31,6 +31,13 @@ function getApartmenteryBookingUrl(room: string, apartmenteryBookingId?: string)
   return `https://apartmentery.com/user/branch/${APARTMENTERY_BRANCH_ID}/unit/${unitId}/booking/${apartmenteryBookingId}`;
 }
 
+function getApartmenteryInvoiceUrl(room: string, apartmenteryBookingId?: string, apartmenteryInvoiceId?: string): string | null {
+  if (!apartmenteryInvoiceId) return null;
+  const bookingUrl = getApartmenteryBookingUrl(room, apartmenteryBookingId);
+  if (!bookingUrl) return null;
+  return `${bookingUrl}/invoice/${apartmenteryInvoiceId}`;
+}
+
 interface DocFile {
   fileId: string;
   fileName: string;
@@ -77,6 +84,8 @@ interface InvoiceRaw {
   confList?: string[];
   // old GAS format
   date?: string;
+  apartmenteryBookingId?: string;
+  apartmenteryInvoiceId?: string;
 }
 
 interface BookingItem extends BookingRaw { matchKeys: string[]; isNewToday: boolean; done: boolean; }
@@ -855,12 +864,21 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                         )}
                         {matchedInvoices.length === 0
                           ? <span className="f-thai text-[13px] rounded px-1 py-px" style={{ border: `1px solid ${T.hair}`, color: T.inkSoft }}>{t('bi_no_invoice')}</span>
-                          : matchedInvoices.map(inv => (
-                              <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
-                                className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
-                                🧾 ฿{formatNum(inv.net)}
-                              </button>
-                            ))
+                          : matchedInvoices.map(inv => {
+                              const aptInvoiceUrl = getApartmenteryInvoiceUrl(inv.room, inv.apartmenteryBookingId, inv.apartmenteryInvoiceId);
+                              return aptInvoiceUrl ? (
+                                <a key={inv.invoiceKey} href={aptInvoiceUrl} target="_blank" rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className={`text-[13px] border font-semibold rounded px-1 py-px transition underline decoration-dotted ${th.inv}`}>
+                                  🧾 ฿{formatNum(inv.net)}
+                                </a>
+                              ) : (
+                                <button key={inv.invoiceKey} onClick={() => jumpTo('invoice', inv.invoiceKey)}
+                                  className={`text-[13px] border font-semibold rounded px-1 py-px transition ${th.inv}`}>
+                                  🧾 ฿{formatNum(inv.net)}
+                                </button>
+                              );
+                            })
                         }
                         {item.note && <span className="f-thai text-[13px] italic" style={{ color: T.inkSoft }}>📝 {item.note}</span>}
                       </div>
