@@ -5,6 +5,32 @@ import { T } from './theme';
 // ─── Config ───────────────────────────────────────────────────────────────────
 const GAS_API = '/api/gas-proxy?app=todo';
 
+// Mirrors ROOM_TO_UNIT_ID / APARTMENTERY_BRANCH_ID in ApartmenteryClient.gs
+// (loft-booking-invoice-todo repo). Keep these two in sync if a room/unit changes.
+const APARTMENTERY_BRANCH_ID = '6801';
+const ROOM_TO_UNIT_ID: Record<string, string> = {
+  '103': '163863', // Elegance
+  '108': '163862', // Retro
+  '113': '163868', // Legacy
+  '203': '163866', // Allure
+  '204': '163864', // Elegance
+  '205': '163865', // Allure
+  '209': '193723', // Radiance
+  '210': '193724', // Radiance
+  '214': '163867', // Legacy
+  '300': '163861', // Luxury
+  '363': '164250', // Mycondo
+};
+
+function getApartmenteryBookingUrl(room: string, apartmenteryBookingId?: string): string | null {
+  if (!apartmenteryBookingId) return null;
+  const roomNum = (room || '').match(/\b(\d{3})\b/)?.[1];
+  if (!roomNum) return null;
+  const unitId = ROOM_TO_UNIT_ID[roomNum];
+  if (!unitId) return null;
+  return `https://apartmentery.com/user/branch/${APARTMENTERY_BRANCH_ID}/unit/${unitId}/booking/${apartmenteryBookingId}`;
+}
+
 interface DocFile {
   fileId: string;
   fileName: string;
@@ -39,6 +65,7 @@ interface BookingRaw {
   checkin: string; checkout: string; channel: string; note: string;
   firstSeen?: string; isNewToday?: boolean; done?: boolean;
   matchKeys?: string[];
+  apartmenteryBookingId?: string;
 }
 interface InvoiceRaw {
   invoiceKey?: string; bookingId: string; room: string; guest: string;
@@ -752,6 +779,7 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                 const itemDocs = findDocsForBooking(item);
                 const th = otaTheme(item.channel);
                 const isCopied = copiedId === item.resId;
+                const apartmenteryUrl = getApartmenteryBookingUrl(item.room, item.apartmenteryBookingId);
                 return (
                   <div key={item.resId} data-itemid={item.resId}
                     className={`rounded-xl mb-1.5 overflow-hidden ${th.card}`}
@@ -766,7 +794,15 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                         <div className={`flex-shrink-0 rounded-md px-1.5 py-0.5 text-sm font-semibold ${th.room}`}>
                           {(item.room || '').match(/\b(\d{3})\b/)?.[1] || item.room}
                         </div>
-                        <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
+                        {apartmenteryUrl ? (
+                          <a href={apartmenteryUrl} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className={`flex-1 min-w-0 text-[17px] font-semibold truncate underline decoration-dotted ${th.name}`}>
+                            {item.guest}
+                          </a>
+                        ) : (
+                          <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
+                        )}
                         <span className={`text-[13px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
                         {item.isNewToday && !item.done && (
                           <span className="f-thai text-[13px] rounded-full px-1 py-px font-bold flex-shrink-0" style={{ background: T.brassPale, color: T.brassDeep }}>{t('bi_new_badge')}</span>
