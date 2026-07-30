@@ -38,6 +38,16 @@ function getApartmenteryInvoiceUrl(room: string, apartmenteryBookingId?: string,
   return `${bookingUrl}/invoice/${apartmenteryInvoiceId}`;
 }
 
+// Fallback for when the exact invoiceId isn't resolved yet (not found,
+// ambiguous multi-invoice booking, or not backfilled at all) — same page
+// as the "บริหารใบแจ้งหนี้" (Manage Invoice) button in Apartmentery, listing
+// every invoice on the booking so Nathan can pick the right one himself.
+function getApartmenteryInvoiceListUrl(room: string, apartmenteryBookingId?: string): string | null {
+  const bookingUrl = getApartmenteryBookingUrl(room, apartmenteryBookingId);
+  if (!bookingUrl) return null;
+  return `${bookingUrl}/invoice`;
+}
+
 interface DocFile {
   fileId: string;
   fileName: string;
@@ -896,7 +906,7 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                 const matchedBookings = claimedResId ? data.booking.filter(b => b.resId === claimedResId) : [];
                 const isHl = highlighted === item.invoiceKey;
                 const aptInvoiceUrl = getApartmenteryInvoiceUrl(item.room, item.apartmenteryBookingId, item.apartmenteryInvoiceId)
-                  ?? getApartmenteryBookingUrl(item.room, item.apartmenteryBookingId);
+                  ?? getApartmenteryInvoiceListUrl(item.room, item.apartmenteryBookingId);
                 const cardBg = isHl ? T.navyTint : item.done ? T.sageTint : item.detectedToday && !item.done ? T.brassPale : T.card;
                 const cardBorder = isHl ? T.navy : item.done ? T.sage : item.detectedToday && !item.done ? T.hairGold : T.hair;
                 return (
