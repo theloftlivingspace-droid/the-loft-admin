@@ -108,20 +108,32 @@ export default function RevenueDashboard() {
   const { t } = useLang();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorDetail, setErrorDetail] = useState('');
   const [agg, setAgg] = useState<Agg | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setErrorDetail('');
     try {
       const r = await fetch(`${GAS_API}&_ts=${Date.now()}`, { cache: 'no-store' });
-      const j = await r.json();
+      const raw = await r.text();
+      let j: any;
+      try {
+        j = JSON.parse(raw);
+      } catch {
+        throw new Error(`HTTP ${r.status} — non-JSON response: ${raw.slice(0, 200)}`);
+      }
+      if (j && j.ok === false) {
+        throw new Error(j.error || 'GAS returned ok:false');
+      }
       const ledger: LedgerRow[] = j.ledger || [];
       setAgg(aggregate(ledger));
       setUpdatedAt(new Date());
-    } catch {
+    } catch (err) {
       setError(t('rev_load_error'));
+      setErrorDetail(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -140,7 +152,10 @@ export default function RevenueDashboard() {
   if (error && !agg) {
     return (
       <div className="rounded-2xl px-5 py-6 text-center" style={{ background: T.wineTint, border: `1px solid ${T.wine}30` }}>
-        <p className="f-thai text-sm font-semibold mb-3" style={{ color: T.wine }}>{error}</p>
+        <p className="f-thai text-sm font-semibold mb-2" style={{ color: T.wine }}>{error}</p>
+        {errorDetail && (
+          <p className="f-num text-[10px] mb-3 break-all opacity-70" style={{ color: T.wine }}>{errorDetail}</p>
+        )}
         <button onClick={load} className="press focus-ring f-thai px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: T.navy, color: '#fff' }}>
           {t('rev_retry')}
         </button>
