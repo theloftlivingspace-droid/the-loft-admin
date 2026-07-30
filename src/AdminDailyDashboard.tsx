@@ -257,7 +257,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
