@@ -557,7 +557,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
   const [docsLoading, setDocsLoading] = useState(true);
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
-  const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string } | null>(null);
+  const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string; status: string } | null>(null);
   const [noteText, setNoteText]         = useState('');
   const [noteSaving, setNoteSaving]     = useState(false);
   const [toast, setToast]               = useState('');
@@ -693,15 +693,19 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500); }
 
   function openNoteModal(s: Stay) {
-    setNoteModal({ resId: s.resId, room: s.roomNum, guest: s.guest, checkin: s.checkin, checkout: s.checkout, current: s.note });
+    setNoteModal({ resId: s.resId, room: s.roomNum, guest: s.guest, checkin: s.checkin, checkout: s.checkout, current: s.note, status: s.status });
     setNoteText(s.note || '');
   }
 
   async function saveNote() {
     if (!noteModal) return;
     setNoteSaving(true);
-    const { resId, room, guest, checkin, checkout } = noteModal;
+    const { resId, room, guest, checkin, checkout, status } = noteModal;
     const text = noteText; // capture before any state change
+    // Rooms that are only "arriving soon" (not checking in today) shouldn't
+    // ping the maid group right away — the note just needs to be in Sheet1
+    // so it rides along with the regular 19:00 daily maid summary instead.
+    const isArrivingSoon = status === 'arriving-soon';
     try {
       // 1. Write to GAS Sheet1
       const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
@@ -715,18 +719,22 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
       setNoteText('');
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
 
-      // 3. Push LINE
-      fetch('/api/maid-note', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
-        })
-        .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
-          .then(j => {
-            if (j.ok === false) showToast(t('ci_note_saved_line_warn') + (j.error || 'error'));
-            else showToast(t('ci_note_saved_line_ok'));
+      // 3. Push LINE — skip for arriving-soon; it'll go out with the 19:00 summary
+      if (isArrivingSoon) {
+        showToast(t('ci_note_saved_pending_line'));
+      } else {
+        fetch('/api/maid-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
           })
-          .catch(e => showToast(t('ci_note_saved_line_warn') + String(e)));
+          .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
+            .then(j => {
+              if (j.ok === false) showToast(t('ci_note_saved_line_warn') + (j.error || 'error'));
+              else showToast(t('ci_note_saved_line_ok'));
+            })
+            .catch(e => showToast(t('ci_note_saved_line_warn') + String(e)));
+      }
     } catch (e) {
       showToast(t('ci_save_failed_colon') + String(e));
     } finally {
