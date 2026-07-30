@@ -3,10 +3,11 @@ import BookingInvoiceTodo, { type BookingInvoiceTodoHandle } from './BookingInvo
 import CheckInOut, { type CheckInOutHandle } from './CheckInOut';
 import StockParking from './StockParking';
 import UserManagement from './UserManagement';
+import RevenueDashboard from './RevenueDashboard';
 import { useLang } from './LanguageContext';
 import { T, FoilRule, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -256,7 +257,13 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>('dashboard');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>('dashboard');
+  // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
+  // parking, etc. "etc" groups everything else (daily dashboard home,
+  // booking/invoice, revenue summary, user management) behind a secondary
+  // (labeled) sub-menu, since those pages don't need top-level real estate.
+  const mainSection: 'checkinout' | 'stock' | 'parking' | 'etc' =
+    (adminTab === 'checkinout' || adminTab === 'stock' || adminTab === 'parking') ? adminTab : 'etc';
 
   // ── Pull-to-refresh (mobile only) — wired to whichever tab has a manual
   // refresh button (Check-in/out, Booking/Invoice To-Do). Other tabs ignore it.
@@ -277,7 +284,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>>(
     ['dashboard', 'checkinout', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -287,8 +294,8 @@ export default function AdminDailyDashboard() {
   // derive without depending on the later `isAdmin` const.
   {
     const isAdminNow = currentUser?.role === 'admin';
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users'> = ['dashboard'];
-    if (isAdminNow) order.push('todo');
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'> = ['dashboard'];
+    if (isAdminNow) order.push('todo', 'revenue');
     order.push('checkinout', 'stock', 'parking');
     if (isAdminNow) order.push('users');
     mobileTabOrderRef.current = order;
@@ -822,7 +829,7 @@ export default function AdminDailyDashboard() {
             <div className="flex md:hidden items-center justify-between gap-1.5 mt-2.5">
               <span className="f-thai" style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
                 {(() => {
-                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stock: t('tab_stock'), parking: t('tab_parking'), users: t('adm_tab_users') } as Record<string, string>;
+                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stock: t('tab_stock'), parking: t('tab_parking'), users: t('adm_tab_users'), revenue: t('tab_revenue') } as Record<string, string>;
                   return activeLabel[adminTab] || '';
                 })()}
               </span>
@@ -855,46 +862,62 @@ export default function AdminDailyDashboard() {
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
 
-        {/* Desktop tabs (md and up) */}
-        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8 overflow-x-auto" style={{ borderBottom: `1px solid ${T.hair}` }}>
+        {/* Desktop main nav (md and up) — 4 icon-only entries */}
+        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8" style={{ borderBottom: `1px solid ${T.hair}` }}>
           {([
-            { key: 'dashboard',    Icon: LayoutGrid,    label: t('tab_dashboard') },
-            ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
-            { key: 'checkinout',   Icon: Building2,     label: t('tab_checkinout') },
-            { key: 'stock',        Icon: Package,       label: t('tab_stock') },
-            { key: 'parking',      Icon: Car,           label: t('tab_parking') },
-            ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
-          ] as const).map(t2 => (
-            <button key={t2.key} onClick={() => { setAdminTab(t2.key); scrollToTop(); }}
-              className="press focus-ring f-thai flex-shrink-0 whitespace-nowrap px-5 py-3 text-sm font-semibold flex items-center gap-2"
-              style={{
-                borderBottom: `2px solid ${adminTab === t2.key ? T.brass : 'transparent'}`,
-                color: adminTab === t2.key ? T.navy : T.inkSoft,
-              }}>
-              <t2.Icon size={16} strokeWidth={adminTab === t2.key ? 2.2 : 1.8} />
-              {t2.label}
+            { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
+            { key: 'stock' as const,      Icon: Package,         label: t('tab_stock') },
+            { key: 'parking' as const,    Icon: Car,             label: t('tab_parking') },
+            { key: 'etc' as const,        Icon: MoreHorizontal,  label: t('tab_etc') },
+          ]).map(m => (
+            <button key={m.key} title={m.label} aria-label={m.label}
+              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+              className="press focus-ring flex-shrink-0 px-6 py-3.5 flex items-center justify-center"
+              style={{ borderBottom: `2px solid ${mainSection === m.key ? T.brass : 'transparent'}` }}>
+              <m.Icon size={20} color={mainSection === m.key ? T.navy : T.inkSoft} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
             </button>
           ))}
         </div>
 
-        {/* Mobile bottom tab bar (below md) — fixed at bottom of screen */}
+        {/* Mobile bottom tab bar (below md) — fixed at bottom of screen, 4 icon-only entries */}
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex pb-safe" style={{ background: T.card, borderTop: `1px solid ${T.hair}` }}>
           {([
-            { key: 'dashboard',    Icon: LayoutGrid,    label: 'Dashboard' },
-            ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: 'Booking' }] : []),
-            { key: 'checkinout',   Icon: Building2,     label: 'Check-in/out' },
-            { key: 'stock',        Icon: Package,       label: 'Stock' },
-            { key: 'parking',      Icon: Car,           label: 'Parking' },
-            ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: 'Users' }] : []),
-          ] as const).map(tab => (
-            <button key={tab.key} onClick={() => { setAdminTab(tab.key); scrollToTop(); }}
-              className="press focus-ring flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-w-0 relative">
-              <tab.Icon size={23} color={adminTab === tab.key ? T.navy : '#8A8570'} strokeWidth={adminTab === tab.key ? 2.2 : 1.8} />
-              <span className="f-thai text-[10.5px] leading-tight text-center px-0.5" style={{ color: adminTab === tab.key ? T.navy : '#8A8570', fontWeight: adminTab === tab.key ? 700 : 600 }}>{tab.label}</span>
-              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: adminTab === tab.key ? T.brass : 'transparent' }} />
+            { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+            { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+            { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+            { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+          ]).map(m => (
+            <button key={m.key} aria-label={m.label}
+              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+              className="press focus-ring flex-1 flex flex-col items-center justify-center py-3 gap-1 min-w-0 relative">
+              <m.Icon size={24} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
+
+        {/* Etc sub-menu — labeled, shown only when the "Etc" main section is active */}
+        {mainSection === 'etc' && (
+          <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
+            {([
+              { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
+              ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
+              ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
+              ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
+            ]).map(s => (
+              <button key={s.key} onClick={() => { setAdminTab(s.key); scrollToTop(); }}
+                className="press focus-ring f-thai flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5"
+                style={{
+                  background: adminTab === s.key ? T.navy : T.card,
+                  color: adminTab === s.key ? '#fff' : T.inkSoft,
+                  border: `1px solid ${adminTab === s.key ? T.navy : T.hair}`,
+                }}>
+                <s.Icon size={14} strokeWidth={2} />
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Scrollable content */}
         <div
@@ -977,6 +1000,9 @@ export default function AdminDailyDashboard() {
         </div>
         {isAdmin && adminTab === 'users' && (
           <UserManagement />
+        )}
+        {isAdmin && adminTab === 'revenue' && (
+          <RevenueDashboard />
         )}
 
         {/* Dashboard Tab */}
