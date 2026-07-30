@@ -4,14 +4,14 @@ import { T, FoilRule } from './theme';
 import { RefreshCw } from 'lucide-react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Reuses the existing 'todo' GAS Web App (payout-income-log) — its doGet
-// already exposes ?api=1 → getDashboardData(), which returns {bookings,
-// ledger, summary} straight from the Bank_Ledger tab of Loft_Reservation_Master.
-// The Bank_Ledger rows are the exact same `keepRows` the Apps Script's
-// buildDashboardTab() uses to build the "Dashboard" sheet tab, so we
-// reproduce that aggregation here client-side instead of adding a new
-// GAS endpoint.
-const GAS_API = '/api/gas-proxy?app=todo&api=1';
+// Reuses the existing 'todo' GAS Web App — the same one BookingInvoiceTodo.tsx
+// calls (loft-booking-invoice-todo repo, deployed via GitHub Actions). Its
+// doGet_ has a getRevenueDashboard action that reads the Bank_Ledger tab of
+// Loft_Reservation_Master (same spreadsheet payout-income-log's
+// rebuildBankLedger()/buildDashboardTab() write to — any script with access
+// can read it, no cross-project call needed) and returns the raw ledger rows;
+// we reproduce buildDashboardTab()'s month/OTA/room aggregation client-side.
+const GAS_API = '/api/gas-proxy?app=todo&action=getRevenueDashboard';
 
 interface LedgerRow {
   date: string;
