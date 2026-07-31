@@ -124,6 +124,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_manual_search_no_results: { th: 'ไม่พบ booking ที่ตรงกัน', en: 'No matching bookings' },
   ci_manual_search_hint: { th: 'พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา', en: 'Type at least 2 characters to search' },
   ci_manual_search_already_cancelled: { th: 'ยกเลิกแล้ว', en: 'Already cancelled' },
+  ci_manual_search_back: { th: 'กลับไปหน้าค้นหา', en: 'Back to results' },
   ci_save_only:          { th: '💾 บันทึก', en: '💾 Save' },
   ci_room_word:          { th: 'ห้อง', en: 'Room' },
   ci_edit_checkout_date: { th: 'แก้ไขวันเช็คเอาท์', en: 'Edit check-out date' },

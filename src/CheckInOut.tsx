@@ -126,6 +126,43 @@ function roomNum(r: string): string {
   return m ? m[0] : r;
 }
 
+// Build a full Stay (same shape used by the room-status grid cards) from any raw
+// sheet row, regardless of the 5-day arrival window — used by manual search so a
+// booking far in the future (or already fully checked out) still gets a proper card.
+function stayFromRawRow(row: { room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }): Stay {
+  const tod = today();
+  const ciStr = (row.checkin || '').substring(0, 10);
+  const coStr = (row.checkout || '').substring(0, 10);
+  const daysUntil = diffDays(tod, ciStr);
+  const daysLeft  = diffDays(tod, coStr);
+
+  const checkedIn        = ciStr <= tod && coStr > tod;
+  const arrivingToday    = ciStr === tod;
+  const checkingOutToday = coStr === tod && ciStr < tod;
+  const arrivingSoon     = ciStr > tod;
+
+  let status: Stay['status'] = 'checked-in';
+  if (arrivingToday)         status = 'arriving-today';
+  else if (checkingOutToday) status = 'checking-out-today';
+  else if (arrivingSoon)     status = 'arriving-soon';
+  else if (!checkedIn)       status = 'checking-out-today'; // fully in the past — closest display fit
+
+  return {
+    room:     row.room || '',
+    roomNum:  roomNum(row.room || ''),
+    guest:    row.guest || '',
+    checkin:  ciStr,
+    checkout: coStr,
+    channel:  row.channel || '',
+    resId:    row.resId || '',
+    note:     row.note || '',
+    nights:   diffDays(ciStr, coStr),
+    status,
+    daysLeft,
+    daysUntil,
+  };
+}
+
 // Inline-style variant (channel badge) matching the navy/gold theme without relying on Tailwind color utilities
 function channelStyle(ch: string): { bg: string; fg: string } {
   const c = (ch || '').toLowerCase();
@@ -547,6 +584,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
   const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }>>([]);
   const [manualSearchOpen, setManualSearchOpen] = useState(false);
   const [manualSearchQuery, setManualSearchQuery] = useState('');
+  // The raw row the admin tapped in manual search results — while set, we show
+  // its full booking card (same as the room-status grid cards) instead of the list.
+  const [manualSearchSelected, setManualSearchSelected] = useState<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string } | null>(null);
   const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
@@ -1148,171 +1188,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
     </div>
   );
 
-  const viewerDocs = viewerKey ? (docs[viewerKey] || []) : [];
-
-  return (
-    <div className="pb-24">
-      {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp"
-        multiple className="hidden" onChange={handleFileChange} />
-
-      {/* Doc viewer modal */}
-      {viewerKey && viewerDocs.length > 0 && (
-        <DocViewer
-          docs={viewerDocs}
-          onClose={() => setViewerKey(null)}
-          onDelete={async i => { await deleteDoc(viewerKey, i); if (viewerDocs.length <= 1) setViewerKey(null); }}
-        />
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>{t('ci_room_status_title')}</h2>
-          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
-            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
-            style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
-            {t('ci_create_tm30')}
-          </a>
-          <button onClick={() => { load(); refreshDocs(); }}
-            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
-            style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
-            {t('ci_refresh')}
-          </button>
-          <button onClick={() => setManualSearchOpen(v => !v)}
-            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
-            style={{ background: manualSearchOpen ? T.navy : T.navyTint, border: `1px solid ${T.navy}`, color: manualSearchOpen ? '#FFFFFF' : T.navy }}>
-            {t('ci_manual_search_btn')}
-          </button>
-        </div>
-      </div>
-
-      {/* Manual search / cancel — works for ANY booking regardless of the
-          5-day arrival window the card grid below is limited to. */}
-      {manualSearchOpen && (
-        <div className="rounded-2xl p-4 mb-5" style={{ background: T.navyTint, border: `1px solid ${T.navy}30` }}>
-          <p className="f-thai text-xs font-bold mb-2" style={{ color: T.navy }}>{t('ci_manual_search_title')}</p>
-          <input
-            autoFocus
-            value={manualSearchQuery}
-            onChange={e => setManualSearchQuery(e.target.value)}
-            placeholder={t('ci_manual_search_placeholder')}
-            className="f-thai w-full px-3 py-2 rounded-xl text-sm mb-2"
-            style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
-          />
-          {manualSearchQuery.trim().length < 2 ? (
-            <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_hint')}</p>
-          ) : (() => {
-            const q = manualSearchQuery.trim().toLowerCase();
-            const results = allStaysRaw.filter(row =>
-              row.guest.toLowerCase().includes(q) ||
-              row.resId.toLowerCase().includes(q) ||
-              row.room.toLowerCase().includes(q)
-            ).slice(0, 20);
-            if (!results.length) return <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_no_results')}</p>;
-            return (
-              <div className="flex flex-col gap-2">
-                {results.map(row => {
-                  const isCxl = /ยกเลิก|cancel/i.test(row.room);
-                  return (
-                    <div key={row.resId + row.checkin} className="flex items-center justify-between rounded-xl px-3 py-2"
-                      style={{ background: '#FFFFFF', border: `1px solid ${T.hairGold}` }}>
-                      <div className="min-w-0">
-                        <p className="f-thai text-sm font-medium truncate" style={{ color: T.ink }}>{row.guest} · {row.room}</p>
-                        <p className="f-thai text-xs truncate" style={{ color: T.inkSoft }}>{row.checkin} → {row.checkout} · {row.resId}</p>
-                      </div>
-                      {isCxl || cancelledSet.has(row.resId) ? (
-                        <span className="f-thai text-xs shrink-0 ml-2" style={{ color: T.wine }}>{t('ci_manual_search_already_cancelled')}</span>
-                      ) : (
-                        <button
-                          onClick={() => setCancelModal({
-                            room: row.room, roomNum: roomNum(row.room), guest: row.guest,
-                            checkin: row.checkin, checkout: row.checkout, channel: row.channel,
-                            resId: row.resId, note: row.note, nights: diffDays(row.checkin, row.checkout),
-                            status: 'arriving-soon', daysLeft: diffDays(today(), row.checkout), daysUntil: diffDays(today(), row.checkin),
-                          })}
-                          className="press f-thai text-xs shrink-0 ml-2 px-3 py-1.5 rounded-xl font-medium"
-                          style={{ background: T.wineTint, border: `1px solid ${T.wine}`, color: T.wine }}>
-                          {t('ci_cancel_booking_btn')}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
-      )}
-      <div className="grid grid-cols-5 gap-2 mb-5">
-        {[
-          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
-          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
-          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
-          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
-          { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
-        ].map(k => (
-          <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
-            <div className="text-xl mb-0.5">{k.icon}</div>
-            <div className="f-num text-2xl font-bold">{k.val}</div>
-            <div className="text-xs leading-tight mt-0.5">{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Room status grid — every physical room, colored by live status */}
-      <div className="mb-5">
-        <div className="flex items-center gap-3 mb-2 flex-wrap">
-          {([
-            ['vacant', t('ci_legend_vacant')],
-            ['occupied', t('ci_legend_occupied')],
-            ['checkout-today', t('ci_legend_checkout_today')],
-            ['needs-cleaning', t('ci_legend_needs_cleaning')],
-          ] as [RoomGridStatus, string][]).map(([key, label]) => (
-            <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
-              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {roomGrid.map(r => (
-            <button key={r.num}
-              onClick={() => goToRoomCard(r.targetKey, r.num)}
-              className="press f-thai rounded-2xl py-2.5 text-center"
-              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
-              <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
-              <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
-        {([
-          { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
-          { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
-          { key: 'checkouts', label: `${t('ci_filter_checkouts')} (${counts.checkouts})` },
-          { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
-        ] as const).map(tab => (
-          <button key={tab.key} onClick={() => setView(tab.key)}
-            className="press f-thai flex-1 px-2 py-1.5 text-xs rounded-xl font-medium"
-            style={view === tab.key ? { background: T.card, color: T.navy, boxShadow: '0 1px 4px rgba(11,30,66,0.15)' } : { color: T.inkSoft }}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Cards */}
-      {filtered.length === 0 ? (
-        <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(s => {
+  function renderStayCard(s: Stay) {
             const cfg    = STATUS_CONFIG[s.status];
             const co     = findCoForStay(s, coStatus);
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
@@ -1554,7 +1430,181 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
                 )}
               </div>
             );
-          })}
+  }
+
+  const viewerDocs = viewerKey ? (docs[viewerKey] || []) : [];
+
+  return (
+    <div className="pb-24">
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.webp"
+        multiple className="hidden" onChange={handleFileChange} />
+
+      {/* Doc viewer modal */}
+      {viewerKey && viewerDocs.length > 0 && (
+        <DocViewer
+          docs={viewerDocs}
+          onClose={() => setViewerKey(null)}
+          onDelete={async i => { await deleteDoc(viewerKey, i); if (viewerDocs.length <= 1) setViewerKey(null); }}
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>{t('ci_room_status_title')}</h2>
+          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
+            style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
+            {t('ci_create_tm30')}
+          </a>
+          <button onClick={() => { load(); refreshDocs(); }}
+            className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
+            style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+            {t('ci_refresh')}
+          </button>
+          <button onClick={() => { setManualSearchOpen(v => !v); setManualSearchSelected(null); }}
+            aria-label={t('ci_manual_search_btn')}
+            title={t('ci_manual_search_btn')}
+            className="press flex items-center justify-center w-8 h-8 rounded-xl"
+            style={{ background: manualSearchOpen ? T.navy : T.navyTint, border: `1px solid ${T.navy}`, color: manualSearchOpen ? '#FFFFFF' : T.navy }}>
+            🔍
+          </button>
+        </div>
+      </div>
+
+      {/* Manual search — works for ANY booking regardless of the 5-day arrival
+          window the card grid below is limited to. Selecting a result shows
+          its full booking card (same as the room-status grid below), with all
+          the usual actions (check-in, cancel, checkout, notes, docs) rather
+          than a bare cancel button. */}
+      {manualSearchOpen && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: T.navyTint, border: `1px solid ${T.navy}30` }}>
+          {manualSearchSelected ? (
+            <div>
+              <button onClick={() => setManualSearchSelected(null)}
+                className="press f-thai flex items-center gap-1 text-xs font-semibold mb-3"
+                style={{ color: T.navy }}>
+                ← {t('ci_manual_search_back')}
+              </button>
+              {renderStayCard(stayFromRawRow(manualSearchSelected))}
+            </div>
+          ) : (
+            <>
+              <p className="f-thai text-xs font-bold mb-2" style={{ color: T.navy }}>{t('ci_manual_search_title')}</p>
+              <input
+                autoFocus
+                value={manualSearchQuery}
+                onChange={e => setManualSearchQuery(e.target.value)}
+                placeholder={t('ci_manual_search_placeholder')}
+                className="f-thai w-full px-3 py-2 rounded-xl text-sm mb-2"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+              />
+              {manualSearchQuery.trim().length < 2 ? (
+                <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_hint')}</p>
+              ) : (() => {
+                const q = manualSearchQuery.trim().toLowerCase();
+                const results = allStaysRaw.filter(row =>
+                  row.guest.toLowerCase().includes(q) ||
+                  row.resId.toLowerCase().includes(q) ||
+                  row.room.toLowerCase().includes(q)
+                ).slice(0, 20);
+                if (!results.length) return <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_manual_search_no_results')}</p>;
+                return (
+                  <div className="flex flex-col gap-2">
+                    {results.map(row => {
+                      const isCxl = /ยกเลิก|cancel/i.test(row.room) || cancelledSet.has(row.resId);
+                      return (
+                        <button key={row.resId + row.checkin}
+                          onClick={() => setManualSearchSelected(row)}
+                          className="press flex items-center justify-between rounded-xl px-3 py-2 text-left"
+                          style={{ background: '#FFFFFF', border: `1px solid ${T.hairGold}` }}>
+                          <div className="min-w-0">
+                            <p className="f-thai text-sm font-medium truncate" style={{ color: T.ink }}>{row.guest} · {row.room}</p>
+                            <p className="f-thai text-xs truncate" style={{ color: T.inkSoft }}>{row.checkin} → {row.checkout} · {row.resId}</p>
+                          </div>
+                          {isCxl && (
+                            <span className="f-thai text-xs shrink-0 ml-2" style={{ color: T.wine }}>{t('ci_manual_search_already_cancelled')}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </>
+          )}
+        </div>
+      )}
+      <div className="grid grid-cols-5 gap-2 mb-5">
+        {[
+          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
+          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
+          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
+          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
+          { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
+        ].map(k => (
+          <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
+            <div className="text-xl mb-0.5">{k.icon}</div>
+            <div className="f-num text-2xl font-bold">{k.val}</div>
+            <div className="text-xs leading-tight mt-0.5">{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Room status grid — every physical room, colored by live status */}
+      <div className="mb-5">
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
+          {([
+            ['vacant', t('ci_legend_vacant')],
+            ['occupied', t('ci_legend_occupied')],
+            ['checkout-today', t('ci_legend_checkout_today')],
+            ['needs-cleaning', t('ci_legend_needs_cleaning')],
+          ] as [RoomGridStatus, string][]).map(([key, label]) => (
+            <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {roomGrid.map(r => (
+            <button key={r.num}
+              onClick={() => goToRoomCard(r.targetKey, r.num)}
+              className="press f-thai rounded-2xl py-2.5 text-center"
+              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
+              <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
+              <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
+        {([
+          { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
+          { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
+          { key: 'checkouts', label: `${t('ci_filter_checkouts')} (${counts.checkouts})` },
+          { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
+        ] as const).map(tab => (
+          <button key={tab.key} onClick={() => setView(tab.key)}
+            className="press f-thai flex-1 px-2 py-1.5 text-xs rounded-xl font-medium"
+            style={view === tab.key ? { background: T.card, color: T.navy, boxShadow: '0 1px 4px rgba(11,30,66,0.15)' } : { color: T.inkSoft }}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards */}
+      {filtered.length === 0 ? (
+        <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(s => renderStayCard(s))}
         </div>
       )}
 
