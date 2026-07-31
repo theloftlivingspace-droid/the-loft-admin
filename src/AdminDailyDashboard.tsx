@@ -890,8 +890,8 @@ export default function AdminDailyDashboard() {
             <button key={m.key} aria-label={m.label}
               onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
               className="press focus-ring flex-1 flex flex-col items-center justify-center py-3 gap-1 min-w-0 relative">
-              <m.Icon size={24} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
+              <m.Icon size={31} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+              <span style={{ width: 21, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
