@@ -579,9 +579,23 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export type CheckInOutHandle = { refresh: () => void };
+export type CheckInOutProps = {
+  // ISO 'YYYY-MM-DD'. When omitted (or invalid), the view uses the real
+  // current date. When set to a different date, the whole Room Status view
+  // (KPI cards, legend counts, room grid, stay list, no-show detection)
+  // recalculates as if that date were "today" — a read-only preview.
+  // Actions that write real state (check-in, checkout, cancel, extend) stay
+  // disabled unless the value equals the real today, since those represent
+  // real-world events and must not be backdated/forward-dated by mistake.
+  viewDate?: string;
+};
 
-const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, ref) {
+const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckInOut({ viewDate }, ref) {
   const { t } = useLang();
+  const realToday = today();
+  const isValidIsoDate = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const refDate = isValidIsoDate(viewDate) ? viewDate! : realToday;
+  const isViewingToday = refDate === realToday;
   const [stays, setStays]           = useState<Stay[]>([]);
   // Every row from the sheet, unfiltered by the 5-day arrival window — kept
   // separately so the manual search/cancel panel can find and cancel any
@@ -947,7 +961,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
       localStorage.setItem('ci_done', JSON.stringify([...serverCheckedIn]));
       localStorage.setItem('ci_checkout', JSON.stringify([...serverCheckedOut]));
 
-      const tod = today();
+      const tod = refDate;
       const soon = addDays(tod, 5);
       const list: Stay[] = [];
 
@@ -1093,7 +1107,10 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
     }
   }
 
-  useEffect(() => { load(); refreshDocs(); }, []);
+  useEffect(() => { refreshDocs(); }, []);
+  // Re-fetch/reclassify whenever the previewed date changes (including the
+  // initial mount, where refDate === realToday).
+  useEffect(() => { load(); }, [refDate]);
 
   useImperativeHandle(ref, () => ({
     refresh: () => { load(); refreshDocs(); }
@@ -1254,7 +1271,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
             const isCheckedIn  = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
             const isCancelled  = cancelledSet.has(s.resId);
             const isCheckedOut = checkedOutSet.has(s.resId);
-            const isNoShow     = s.status === 'arriving-today' && s.checkin < today() && !isCheckedIn && !isCheckedOut;
+            const isNoShow     = s.status === 'arriving-today' && s.checkin < refDate && !isCheckedIn && !isCheckedOut;
 
             // สี: cancelled=แดง(wine) | checkedOut=ทองเข้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
             const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: T.wineTint }
@@ -1300,8 +1317,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
                     {s.status === 'arriving-today' && (
                       <span className="text-xs" style={{ color: topBarText, opacity: 0.9 }}>{t('ci_today_exclaim')}</span>
                     )}
-                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น */}
-                    {!isCancelled && !isCheckedOut && (s.status === 'arriving-today' || s.status === 'arriving-soon') && (
+                    {/* ปุ่มยกเลิกการจอง — เฉพาะห้องที่ยังไม่เช็คอิน (ก่อนถึงวันเข้าพัก) เท่านั้น
+                        ซ่อนขณะ preview วันอื่น เพราะเป็น action จริงที่ผูกกับวันปัจจุบันจริง */}
+                    {isViewingToday && !isCancelled && !isCheckedOut && (s.status === 'arriving-today' || s.status === 'arriving-soon') && (
                       <button
                         onClick={e => { e.stopPropagation(); setCancelModal(s); }}
                         className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
@@ -1312,8 +1330,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
                     )}
                     {/* ปุ่ม Checkout (ก่อนกำหนด) — เฉพาะห้องที่กำลังพักอยู่ (checked-in) เท่านั้น
                         กดแล้วอัปเดตวันเช็คเอาท์ทั้งใน CheckStatus log, Sheet1 (col เช็คเอาท์)
-                        และแจ้งกลุ่มแม่บ้านผ่าน LINE */}
-                    {!isCancelled && !isCheckedOut && s.status === 'checked-in' && (
+                        และแจ้งกลุ่มแม่บ้านผ่าน LINE — ซ่อนขณะ preview วันอื่นเช่นกัน */}
+                    {isViewingToday && !isCancelled && !isCheckedOut && s.status === 'checked-in' && (
                       <button
                         onClick={e => { e.stopPropagation(); setCheckoutArmed(false); setCheckoutModal(s); }}
                         className="press w-5 h-5 rounded-full flex items-center justify-center text-[10px] leading-none"
@@ -1382,7 +1400,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
                     const ci = fmtDate(s.checkin);
                     const co2 = fmtDate(s.checkout);
                     const isCheckoutToday = s.status === 'checking-out-today';
-                    const canEditCheckout = !isCancelled && !isCheckedOut && (s.status === 'checked-in' || s.status === 'checking-out-today');
+                    const canEditCheckout = isViewingToday && !isCancelled && !isCheckedOut && (s.status === 'checked-in' || s.status === 'checking-out-today');
                     return (
                       <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
                         <div className="flex-1 px-3 py-2">
@@ -1422,13 +1440,18 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
                   {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       {/* ยังไม่เช็คอิน */}
-                      {!isCheckedIn && !isNoShow && (
+                      {!isCheckedIn && !isNoShow && isViewingToday && (
                         <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
                           onClick={() => markCheckedIn(s.resId)}
                           className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                           style={{ background: T.sage, color: '#fff' }}>
                           ✅ {t('ci_checkin_tm30')}
                         </a>
+                      )}
+                      {!isCheckedIn && !isNoShow && !isViewingToday && (
+                        <span className="f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+                          ⏳ {t('ci_checkin_tm30')}
+                        </span>
                       )}
                       {/* เช็คอินแล้ว — badge (ปุ่ม checkout อยู่ที่มุมขวาบนแล้ว) */}
                       {isCheckedIn && (
@@ -1503,11 +1526,21 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
         />
       )}
 
+      {/* Preview-mode banner — shown whenever the header date picker isn't
+          set to the real today, so it's never ambiguous that the grid below
+          is a read-only reconstruction of another date rather than live state. */}
+      {!isViewingToday && (
+        <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center gap-2"
+          style={{ background: T.navyTint, color: T.navy, border: `1px solid ${T.navy}30` }}>
+          🔍 {t('ci_preview_mode')} {refDate} — {t('ci_preview_readonly')}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>{t('ci_room_status_title')}</h2>
-          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {today()}</p>
+          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {refDate}</p>
         </div>
         <div className="flex items-center gap-2">
           <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
