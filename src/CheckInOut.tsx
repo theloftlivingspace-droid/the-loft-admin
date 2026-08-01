@@ -1039,8 +1039,17 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
             const date   = iDate >= 0 ? (row[iDate] || '') : '';
             const status = iStatus >= 0 ? (row[iStatus] || '') : '';
             const ready  = iReady  >= 0 ? (row[iReady]  || '') : '';
-            const inspected = (status !== '' && !['major','block',''].includes(status.toLowerCase()))
-              || ready.includes('พร้อม');
+            // Block/major-issue rooms must never be treated as inspected,
+            // even if the Ready column happens to also be set — a blocked
+            // room is never ready for sale regardless of what else is logged.
+            const isBlockedOrMajor = status !== '' && ['major', 'block'].includes(status.toLowerCase());
+            // "พร้อม" is a substring of "ไม่พร้อม" ("not ready"), so a plain
+            // .includes('พร้อม') check wrongly matched "ยังไม่พร้อม" too.
+            // Require the positive word without a preceding "ไม่".
+            const readyPositive = /พร้อม/.test(ready) && !/ไม่พร้อม/.test(ready);
+            const inspected = isBlockedOrMajor
+              ? false
+              : (status !== '' || readyPositive);
             allLogs.push({
               room: rm,
               inspected,
