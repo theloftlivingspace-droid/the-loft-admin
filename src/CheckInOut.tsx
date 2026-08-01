@@ -590,6 +590,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
   // its full booking card (same as the room-status grid cards) instead of the list.
   const [manualSearchSelected, setManualSearchSelected] = useState<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string } | null>(null);
   const [coStatus, setCoStatus]     = useState<Record<string, CheckoutStatus>>({});
+  // Latest checkout-log entry per room (by log date), regardless of whether
+  // the booking it belongs to is still in the date-windowed `stays` list.
+  // Lets a blocked/damaged room keep showing "needs cleaning" even after its
+  // checkout date has aged out of the stays list.
+  const [latestCoByRoom, setLatestCoByRoom] = useState<Record<string, CheckoutStatus>>({});
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
@@ -1067,6 +1072,15 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
             map[key] = log;
           }
           setCoStatus(map);
+
+          // Most recent log per room (by date string, ISO-sortable), used as
+          // a fallback for rooms whose checkout has aged out of `stays`.
+          const latestPerRoom: Record<string, CheckoutStatus> = {};
+          for (const log of allLogs) {
+            const cur = latestPerRoom[log.room];
+            if (!cur || log.date > cur.date) latestPerRoom[log.room] = log;
+          }
+          setLatestCoByRoom(latestPerRoom);
         }
       } catch (_) { /* optional */ }
     } catch (e: unknown) {
@@ -1179,11 +1193,30 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
       if (status === 'occupied') break; // top rank — no need to keep scanning this room
     }
 
+    // Fallback: nothing in the (date-windowed) `stays` list explained this
+    // room, but its most recent housekeeping log entry might still show it
+    // as uninspected — e.g. a blocked/damaged room whose checkout date has
+    // aged past the stays window. Without this, such a room silently reverts
+    // to "vacant" a day or two after checkout even though it's not sellable.
+    if (RANK[status] < RANK['needs-cleaning']) {
+      const latest = latestCoByRoom[room.num];
+      if (latest && !latest.inspected) {
+        status = 'needs-cleaning';
+        targetKey = null;
+      }
+    }
+
     return { ...room, status, targetKey };
   });
 
-  function goToRoomCard(targetKey: string | null, roomLabel: string) {
-    if (!targetKey) { showToast(`ห้อง ${roomLabel} ว่าง — ไม่มีการ์ดให้เปิด`); return; }
+  function goToRoomCard(targetKey: string | null, roomLabel: string, status?: RoomGridStatus) {
+    if (!targetKey) {
+      const msg = status === 'needs-cleaning'
+        ? `ห้อง ${roomLabel} ต้องทำความสะอาด — ไม่มีการ์ดให้เปิด (เช็คเอาท์เกินช่วงที่แสดงในรายการแล้ว)`
+        : `ห้อง ${roomLabel} ว่าง — ไม่มีการ์ดให้เปิด`;
+      showToast(msg);
+      return;
+    }
     setView('all');
     setHighlightKey(targetKey);
     setTimeout(() => {
@@ -1592,7 +1625,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, {}>(function CheckInOut(_props, 
         <div className="grid grid-cols-5 gap-2">
           {roomGrid.map(r => (
             <button key={r.num}
-              onClick={() => goToRoomCard(r.targetKey, r.num)}
+              onClick={() => goToRoomCard(r.targetKey, r.num, r.status)}
               className="press f-thai rounded-2xl py-2.5 text-center"
               style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
               <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
