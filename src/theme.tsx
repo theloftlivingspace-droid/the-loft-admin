@@ -21,6 +21,8 @@ export const T = {
   wineTint: "#F6E1E4",
   sage: "#3F8256",
   sageTint: "#E3F0E7",
+  plum: "#6B4C93",
+  plumTint: "#EAE2F2",
   hair: "rgba(11,27,61,0.12)",
   hairGold: "rgba(217,178,92,0.4)",
 } as const;

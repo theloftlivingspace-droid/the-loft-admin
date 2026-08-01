@@ -258,7 +258,10 @@ type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning
 // Reuses the exact same colors already used elsewhere in this file:
 // occupied      → same green as the "checked-in" status card (STATUS_CONFIG)
 // checkout-today→ same wine/red as the "checking-out-today" status card
-// needs-cleaning→ same gold as the "checked-out done" card style (isCheckedOut)
+// needs-cleaning→ dedicated plum/purple — brass was tried first but that's
+//                  also the color of the "arriving today" KPI card just
+//                  above the grid, so a gold room tile read as "arriving
+//                  today" at a glance instead of "needs cleaning"
 // arriving-soon → same navy tint used for "arriving-soon" stay cards below
 // vacant        → neutral gray (no matching status color exists for "nothing going on")
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
@@ -267,7 +270,7 @@ const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
   vacant:          { bg: '#E7E9ED', fg: '#5B6472' },
   occupied:        { bg: T.sageTint,  fg: T.sage },
   'checkout-today':{ bg: T.wineTint,  fg: T.wine },
-  'needs-cleaning':{ bg: T.brassPale, fg: T.brassDeep },
+  'needs-cleaning':{ bg: T.plumTint,  fg: T.plum },
   'arriving-soon': { bg: T.navyTint,  fg: T.navy },
 };
 
