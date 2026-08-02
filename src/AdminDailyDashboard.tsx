@@ -227,6 +227,13 @@ export default function AdminDailyDashboard() {
           setIpPrefixInput(rows[0].value);
         }
       });
+    sbGet('settings', 'key=eq.ip_exempt_usernames')
+      .then(rows => {
+        if (rows && rows.length > 0) {
+          setIpExemptUsernames(rows[0].value);
+          setIpExemptInput(rows[0].value);
+        }
+      });
     sbGet('settings', 'key=eq.stock_draft')
       .then(rows => {
         if (rows?.[0]?.value) {
@@ -462,6 +469,12 @@ export default function AdminDailyDashboard() {
   const [officeIpPrefix, setOfficeIpPrefix] = useState('');
   const [ipPrefixInput, setIpPrefixInput]   = useState('');
   const [ipPrefixSaving, setIpPrefixSaving] = useState(false);
+  // Usernames exempted from the office-network requirement (comma-separated),
+  // stored under settings.key = 'ip_exempt_usernames'. Lets admins allow a
+  // specific employee to log in from anywhere without opening it up for everyone.
+  const [ipExemptUsernames, setIpExemptUsernames] = useState('');
+  const [ipExemptInput, setIpExemptInput]         = useState('');
+  const [ipExemptSaving, setIpExemptSaving]       = useState(false);
 
   // Form — basic
   const [employeeName, setEmployeeName] = useState('');
@@ -556,10 +569,12 @@ export default function AdminDailyDashboard() {
     // Re-fetch IP + prefix fresh every login attempt
     let currentIP = clientIP;
     let currentPrefix = officeIpPrefix;
+    let currentExempt = ipExemptUsernames;
     try {
-      const [ipRes, prefixRows] = await Promise.all([
+      const [ipRes, prefixRows, exemptRows] = await Promise.all([
         fetch('https://api.ipify.org?format=json').then(r => r.json()),
         sbGet('settings', 'key=eq.office_ip_prefix'),
+        sbGet('settings', 'key=eq.ip_exempt_usernames'),
       ]);
       currentIP = ipRes.ip;
       setClientIP(currentIP);
@@ -568,14 +583,21 @@ export default function AdminDailyDashboard() {
         setOfficeIpPrefix(currentPrefix);
         setIpPrefixInput(currentPrefix);
       }
+      if (exemptRows && exemptRows.length > 0) {
+        currentExempt = exemptRows[0].value;
+        setIpExemptUsernames(currentExempt);
+        setIpExemptInput(currentExempt);
+      }
     } catch (_) {}
     const isOfficeNow = currentPrefix ? currentIP.startsWith(currentPrefix) : false;
+    const exemptList = (currentExempt || '').split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
+    const isExempt = exemptList.includes(username.trim().toLowerCase());
     const results = await sbGet('users',
       `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
     setAuthLoading(false);
     if (!results || results.length === 0) { alert(t('adm_alert_wrong_credentials')); return; }
     const matched: User = results[0];
-    if (matched.role === 'employee' && !isOfficeNow) {
+    if (matched.role === 'employee' && !isOfficeNow && !isExempt) {
       alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
     }
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
@@ -983,6 +1005,36 @@ export default function AdminDailyDashboard() {
                     ? t('adm_ip_match')
                     : t('adm_ip_mismatch')
                   : ''}
+              </p>
+            </div>
+            <div className="flex-1">
+              <p className="f-thai text-xs font-semibold mb-1" style={{ color: T.navy }}>
+                🔓 Exempt usernames (เข้าได้ทุก IP)
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={ipExemptInput}
+                  onChange={e => setIpExemptInput(e.target.value)}
+                  placeholder="username1, username2"
+                  className="focus-ring f-num rounded-xl px-3 py-1.5 text-sm flex-1"
+                  style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }}
+                />
+                <button
+                  onClick={async () => {
+                    setIpExemptSaving(true);
+                    await sbUpsert('settings', { key: 'ip_exempt_usernames', value: ipExemptInput });
+                    setIpExemptUsernames(ipExemptInput);
+                    setIpExemptSaving(false);
+                  }}
+                  disabled={ipExemptSaving || ipExemptInput === ipExemptUsernames}
+                  className="press focus-ring f-thai px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  style={{ background: T.navy, color: '#fff' }}>
+                  {ipExemptSaving ? '...' : t('adm_save')}
+                </button>
+              </div>
+              <p className="f-thai text-xs mt-1" style={{ color: T.inkSoft }}>
+                รายชื่อ username (คั่นด้วย , ) ที่ล็อกอินได้จากทุก IP โดยไม่ต้องอยู่ office network
               </p>
             </div>
           </div>
