@@ -287,6 +287,10 @@ export default function AdminDailyDashboard() {
   const ptrRefreshableTab = adminTab === 'checkinout' || adminTab === 'todo';
 
   // ── Swipe left/right to change tabs (mobile) ──────────────────────────────
+  // Turned off per request — swiping should no longer switch between the
+  // main tabs (Dashboard/Booking/Check-in-out/...). Pull-to-refresh (the
+  // vertical gesture handled by the same touch handlers) is unaffected.
+  const SWIPE_TAB_CHANGE_ENABLED = false;
   const swipeStartX = useRef(0);
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
@@ -341,7 +345,7 @@ export default function AdminDailyDashboard() {
     const dir = swipeDir.current;
     swipeDir.current = 'none';
 
-    if (dir === 'horizontal' && !swipeBlocked.current) {
+    if (SWIPE_TAB_CHANGE_ENABLED && dir === 'horizontal' && !swipeBlocked.current) {
       const endX = e.changedTouches[0]?.clientX ?? swipeStartX.current;
       const dx = endX - swipeStartX.current;
       if (Math.abs(dx) > SWIPE_THRESHOLD) {
