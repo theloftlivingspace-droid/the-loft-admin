@@ -1279,12 +1279,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
-            // For an arriving-today guest, "is the room ready" must instead
-            // ask about the PREVIOUS occupant's checkout — matching against
-            // this stay's own (future) checkout date would look for a log
-            // that can't exist yet. Use the room's most recent checkout log
-            // overall (same fallback the room-status grid uses) instead.
-            const roomReady = s.status === 'arriving-today'
+            // For an arriving-today or arriving-soon guest, "is the room
+            // ready" must instead ask about the PREVIOUS occupant's
+            // checkout — matching against this stay's own (future) checkout
+            // date would look for a log that can't exist yet. Use the
+            // room's most recent checkout log overall (same fallback the
+            // room-status grid uses) instead.
+            const roomReady = (s.status === 'arriving-today' || s.status === 'arriving-soon')
               ? (latestCoByRoom[s.roomNum]?.inspected ?? null)
               : (co?.inspected ?? null);
 
@@ -1397,7 +1398,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                           </div>
                         );
                       })()}
-                      {s.status === 'arriving-today' && (
+                      {(s.status === 'arriving-today' || s.status === 'arriving-soon') && (
                         <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium"
                           style={roomReady === true ? { background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }
                           : roomReady === false ? { background: T.wineTint, color: T.wine, border: `1px solid ${T.wine}30` }
