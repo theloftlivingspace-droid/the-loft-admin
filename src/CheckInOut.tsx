@@ -253,7 +253,7 @@ const ROOM_LIST: { num: string; type: string }[] = [
   { num: '210', type: 'Radiance' },
 ];
 
-type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning' | 'arriving-soon';
+type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning' | 'arriving-today' | 'arriving-soon';
 
 // Reuses the exact same colors already used elsewhere in this file:
 // occupied      → same green as the "checked-in" status card (STATUS_CONFIG)
@@ -262,6 +262,10 @@ type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning
 //                  also the color of the "arriving today" KPI card just
 //                  above the grid, so a gold room tile read as "arriving
 //                  today" at a glance instead of "needs cleaning"
+// arriving-today→ brass/gold — matches the "arriving today" KPI card and
+//                  stay-card badge. This used to clash with needs-cleaning
+//                  when needs-cleaning was also brass; now that needs-
+//                  cleaning is plum, brass is free for this again.
 // arriving-soon → same navy tint used for "arriving-soon" stay cards below
 // vacant        → neutral gray (no matching status color exists for "nothing going on")
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
@@ -271,6 +275,7 @@ const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
   occupied:        { bg: T.sageTint,  fg: T.sage },
   'checkout-today':{ bg: T.wineTint,  fg: T.wine },
   'needs-cleaning':{ bg: T.plumTint,  fg: T.plum },
+  'arriving-today':{ bg: T.brassPale, fg: T.brassDeep },
   'arriving-soon': { bg: T.navyTint,  fg: T.navy },
 };
 
@@ -1189,7 +1194,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     // let a lower-priority status (e.g. arriving-soon) stick after a
     // higher-priority one (e.g. needs-cleaning) is found later in the loop.
     const RANK: Record<RoomGridStatus, number> = {
-      vacant: 0, 'arriving-soon': 1, 'needs-cleaning': 2, 'checkout-today': 3, occupied: 4,
+      vacant: 0, 'arriving-soon': 1, 'arriving-today': 2, 'needs-cleaning': 3, 'checkout-today': 4, occupied: 5,
     };
     let status: RoomGridStatus = 'vacant';
     let targetKey: string | null = null;
@@ -1206,6 +1211,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       } else if (isCheckedOut) {
         const co = findCoForStay(s, coStatus);
         if (!co?.inspected) candidate = 'needs-cleaning';
+      } else if (s.status === 'arriving-today') {
+        candidate = 'arriving-today';
       } else if (s.status === 'arriving-soon') {
         candidate = 'arriving-soon';
       }
@@ -1662,6 +1669,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             ['occupied', t('ci_legend_occupied')],
             ['checkout-today', t('ci_legend_checkout_today')],
             ['needs-cleaning', t('ci_legend_needs_cleaning')],
+            ['arriving-today', t('ci_legend_arriving_today')],
             ['arriving-soon', t('ci_legend_arriving_soon')],
           ] as [RoomGridStatus, string][]).map(([key, label]) => (
             <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
