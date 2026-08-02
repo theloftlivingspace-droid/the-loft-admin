@@ -896,7 +896,7 @@ export default function AdminDailyDashboard() {
               onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
               className="press focus-ring flex-shrink-0 px-6 py-4 flex items-center justify-center gap-2"
               style={{ borderBottom: `2.5px solid ${mainSection === m.key ? T.brass : 'transparent'}` }}>
-              <m.Icon size={26} color={mainSection === m.key ? T.navy : T.inkSoft} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+              <m.Icon size={18} color={mainSection === m.key ? T.navy : T.inkSoft} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
               <span className="f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
             </button>
           ))}
