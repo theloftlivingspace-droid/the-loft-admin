@@ -1272,11 +1272,21 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
   function renderStayCard(s: Stay) {
             const cfg    = STATUS_CONFIG[s.status];
+            // For an in-house/checking-out guest, "inspected" means THEIR OWN
+            // checkout has been logged as inspected — matched against their
+            // own checkout date.
             const co     = findCoForStay(s, coStatus);
             const cardKey = folderKey(s.roomNum, s.checkin, s.resId);
             const cardDocs = docs[cardKey] || [];
             const isUploading = uploadingFor === cardKey;
-            const roomReady = co?.inspected ?? null;
+            // For an arriving-today guest, "is the room ready" must instead
+            // ask about the PREVIOUS occupant's checkout — matching against
+            // this stay's own (future) checkout date would look for a log
+            // that can't exist yet. Use the room's most recent checkout log
+            // overall (same fallback the room-status grid uses) instead.
+            const roomReady = s.status === 'arriving-today'
+              ? (latestCoByRoom[s.roomNum]?.inspected ?? null)
+              : (co?.inspected ?? null);
 
             // ── per-card check-in state ──────────────────────────────
             const isCheckedIn  = s.status === 'arriving-today' && ciDoneSet.has(s.resId);
