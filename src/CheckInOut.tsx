@@ -588,9 +588,13 @@ export type CheckInOutProps = {
   // disabled unless the value equals the real today, since those represent
   // real-world events and must not be backdated/forward-dated by mistake.
   viewDate?: string;
+  // Called when the user wants to jump the shared header date back to the
+  // real today (e.g. the preview banner's "back to today" button). Omitted
+  // in contexts where the date isn't controllable from here.
+  onViewDateChange?: (date: string) => void;
 };
 
-const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckInOut({ viewDate }, ref) {
+const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckInOut({ viewDate, onViewDateChange }, ref) {
   const { t } = useLang();
   const realToday = today();
   const isValidIsoDate = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -1530,9 +1534,17 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           set to the real today, so it's never ambiguous that the grid below
           is a read-only reconstruction of another date rather than live state. */}
       {!isViewingToday && (
-        <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center gap-2"
+        <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center justify-between gap-2"
           style={{ background: T.navyTint, color: T.navy, border: `1px solid ${T.navy}30` }}>
-          🔍 {t('ci_preview_mode')} {refDate} — {t('ci_preview_readonly')}
+          <span>🔍 {t('ci_preview_mode')} {refDate} {t('ci_preview_readonly')}</span>
+          {onViewDateChange && (
+            <button
+              onClick={() => onViewDateChange(realToday)}
+              className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
+              style={{ background: T.navy, color: '#FFFFFF' }}>
+              {t('ci_preview_back_today')}
+            </button>
+          )}
         </div>
       )}
 

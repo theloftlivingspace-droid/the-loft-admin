@@ -993,7 +993,7 @@ export default function AdminDailyDashboard() {
           <BookingInvoiceTodo ref={bookingTodoRef} key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
         {adminTab === 'checkinout' && (
-          <CheckInOut ref={checkInOutRef} viewDate={reportDate} />
+          <CheckInOut ref={checkInOutRef} viewDate={reportDate} onViewDateChange={setReportDate} />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
         <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
