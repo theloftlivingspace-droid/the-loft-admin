@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 import { parse as parseMRZ } from 'mrz';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -322,35 +322,73 @@ async function scanDocumentOCR(imageUrl: string): Promise<OcrScanResult> {
 
   const worker = await createWorker('eng');
   let rawText = '';
+  let mrzRawText = '';
   try {
-    // No character whitelist here — this is general text (names, printed
-    // fields, addresses, etc.), unlike the MRZ zone which is fixed-charset.
+    // Pass 1: whole-page general text (names, printed fields, addresses,
+    // etc.) — no character whitelist, since this isn't MRZ-only content.
     const { data } = await worker.recognize(canvas);
     rawText = data.text || '';
+
+    // Pass 2: MRZ-focused re-scan. Reading the whole page in one generic
+    // pass is unreliable for the MRZ zone specifically — mixed fonts,
+    // printed text, and photos elsewhere on the page hurt accuracy, and
+    // guessing which 2 lines of the general output are "the MRZ" is
+    // fragile (background text can accidentally look MRZ-shaped too).
+    // Instead: crop to the bottom band where the MRZ always sits on a
+    // passport bio page, and restrict recognition to the MRZ charset —
+    // this alone is usually enough to fix most misreads.
+    const mrzCropTop = Math.round(canvas.height * 0.72);
+    const mrzCanvas = document.createElement('canvas');
+    mrzCanvas.width = canvas.width;
+    mrzCanvas.height = canvas.height - mrzCropTop;
+    const mrzCtx = mrzCanvas.getContext('2d');
+    if (mrzCtx && mrzCanvas.height > 0) {
+      mrzCtx.imageSmoothingEnabled = true;
+      mrzCtx.drawImage(canvas, 0, mrzCropTop, canvas.width, mrzCanvas.height, 0, 0, canvas.width, mrzCanvas.height);
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+        // PSM 6: "uniform block of text" — the two MRZ lines are the same
+        // font/size/spacing, unlike the mixed layout of the full page.
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      });
+      const mrzData = await worker.recognize(mrzCanvas);
+      mrzRawText = mrzData.data.text || '';
+    }
   } finally {
     await worker.terminate();
   }
 
-  // Best-effort bonus: look for two MRZ-shaped lines anywhere in the output
-  // and try to parse them. Silently skipped if nothing matches — the raw
-  // text above is always the primary result.
-  const candidates = rawText
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length >= 20)
-    .filter(l => {
-      const cleaned = l.replace(/\s+/g, '');
-      const okChars = (cleaned.match(/[A-Z0-9<]/gi) || []).length;
-      return okChars / Math.max(1, cleaned.length) > 0.85;
-    });
-  const last2 = candidates.slice(-2);
-  if (last2.length === 2) {
-    try {
-      const lines = last2.map(l => cleanMrzLine(l, 44));
-      const parsed = parseMRZ(lines, { autocorrect: true });
-      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
-    } catch { /* no valid MRZ found — that's fine, rawText still stands */ }
+  // Build MRZ line candidates, preferring the focused crop+whitelist pass
+  // (pass 2) since it's far more reliable; fall back to guessing from the
+  // full-page text (pass 1) only if the crop pass found nothing usable.
+  function candidateLines(text: string): string[] {
+    return text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.replace(/\s+/g, '').length >= 20);
   }
+
+  function tryParse(lines: string[]): OcrScanResult | null {
+    if (lines.length < 2) return null;
+    const last2 = lines.slice(-2).map(l => cleanMrzLine(l, 44));
+    try {
+      const parsed = parseMRZ(last2, { autocorrect: true });
+      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
+    } catch {
+      return null;
+    }
+  }
+
+  // Prefer a fully checksum-valid parse from the MRZ-focused pass; if that
+  // pass parsed but failed checksum, still prefer it over pass 1 (it's
+  // reading the right zone, just possibly with a misread digit) — only
+  // fall back to pass 1's guess if the focused pass produced nothing at all.
+  const fromMrzPass = tryParse(candidateLines(mrzRawText));
+  if (fromMrzPass) return fromMrzPass;
+
+  const fromFullPage = tryParse(candidateLines(rawText));
+  if (fromFullPage) return fromFullPage;
+
   return { rawText };
 }
 
