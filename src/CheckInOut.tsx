@@ -594,12 +594,14 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
       </div>
       <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : 'pointer' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={`https://drive.google.com/file/d/${doc.fileId}/preview`} className="w-full h-full rounded" title={doc.fileName} />}
-        {!isImg && !isPdf && (
+        {!isImg && (
           <div className="f-thai rounded-xl p-8 text-center" style={{ background: T.card, color: T.inkSoft }}>
-            <div className="text-4xl mb-3">📄</div>
-            <div className="font-semibold mb-1" style={{ color: T.ink }}>{doc.fileName}</div>
-            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="underline text-sm" style={{ color: T.navy }}>{t('ci_click_download')}</a>
+            <div className="text-4xl mb-3">{isPdf ? '📕' : '📄'}</div>
+            <div className="font-semibold mb-3" style={{ color: T.ink }}>{doc.fileName}</div>
+            <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer"
+              className="press inline-block px-4 py-2 text-sm rounded-lg" style={{ background: T.brass, color: T.navyDeep }}>
+              {isPdf ? '📕 เปิด PDF' : t('ci_click_download')}
+            </a>
           </div>
         )}
       </div>
