@@ -500,10 +500,12 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const dragStartY = useRef<number | null>(null);
   const wasDrag = useRef(false);
   const onPointerDown = (e: React.PointerEvent) => {
+    if (isImg) return; // let native text-selection dragging own the gesture
     dragStartX.current = e.clientX;
     dragStartY.current = e.clientY;
   };
   const onPointerUp = (e: React.PointerEvent) => {
+    if (isImg) return; // navigate images via the ‹ › buttons instead
     if (dragStartX.current === null || dragStartY.current === null) return;
     const dx = e.clientX - dragStartX.current;
     const dy = e.clientY - dragStartY.current;
@@ -597,7 +599,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
       </div>
-      <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y', cursor: docs.length > 1 ? 'ew-resize' : 'pointer' }}>
+      <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: isImg ? 'auto' : 'pan-y', cursor: !isImg && docs.length > 1 ? 'ew-resize' : 'auto' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
         {isPdf && <iframe src={`https://drive.google.com/file/d/${doc.fileId}/preview`} className="w-full h-full rounded" title={doc.fileName} />}
         {!isImg && !isPdf && (
