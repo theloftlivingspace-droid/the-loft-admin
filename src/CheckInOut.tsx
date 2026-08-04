@@ -600,7 +600,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
       </div>
       <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: isImg ? 'auto' : 'pan-y', cursor: !isImg && docs.length > 1 ? 'ew-resize' : 'auto' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
-        {isPdf && <iframe src={`https://drive.google.com/file/d/${doc.fileId}/preview`} className="w-full h-full rounded" title={doc.fileName} />}
+        {isPdf && <iframe src={`/api/drive-file-proxy?id=${encodeURIComponent(doc.fileId)}`} className="w-full h-full rounded" style={{ background: '#fff' }} title={doc.fileName} />}
         {!isImg && !isPdf && (
           <div className="f-thai rounded-xl p-8 text-center" style={{ background: T.card, color: T.inkSoft }}>
             <div className="text-4xl mb-3">📄</div>
