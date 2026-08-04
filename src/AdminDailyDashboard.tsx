@@ -747,42 +747,46 @@ export default function AdminDailyDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 flex-shrink-0">
-                <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
-                  <button
-                    onClick={() => setLang('th')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                    TH
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                    <button
+                      onClick={() => setLang('th')}
+                      className="press focus-ring rounded-full"
+                      style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                      TH
+                    </button>
+                    <button
+                      onClick={() => setLang('en')}
+                      className="press focus-ring rounded-full"
+                      style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                      EN
+                    </button>
+                  </div>
+                  <div
+                    className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium f-thai"
+                    style={{
+                      background: isOfficeNetwork ? 'rgba(63,130,86,0.18)' : 'rgba(217,178,92,0.18)',
+                      color: isOfficeNetwork ? '#8FD4A5' : T.brass,
+                      border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.3)' : 'rgba(217,178,92,0.35)'}`,
+                    }}>
+                    <span className="w-2 h-2 rounded-full" style={{ background: isOfficeNetwork ? '#8FD4A5' : T.brass }} />
+                    {isOfficeNetwork ? t('office_badge') : t('online_badge')}
+                    <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>({clientIP})</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-right">
+                    <p className="f-thai" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
+                    <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-xl px-3 py-2 text-sm focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
+                  </div>
+                  <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'} className="press focus-ring flex items-center gap-2 px-3 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                    {pushPerm === 'granted' ? <BellRing size={16} /> : <Bell size={16} />}
                   </button>
-                  <button
-                    onClick={() => setLang('en')}
-                    className="press focus-ring rounded-full"
-                    style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                    EN
+                  <button onClick={handleLogout} className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
+                    {t('logout_btn')}
                   </button>
                 </div>
-                <div
-                  className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium f-thai"
-                  style={{
-                    background: isOfficeNetwork ? 'rgba(63,130,86,0.18)' : 'rgba(217,178,92,0.18)',
-                    color: isOfficeNetwork ? '#8FD4A5' : T.brass,
-                    border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.3)' : 'rgba(217,178,92,0.35)'}`,
-                  }}>
-                  <span className="w-2 h-2 rounded-full" style={{ background: isOfficeNetwork ? '#8FD4A5' : T.brass }} />
-                  {isOfficeNetwork ? t('office_badge') : t('online_badge')}
-                  <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>({clientIP})</span>
-                </div>
-                <div className="text-right">
-                  <p className="f-thai" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
-                  <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-xl px-3 py-2 text-sm focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
-                </div>
-                <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'} className="press focus-ring flex items-center gap-2 px-3 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-                  {pushPerm === 'granted' ? <BellRing size={16} /> : <Bell size={16} />}
-                </button>
-                <button onClick={handleLogout} className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                  {t('logout_btn')}
-                </button>
               </div>
             </div>
             {/* Desktop notification row */}
