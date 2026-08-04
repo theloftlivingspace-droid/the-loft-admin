@@ -732,14 +732,14 @@ export default function AdminDailyDashboard() {
             {/* Desktop header — full */}
             <div className="hidden md:flex md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 46, height: 46, border: `1px solid ${T.brass}55` }}>
+                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 50, height: 50, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div>
                   <p className="f-thai" style={{ fontSize: 11, fontWeight: 700, color: T.brass, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
                     The Loft Living Space
                   </p>
-                  <h1 className="f-display" style={{ fontSize: 19, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
+                  <h1 className="f-display" style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
                     {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
                   </h1>
                   <p className="f-thai" style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
