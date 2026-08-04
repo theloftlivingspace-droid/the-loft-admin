@@ -724,9 +724,9 @@ export default function AdminDailyDashboard() {
       <div className="max-w-6xl mx-auto h-full flex flex-col overflow-hidden md:rounded-[32px]" style={{ background: T.paper, boxShadow: '0 20px 50px rgba(11,30,66,0.18)', border: `1px solid ${T.hairGold}` }}>
 
         {/* Header */}
-        <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-0">
+        <div className="flex-shrink-0 px-4 md:px-6 pt-3 md:pt-5 pb-0">
           <div
-            className="rounded-[22px] md:rounded-[26px] px-4 md:px-6 pt-4 pb-3 md:pb-4"
+            className="rounded-[22px] md:rounded-[26px] px-4 md:px-6 pt-3 pb-2.5 md:pt-4 md:pb-3"
             style={{ background: T.navyDeep, boxShadow: '0 10px 28px rgba(11,30,66,0.45)' }}
           >
             {/* Desktop header — full */}
