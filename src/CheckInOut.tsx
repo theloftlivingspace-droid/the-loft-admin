@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 import { parse as parseMRZ } from 'mrz';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -322,35 +322,73 @@ async function scanDocumentOCR(imageUrl: string): Promise<OcrScanResult> {
 
   const worker = await createWorker('eng');
   let rawText = '';
+  let mrzRawText = '';
   try {
-    // No character whitelist here — this is general text (names, printed
-    // fields, addresses, etc.), unlike the MRZ zone which is fixed-charset.
+    // Pass 1: whole-page general text (names, printed fields, addresses,
+    // etc.) — no character whitelist, since this isn't MRZ-only content.
     const { data } = await worker.recognize(canvas);
     rawText = data.text || '';
+
+    // Pass 2: MRZ-focused re-scan. Reading the whole page in one generic
+    // pass is unreliable for the MRZ zone specifically — mixed fonts,
+    // printed text, and photos elsewhere on the page hurt accuracy, and
+    // guessing which 2 lines of the general output are "the MRZ" is
+    // fragile (background text can accidentally look MRZ-shaped too).
+    // Instead: crop to the bottom band where the MRZ always sits on a
+    // passport bio page, and restrict recognition to the MRZ charset —
+    // this alone is usually enough to fix most misreads.
+    const mrzCropTop = Math.round(canvas.height * 0.72);
+    const mrzCanvas = document.createElement('canvas');
+    mrzCanvas.width = canvas.width;
+    mrzCanvas.height = canvas.height - mrzCropTop;
+    const mrzCtx = mrzCanvas.getContext('2d');
+    if (mrzCtx && mrzCanvas.height > 0) {
+      mrzCtx.imageSmoothingEnabled = true;
+      mrzCtx.drawImage(canvas, 0, mrzCropTop, canvas.width, mrzCanvas.height, 0, 0, canvas.width, mrzCanvas.height);
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+        // PSM 6: "uniform block of text" — the two MRZ lines are the same
+        // font/size/spacing, unlike the mixed layout of the full page.
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      });
+      const mrzData = await worker.recognize(mrzCanvas);
+      mrzRawText = mrzData.data.text || '';
+    }
   } finally {
     await worker.terminate();
   }
 
-  // Best-effort bonus: look for two MRZ-shaped lines anywhere in the output
-  // and try to parse them. Silently skipped if nothing matches — the raw
-  // text above is always the primary result.
-  const candidates = rawText
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length >= 20)
-    .filter(l => {
-      const cleaned = l.replace(/\s+/g, '');
-      const okChars = (cleaned.match(/[A-Z0-9<]/gi) || []).length;
-      return okChars / Math.max(1, cleaned.length) > 0.85;
-    });
-  const last2 = candidates.slice(-2);
-  if (last2.length === 2) {
-    try {
-      const lines = last2.map(l => cleanMrzLine(l, 44));
-      const parsed = parseMRZ(lines, { autocorrect: true });
-      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
-    } catch { /* no valid MRZ found — that's fine, rawText still stands */ }
+  // Build MRZ line candidates, preferring the focused crop+whitelist pass
+  // (pass 2) since it's far more reliable; fall back to guessing from the
+  // full-page text (pass 1) only if the crop pass found nothing usable.
+  function candidateLines(text: string): string[] {
+    return text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.replace(/\s+/g, '').length >= 20);
   }
+
+  function tryParse(lines: string[]): OcrScanResult | null {
+    if (lines.length < 2) return null;
+    const last2 = lines.slice(-2).map(l => cleanMrzLine(l, 44));
+    try {
+      const parsed = parseMRZ(last2, { autocorrect: true });
+      return { rawText, mrzFields: parsed.fields, mrzValid: parsed.valid };
+    } catch {
+      return null;
+    }
+  }
+
+  // Prefer a fully checksum-valid parse from the MRZ-focused pass; if that
+  // pass parsed but failed checksum, still prefer it over pass 1 (it's
+  // reading the right zone, just possibly with a misread digit) — only
+  // fall back to pass 1's guess if the focused pass produced nothing at all.
+  const fromMrzPass = tryParse(candidateLines(mrzRawText));
+  if (fromMrzPass) return fromMrzPass;
+
+  const fromFullPage = tryParse(candidateLines(rawText));
+  if (fromFullPage) return fromFullPage;
+
   return { rawText };
 }
 
@@ -400,7 +438,36 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const [scanning, setScanning]     = useState(false);
   const [scanResult, setScanResult] = useState<OcrScanResult | null>(null);
   const [copiedAll, setCopiedAll]   = useState(false);
-  useEffect(() => { setScanOpen(false); setScanResult(null); setCopiedAll(false); }, [idx]);
+  const [pasteOpen, setPasteOpen]   = useState(false);
+  const [pasteText, setPasteText]   = useState('');
+  const [pasteError, setPasteError] = useState('');
+  useEffect(() => { setScanOpen(false); setScanResult(null); setCopiedAll(false); setPasteOpen(false); setPasteText(''); setPasteError(''); }, [idx]);
+
+  // Parse MRZ lines the user copied themselves (e.g. via iOS Live Text —
+  // long-press the passport image, select the two MRZ lines, copy, paste
+  // here). Apple's on-device Vision OCR is far more accurate than
+  // tesseract.js on a real phone photo, so this is the most reliable path
+  // when the automatic 🔍 OCR scan doesn't come out clean.
+  function handlePasteMrzSubmit() {
+    setPasteError('');
+    const lines = pasteText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.replace(/\s+/g, '').length >= 20);
+    if (lines.length < 2) {
+      setPasteError('ต้องมี 2 บรรทัดของ MRZ (บรรทัดชื่อ และบรรทัดตัวเลข)');
+      return;
+    }
+    const last2 = lines.slice(-2).map(l => cleanMrzLine(l, 44));
+    try {
+      const parsed = parseMRZ(last2, { autocorrect: true });
+      setScanResult({ rawText: pasteText, mrzFields: parsed.fields, mrzValid: parsed.valid });
+      setScanOpen(true);
+      setPasteOpen(false);
+    } catch {
+      setPasteError('อ่าน MRZ ที่วางไม่ได้ ลองเช็คว่าคัดลอกครบ 2 บรรทัดถูกต้อง');
+    }
+  }
 
   async function handleScanOcr() {
     setScanOpen(true);
@@ -505,6 +572,13 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
               {scanning ? '⏳ กำลังสแกน…' : '🔍 OCR'}
             </button>
           )}
+          {isImg && (
+            <button onClick={() => { setPasteOpen(o => !o); setScanOpen(false); }}
+              className="press f-thai px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+              title="แตะค้างที่รูปด้านล่างเพื่อใช้ Live Text ของ iPhone คัดลอก MRZ แล้ววางที่นี่">
+              📋 วาง MRZ
+            </button>
+          )}
           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
@@ -529,6 +603,28 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           </div>
         )}
       </div>
+
+      {/* Paste MRZ (from iOS Live Text) */}
+      {pasteOpen && (
+        <div className="f-thai px-4 py-3" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold" style={{ color: T.brass }}>📋 วาง MRZ จาก Live Text</span>
+            <button onClick={() => setPasteOpen(false)} className="press px-2 py-0.5 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>ปิด</button>
+          </div>
+          <div className="text-[11px] mb-2" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            แตะค้างที่รูปพาสปอร์ตด้านบน → เลือก 2 บรรทัดล่างสุด (MRZ) → คัดลอก → วางที่นี่
+          </div>
+          <textarea value={pasteText} onChange={e => setPasteText(e.target.value)}
+            placeholder={'P<USADUNLOP<<GREGORY<KEVIN<<<<<<<<<<<<<<<<<<\nA624806749USA9204269M3503236118591076<905554'}
+            className="w-full text-xs rounded-lg p-2 mb-2" rows={3}
+            style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }} />
+          {pasteError && <div className="text-xs mb-2" style={{ color: T.brass }}>⚠️ {pasteError}</div>}
+          <button onClick={handlePasteMrzSubmit} disabled={!pasteText.trim()}
+            className="press f-thai px-3 py-1.5 text-xs rounded disabled:opacity-40" style={{ background: T.sage, color: '#fff' }}>
+            แปลงข้อมูล
+          </button>
+        </div>
+      )}
 
       {/* OCR scan results */}
       {scanOpen && (
