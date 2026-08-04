@@ -812,13 +812,21 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: true, newCheckout }),
       });
-      let j: { ok?: boolean; error?: string } = {};
+      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
       try { j = await r.json(); } catch { /* non-JSON */ }
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(`🧳 ${t('ci_checkout_early')}`);
+      if (j.apartmenterySynced) {
+        showToast(`🧳 ${t('ci_checkout_early')}`);
+      } else {
+        // Same diagnostic pattern as the extend-date flow — don't say
+        // "done" when Apartmentery wasn't actually touched, or the next
+        // sign anyone gets is a same-day-turnover collision days later.
+        setToast(`🧳 ${t('ci_checkout_early')} — ${apartmenteryNoteTH_(j.apartmenteryNote)}`);
+        setTimeout(() => setToast(''), 6000);
+      }
     } catch {
       showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
@@ -844,14 +852,19 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: false, newCheckout: s.checkout }),
       });
       const text = await r.text();
-      let j: { ok?: boolean; error?: string } = {};
+      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
       try { j = JSON.parse(text); } catch { /* non-JSON */ }
       console.log('[auto-checkout] response for', s.resId, r.status, text);
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}: ${text.slice(0, 200)}`);
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      showToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')}`);
+      if (j.apartmenterySynced) {
+        showToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')}`);
+      } else {
+        setToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')} — ${apartmenteryNoteTH_(j.apartmenteryNote)}`);
+        setTimeout(() => setToast(''), 6000);
+      }
     } catch (e) {
       console.error('[auto-checkout] failed for', s.resId, e);
     } finally {
