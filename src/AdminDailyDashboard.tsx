@@ -7,7 +7,7 @@ import RevenueDashboard from './RevenueDashboard';
 import { useLang } from './LanguageContext';
 import { T, FoilRule, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -732,14 +732,14 @@ export default function AdminDailyDashboard() {
             {/* Desktop header — full */}
             <div className="hidden md:flex md:items-start md:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 52, height: 52, border: `1px solid ${T.brass}55` }}>
+                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 46, height: 46, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div>
                   <p className="f-thai" style={{ fontSize: 11, fontWeight: 700, color: T.brass, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
                     The Loft Living Space
                   </p>
-                  <h1 className="f-display" style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
+                  <h1 className="f-display" style={{ fontSize: 19, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
                     {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
                   </h1>
                   <p className="f-thai" style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
@@ -795,20 +795,20 @@ export default function AdminDailyDashboard() {
                 {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                   <button
                     onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
-                    className="press focus-ring flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                    className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
                     style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
-                    {notifBooking > 0 && <span>📋 {notifBooking} booking</span>}
+                    {notifBooking > 0 && <span className="flex items-center gap-1"><ClipboardList size={13} /> {notifBooking} booking</span>}
                     {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
-                    {notifInvoice > 0 && <span>🧾 {notifInvoice} invoice</span>}
+                    {notifInvoice > 0 && <span className="flex items-center gap-1"><Receipt size={13} /> {notifInvoice} invoice</span>}
                     <span>→</span>
                   </button>
                 )}
                 {notifLowStock > 0 && (
                   <button
                     onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
-                    className="press focus-ring flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                    className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
                     style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
-                    🔴 {notifLowStock} {t('notif_low_stock')}
+                    <AlertCircle size={13} /> {notifLowStock} {t('notif_low_stock')}
                     <span>→</span>
                   </button>
                 )}
