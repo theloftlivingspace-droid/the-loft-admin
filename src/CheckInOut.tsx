@@ -432,6 +432,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const [idx, setIdx] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const doc = docs[idx];
+  const isImg = doc.mimeType.startsWith('image/');
 
   // ── OCR scan state ────────────────────────────────────────────────────────
   const [scanOpen, setScanOpen]     = useState(false);
@@ -515,10 +516,15 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
     if (dx < 0) setIdx(i => Math.min(docs.length - 1, i + 1)); // swipe/drag left → next
     else        setIdx(i => Math.max(0, i - 1));               // swipe/drag right → prev
   };
-  // Tapping/clicking the image (without dragging/swiping) closes the viewer,
+  // Tapping/clicking the area (without dragging/swiping) closes the viewer,
   // like a lightbox — a genuine swipe should just change page, not close.
+  // Images are the exception: a long-press-to-select-text gesture (for iOS
+  // Live Text, used to copy the MRZ) also registers as a plain tap on
+  // release, which would close the viewer mid-selection. So for images we
+  // don't close on tap at all — the explicit ✕ button handles closing.
   const onImageAreaClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isImg) return;
     if (!wasDrag.current) onClose();
   };
 
@@ -546,7 +552,6 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   }, [docs.length]);
 
   if (!doc) return null;
-  const isImg = doc.mimeType.startsWith('image/');
   const isPdf = doc.mimeType === 'application/pdf';
   // drive.google.com/uc?export=download forces a download instead of rendering —
   // use the thumbnail endpoint for inline display, keep downloadUrl for the download button.
