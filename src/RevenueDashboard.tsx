@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLang } from './LanguageContext';
 import { T, FoilRule } from './theme';
 import { RefreshCw } from 'lucide-react';
@@ -12,6 +12,21 @@ import { RefreshCw } from 'lucide-react';
 // can read it, no cross-project call needed) and returns the raw ledger rows;
 // we reproduce buildDashboardTab()'s month/OTA/room aggregation client-side.
 const GAS_API = '/api/gas-proxy?app=todo&action=getRevenueDashboard';
+// Same 'todo' GAS Web App, action=getData — the payload BookingInvoiceTodo.tsx
+// reads pendingMatch from (⏳ Pending Match tab). We reuse it here to source the
+// "expected" forecast segment: money already received (SCB) but not yet matched
+// to a booking/OTA, i.e. getPendingMatchPayouts_() in loft-booking-invoice-todo.
+const PENDING_API = '/api/gas-proxy?app=todo&action=getData';
+
+// pendingMatch.ota values come from the payout sheet's 'OTA' column (see
+// getPendingMatchPayouts_ in loft-booking-invoice-todo/Code.gs) — short raw
+// names, not the "Matched - X" ledger status strings. Map to OTA_META short.
+const PENDING_OTA_MAP: Record<string, string> = {
+  'Airbnb': 'Airbnb',
+  'Booking.com': 'Booking',
+  'Expedia': 'Expedia',
+  'Trip.com': 'Trip.com',
+};
 
 interface LedgerRow {
   date: string;
@@ -43,6 +58,21 @@ function otaMeta(key: string) {
 
 function fmtTHB(n: number) {
   return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+// hex + alpha → rgba string, used to shade month segments light (old) → dark (new)
+function hexAlpha(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+interface PendingMatchItem {
+  ota: string; guest: string; room: string;
+  detectedDate: string; checkin: string; checkout: string;
+  net: string | number; status: string; note: string;
 }
 
 interface Agg {
@@ -111,6 +141,8 @@ export default function RevenueDashboard() {
   const [errorDetail, setErrorDetail] = useState('');
   const [agg, setAgg] = useState<Agg | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [pendingMatch, setPendingMatch] = useState<PendingMatchItem[]>([]);
+  const [hoverSeg, setHoverSeg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,9 +169,32 @@ export default function RevenueDashboard() {
     } finally {
       setLoading(false);
     }
+
+    // Forecast source (⏳ Pending Match) — money in but not yet matched to a
+    // booking/OTA. Fetched separately so a failure here never blocks the
+    // main ledger view; forecast segments just fall back to 0.
+    try {
+      const pr = await fetch(`${PENDING_API}&_ts=${Date.now()}`, { cache: 'no-store' });
+      const pj = await pr.json();
+      setPendingMatch(Array.isArray(pj?.pendingMatch) ? pj.pendingMatch : []);
+    } catch {
+      setPendingMatch([]);
+    }
   }, [t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Sum pendingMatch.net by OTA short name (Airbnb / Booking / Expedia / Trip.com)
+  const forecastByOta = useMemo(() => {
+    const out: Record<string, number> = {};
+    pendingMatch.forEach(p => {
+      const short = PENDING_OTA_MAP[(p.ota || '').trim()];
+      if (!short) return; // unmapped OTA (e.g. SCB-only rows) — not an OTA forecast
+      const net = typeof p.net === 'number' ? p.net : parseFloat(String(p.net).replace(/[,\s]/g, '')) || 0;
+      out[short] = (out[short] || 0) + net;
+    });
+    return out;
+  }, [pendingMatch]);
 
   if (loading && !agg) {
     return (
@@ -264,23 +319,90 @@ export default function RevenueDashboard() {
             <div className="px-4 py-2.5" style={{ background: '#263238' }}>
               <p className="f-thai text-xs font-bold" style={{ color: '#eceff1' }}>{t('rev_ota_share')}</p>
             </div>
-            <div className="p-4 flex flex-col gap-2.5">
-              {otas.map(o => {
-                let tSum = 0;
-                months.forEach(m => { const d = monthly[`${m}||${o}`]; if (d) tSum += d.amt; });
-                const pct = grandTotal > 0 ? tSum / grandTotal : 0;
-                const meta = otaMeta(o);
-                return (
-                  <div key={o} className="flex items-center gap-3">
-                    <span className="f-thai text-xs font-bold w-16 shrink-0" style={{ color: meta.hex }}>{meta.short}</span>
-                    <div className="flex-1 rounded-full overflow-hidden" style={{ height: 10, background: T.bone }}>
-                      <div style={{ width: `${pct * 100}%`, height: '100%', background: meta.hex, borderRadius: 999 }} />
+            <div className="p-4 flex flex-col gap-3">
+              {(() => {
+                // Row max includes each OTA's own forecast tail, so bar length
+                // reflects "actual so far + expected" — same as the other rows.
+                const rowMax = Math.max(1, ...otas.map(oo => {
+                  let s = 0; months.forEach(m => { const d = monthly[`${m}||${oo}`]; if (d) s += d.amt; });
+                  return s + (forecastByOta[otaMeta(oo).short] || 0);
+                }));
+                return otas.map(o => {
+                  const meta = otaMeta(o);
+                  let tSum = 0;
+                  months.forEach(m => { const d = monthly[`${m}||${o}`]; if (d) tSum += d.amt; });
+                  const forecast = forecastByOta[meta.short] || 0;
+                  const rowTotal = tSum + forecast;
+                  const pct = grandTotal > 0 ? tSum / grandTotal : 0;
+                  const barPct = (rowTotal / rowMax) * 100;
+
+                  const segs = months
+                    .map(m => ({ key: m, label: m, amt: monthly[`${m}||${o}`]?.amt || 0, forecast: false }))
+                    .filter(s => s.amt > 0);
+                  if (forecast > 0) segs.push({ key: 'forecast', label: t('rev_forecast'), amt: forecast, forecast: true });
+
+                  return (
+                    <div key={o} className="flex items-center gap-3">
+                      <span className="f-thai text-xs font-bold w-16 shrink-0" style={{ color: meta.hex }}>{meta.short}</span>
+                      <div className="flex-1 relative" style={{ height: 10, background: T.bone, borderRadius: 999 }}>
+                        <div className="flex h-full" style={{ width: `${barPct}%`, borderRadius: 999, overflow: 'visible' }}>
+                          {segs.map((s, si) => {
+                            const segKey = `${o}-${s.key}`;
+                            const alpha = s.forecast ? 1 : 0.32 + (0.68 * si) / Math.max(1, months.filter(m => (monthly[`${m}||${o}`]?.amt || 0) > 0).length - 1);
+                            return (
+                              <div
+                                key={s.key}
+                                role="button"
+                                tabIndex={0}
+                                className="h-full relative cursor-pointer focus-ring"
+                                style={{
+                                  width: `${(s.amt / rowTotal) * 100}%`,
+                                  background: s.forecast
+                                    ? 'repeating-linear-gradient(135deg, #c7c9cc 0, #c7c9cc 4px, #dcdedf 4px, #dcdedf 8px)'
+                                    : hexAlpha(meta.hex, alpha),
+                                  borderTopLeftRadius: si === 0 ? 999 : 0,
+                                  borderBottomLeftRadius: si === 0 ? 999 : 0,
+                                  borderTopRightRadius: si === segs.length - 1 ? 999 : 0,
+                                  borderBottomRightRadius: si === segs.length - 1 ? 999 : 0,
+                                }}
+                                onMouseEnter={() => setHoverSeg(segKey)}
+                                onMouseLeave={() => setHoverSeg(null)}
+                                onClick={() => setHoverSeg(hoverSeg === segKey ? null : segKey)}
+                              >
+                                {hoverSeg === segKey && (
+                                  <div
+                                    className="f-num absolute bottom-full mb-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap z-10"
+                                    style={{
+                                      background: T.ink, color: '#fff',
+                                      left: si === 0 ? 0 : si === segs.length - 1 ? 'auto' : '50%',
+                                      right: si === segs.length - 1 ? 0 : 'auto',
+                                      transform: si === 0 || si === segs.length - 1 ? 'none' : 'translateX(-50%)',
+                                    }}
+                                  >
+                                    {s.label} · {fmtTHB(s.amt)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <span className="f-num text-xs font-bold w-12 text-right shrink-0" style={{ color: T.ink }}>{(pct * 100).toFixed(0)}%</span>
+                      <span className="f-num text-xs w-20 text-right shrink-0" style={{ color: T.inkSoft }}>{fmtTHB(tSum)}</span>
                     </div>
-                    <span className="f-num text-xs font-bold w-12 text-right shrink-0" style={{ color: T.ink }}>{(pct * 100).toFixed(0)}%</span>
-                    <span className="f-num text-xs w-20 text-right shrink-0" style={{ color: T.inkSoft }}>{fmtTHB(tSum)}</span>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
+              <div className="flex items-center gap-4 mt-1 pl-16">
+                <span className="f-thai text-[10px] flex items-center gap-1.5" style={{ color: T.inkSoft }}>
+                  <span style={{ width: 20, height: 8, borderRadius: 2, background: 'linear-gradient(90deg, rgba(96,125,139,0.32), rgba(96,125,139,1))' }} />
+                  {t('rev_month_shade')}
+                </span>
+                <span className="f-thai text-[10px] flex items-center gap-1.5" style={{ color: T.inkSoft }}>
+                  <span style={{ width: 14, height: 8, borderRadius: 2, background: 'repeating-linear-gradient(135deg, #c7c9cc 0, #c7c9cc 4px, #dcdedf 4px, #dcdedf 8px)' }} />
+                  {t('rev_forecast')}
+                </span>
+              </div>
             </div>
           </div>
 

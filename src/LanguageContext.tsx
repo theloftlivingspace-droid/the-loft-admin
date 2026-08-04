@@ -43,6 +43,8 @@ const DICT: Record<string, { th: string; en: string }> = {
   rev_col_change:       { th: 'เปลี่ยนแปลง', en: 'Change' },
   rev_grand_total:      { th: 'รวมทั้งหมด', en: 'Grand total' },
   rev_ota_share:        { th: 'สัดส่วน OTA (% ของยอดรวม)', en: 'OTA share (% of total)' },
+  rev_forecast:         { th: 'ยอดคาดการณ์', en: 'Expected' },
+  rev_month_shade:      { th: 'เดือนเก่า → ใหม่', en: 'Older → newer month' },
   rev_mom_growth:       { th: 'การเติบโตเทียบเดือนก่อน', en: 'Month-over-month growth' },
   rev_top_rooms:        { th: 'รายรับแยกห้อง', en: 'Revenue by room' },
   rev_room_prefix:      { th: 'ห้อง', en: 'Room' },
