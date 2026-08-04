@@ -730,7 +730,7 @@ export default function AdminDailyDashboard() {
             style={{ background: T.navyDeep, boxShadow: '0 10px 28px rgba(11,30,66,0.45)' }}
           >
             {/* Desktop header — full */}
-            <div className="hidden md:flex md:items-start md:justify-between gap-4">
+            <div className="hidden md:flex md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 46, height: 46, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
