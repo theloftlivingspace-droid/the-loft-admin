@@ -775,9 +775,9 @@ export default function AdminDailyDashboard() {
                     <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>({clientIP})</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="text-right">
-                    <p className="f-thai" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
+                <div className="flex items-end gap-2.5">
+                  <div>
+                    <p className="f-thai text-right" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
                     <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-xl px-3 py-2 text-sm focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
                   </div>
                   <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'} className="press focus-ring flex items-center gap-2 px-3 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
