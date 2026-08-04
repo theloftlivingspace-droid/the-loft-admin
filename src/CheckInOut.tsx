@@ -560,14 +560,12 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
-      <div className="f-thai flex items-center justify-between px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate">{doc.fileName}</span>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="f-thai flex items-center gap-2 px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-x-auto">
+          <span className="text-sm font-semibold truncate flex-shrink-0">{doc.fileName}</span>
+          <span className="text-xs flex-shrink-0" style={{ color: 'rgba(255,255,255,0.5)' }}>{new Date(doc.uploadedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
           {docs.length > 1 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button onClick={() => setIdx(i => Math.max(0, i - 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === 0}>‹</button>
               <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{idx + 1}/{docs.length}</span>
               <button onClick={() => setIdx(i => Math.min(docs.length - 1, i + 1))} className="press px-2 py-1 text-xs rounded disabled:opacity-30" style={{ background: 'rgba(255,255,255,0.1)' }} disabled={idx === docs.length - 1}>›</button>
@@ -575,29 +573,30 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
           )}
           {isImg && (
             <button onClick={handleScanOcr} disabled={scanning}
-              className="press f-thai px-2 py-1 text-xs rounded disabled:opacity-60" style={{ background: T.sage, color: '#fff' }}>
+              className="press f-thai flex-shrink-0 px-2 py-1 text-xs rounded disabled:opacity-60" style={{ background: T.sage, color: '#fff' }}>
               {scanning ? '⏳ กำลังสแกน…' : '🔍 OCR'}
             </button>
           )}
           {isImg && (
             <button onClick={() => { setPasteOpen(o => !o); setScanOpen(false); }}
-              className="press f-thai px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+              className="press f-thai flex-shrink-0 px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
               title="แตะค้างที่รูปด้านล่างเพื่อใช้ Live Text ของ iPhone คัดลอก MRZ แล้ววางที่นี่">
               📋 วาง MRZ
             </button>
           )}
-          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="press flex-shrink-0 px-2 py-1 text-xs rounded" style={{ background: T.brass, color: T.navyDeep }}>⬇ {t('ci_download')}</a>
           <button disabled={deleting}
             onClick={async () => {
               setDeleting(true);
               try { await onDelete(idx); if (idx >= docs.length - 1) setIdx(Math.max(0, idx - 1)); }
               finally { setDeleting(false); }
             }}
-            className="press px-2 py-1 text-xs rounded disabled:opacity-50" style={{ background: T.wine, color: '#fff' }}>
+            className="press flex-shrink-0 px-2 py-1 text-xs rounded disabled:opacity-50" style={{ background: T.wine, color: '#fff' }}>
             {deleting ? '…' : '🗑'}
           </button>
-          <button onClick={onClose} className="press px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
         </div>
+        {/* Always visible, never pushed off-screen by the scrollable strip above */}
+        <button onClick={onClose} className="press flex-shrink-0 px-2 py-1 text-xs rounded" style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
       </div>
       <div ref={viewerAreaRef} className="flex-1 overflow-auto flex items-start justify-center p-4" onClick={onImageAreaClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: isImg ? 'auto' : 'pan-y', cursor: !isImg && docs.length > 1 ? 'ew-resize' : 'auto' }}>
         {isImg && <img src={displayUrl} alt={doc.fileName} className="max-w-full max-h-full object-contain rounded shadow-lg" />}
