@@ -812,13 +812,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: true, newCheckout }),
       });
-      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
+      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string; dateUnchanged?: boolean } = {};
       try { j = await r.json(); } catch { /* non-JSON */ }
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      if (j.apartmenterySynced) {
+      if (j.apartmenterySynced || j.dateUnchanged) {
         showToast(`🧳 ${t('ci_checkout_early')}`);
       } else {
         // Same diagnostic pattern as the extend-date flow — don't say
@@ -852,14 +852,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         body: JSON.stringify({ action: 'earlyCheckout', resId: s.resId, isEarly: false, newCheckout: s.checkout }),
       });
       const text = await r.text();
-      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
+      let j: { ok?: boolean; error?: string; apartmenterySynced?: boolean; apartmenteryNote?: string; dateUnchanged?: boolean } = {};
       try { j = JSON.parse(text); } catch { /* non-JSON */ }
       console.log('[auto-checkout] response for', s.resId, r.status, text);
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}: ${text.slice(0, 200)}`);
       const next = new Set(checkedOutSet).add(s.resId);
       setCheckedOutSet(next);
       localStorage.setItem('ci_checkout', JSON.stringify([...next]));
-      if (j.apartmenterySynced) {
+      if (j.apartmenterySynced || j.dateUnchanged) {
         showToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')}`);
       } else {
         setToast(`🧳 ห้อง ${s.roomNum} ${t('ci_checked_out_done')} — ${apartmenteryNoteTH_(j.apartmenteryNote)}`);
