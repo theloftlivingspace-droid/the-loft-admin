@@ -1437,7 +1437,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 className="f-thai rounded-2xl overflow-hidden transition-shadow duration-300"
                 style={{ ...cardStyle, ...(isHighlighted ? { boxShadow: `0 0 0 3px ${T.brass}` } : {}) }}>
                 {/* Top bar */}
-                <div className="px-4 py-2 flex items-center justify-between" style={{ background: topBarBg }}>
+                <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: topBarBg }}>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full" style={{ background: topBarText }}></span>
                     <span className="text-xs font-semibold" style={{ color: topBarText }}>{topBarLabel}</span>
@@ -1481,9 +1481,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 </div>
 
                 {/* Body */}
-                <div className="px-4 pt-3 pb-1">
+                <div className="px-4 pt-3 pb-1.5">
                   {/* Room + Guest row */}
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-2.5">
                     {/* Room badge */}
                     <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center" style={{ background: T.navyDeep }}>
                       <span className="f-num text-2xl font-semibold leading-none" style={{ color: T.brass }}>{s.roomNum}</span>
@@ -1563,59 +1563,58 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     );
                   })()}
 
-                  {/* Note */}
-                  <div className="mb-2 flex items-center gap-2">
-                    {s.note && <p className="f-thai flex-1 text-xs italic truncate" style={{ color: T.inkSoft }}>📝 {s.note}</p>}
+                  {/* Note text (if any) */}
+                  {s.note && (
+                    <p className="f-thai text-xs italic truncate mb-1" style={{ color: T.inkSoft }}>📝 {s.note}</p>
+                  )}
+
+                  {/* Actions row — Note / เช็คอินแล้ว / อัปโหลดเอกสาร / ดูเอกสาร grouped together */}
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5">
                     <button onClick={() => openNoteModal(s)}
                       className="press f-thai text-[11px] font-semibold rounded-lg px-2 py-1 whitespace-nowrap"
                       style={{ border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
                       {s.note ? `✏️ ${t('ci_edit_note')}` : `📝 ${t('ci_add_note')}`}
                     </button>
-                  </div>
 
-                  {/* Check-in / No-show / Checkout / Cancel — arriving-today only */}
-                  {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      {/* ยังไม่เช็คอิน */}
-                      {!isCheckedIn && !isNoShow && isViewingToday && (
-                        <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
-                          onClick={() => markCheckedIn(s.resId)}
-                          className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-                          style={{ background: T.sage, color: '#fff' }}>
-                          ✅ {t('ci_checkin_tm30')}
-                        </a>
-                      )}
-                      {!isCheckedIn && !isNoShow && !isViewingToday && (
-                        <span className="f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
-                          ⏳ {t('ci_checkin_tm30')}
-                        </span>
-                      )}
-                      {/* เช็คอินแล้ว — badge (ปุ่ม checkout อยู่ที่มุมขวาบนแล้ว) */}
-                      {isCheckedIn && (
-                        <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
-                          ✅ {t('ci_checked_in_done')}
-                        </span>
-                      )}
-                      {/* No show — badge */}
-                      {isNoShow && (
-                        <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
-                          ⚠️ {t('ci_no_show')}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                    {/* Check-in / No-show — arriving-today only */}
+                    {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
+                      <>
+                        {!isCheckedIn && !isNoShow && isViewingToday && (
+                          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+                            onClick={() => markCheckedIn(s.resId)}
+                            className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                            style={{ background: T.sage, color: '#fff' }}>
+                            ✅ {t('ci_checkin_tm30')}
+                          </a>
+                        )}
+                        {!isCheckedIn && !isNoShow && !isViewingToday && (
+                          <span className="f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+                            ⏳ {t('ci_checkin_tm30')}
+                          </span>
+                        )}
+                        {/* เช็คอินแล้ว — badge */}
+                        {isCheckedIn && (
+                          <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.sageTint, color: T.sage, border: `1px solid ${T.sage}30` }}>
+                            ✅ {t('ci_checked_in_done')}
+                          </span>
+                        )}
+                        {/* No show — badge */}
+                        {isNoShow && (
+                          <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+                            ⚠️ {t('ci_no_show')}
+                          </span>
+                        )}
+                      </>
+                    )}
 
-                  {/* Checked out badge */}
-                  {isCheckedOut && (
-                    <div className="mb-3">
+                    {/* Checked out badge */}
+                    {isCheckedOut && (
                       <span className="f-thai inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.brassPale, color: T.brassDeep, border: `1px solid ${T.hairGold}` }}>
                         🧳 {t('ci_checked_out_done')}
                       </span>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Upload + doc list */}
-                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    {/* Upload + doc list */}
                     <button
                       disabled={isUploading}
                       onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
@@ -1636,7 +1635,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
                 {/* Checkout details (for checkout-today only) */}
                 {s.status === 'checking-out-today' && co && (
-                  <div className="f-thai mx-4 mb-3 p-2.5 rounded-xl text-[11px] space-y-0.5" style={{ background: T.bone, color: T.inkSoft }}>
+                  <div className="f-thai mx-4 mb-2 p-2.5 rounded-xl text-[11px] space-y-0.5" style={{ background: T.bone, color: T.inkSoft }}>
                     {co.cleanedBy   && <div>🧹 {t('ci_cleaned_by')}: <span style={{ color: T.ink }}>{co.cleanedBy}</span></div>}
                     {co.inspectedBy && <div>👁️ {t('ci_inspected_by')}: <span style={{ color: T.ink }}>{co.inspectedBy}</span></div>}
                     {co.issues      && <div>⚠️ <span style={{ color: T.brassDeep }}>{co.issues}</span></div>}
