@@ -1537,7 +1537,10 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     const ci = fmtDate(s.checkin);
                     const co2 = fmtDate(s.checkout);
                     const isCheckoutToday = s.status === 'checking-out-today';
-                    const canEditCheckout = isViewingToday && !isCancelled && !isCheckedOut && (s.status === 'checked-in' || s.status === 'checking-out-today');
+                    // แก้ไขวันเช็คเอาท์ได้ทุกสถานะ (arriving-soon / arriving-today /
+                    // checked-in / checking-out-today) ยกเว้นการจองที่ยกเลิกแล้ว
+                    // หรือเช็คเอาท์ไปแล้ว — และเฉพาะตอนดูวันนี้จริง (ไม่ใช่ preview วันอื่น)
+                    const canEditCheckout = isViewingToday && !isCancelled && !isCheckedOut;
                     return (
                       <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
                         <div className="flex-1 px-3 py-2">
