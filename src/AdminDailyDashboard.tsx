@@ -599,11 +599,16 @@ export default function AdminDailyDashboard() {
     const results = await sbGet('users',
       `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
     setAuthLoading(false);
-    if (!results || results.length === 0) { alert(t('adm_alert_wrong_credentials')); return; }
+    if (!results || results.length === 0) {
+      sbInsert('login_log', { username, success: false, reason: 'wrong_credentials', ip: currentIP });
+      alert(t('adm_alert_wrong_credentials')); return;
+    }
     const matched: User = results[0];
     if (matched.role === 'employee' && !isOfficeNow && !isExempt) {
+      sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: false, reason: 'ip_denied', ip: currentIP });
       alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
     }
+    sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: true, ip: currentIP });
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
   };
 
