@@ -24,6 +24,39 @@ async function sbSave(key: string, value: unknown) {
   });
 }
 
+// ── stock audit log ─────────────────────────────────────────────────────
+interface StockAuditEntry { item_name:string; old_qty:number|null; new_qty:number|null; unit:string; note:string }
+async function sbLogStockChanges(entries: StockAuditEntry[]) {
+  if (!entries.length) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/stock_audit_log`, {
+      method: 'POST', headers: SB_HDR,
+      body: JSON.stringify(entries),
+    });
+  } catch {}
+}
+function diffStock(prev: { id:number; name:string; qty:number; unit:string; note:string }[], next: typeof prev): StockAuditEntry[] {
+  const prevMap = new Map(prev.map(r => [r.id, r]));
+  const nextMap = new Map(next.map(r => [r.id, r]));
+  const entries: StockAuditEntry[] = [];
+  for (const [id, n] of nextMap) {
+    const p = prevMap.get(id);
+    if (!p) {
+      entries.push({ item_name: n.name, old_qty: null, new_qty: n.qty, unit: n.unit, note: 'added' });
+    } else if (p.qty !== n.qty || p.name !== n.name || p.unit !== n.unit || p.note !== n.note) {
+      const parts: string[] = [];
+      if (p.name !== n.name) parts.push(`name: ${p.name} -> ${n.name}`);
+      if (p.unit !== n.unit) parts.push(`unit: ${p.unit} -> ${n.unit}`);
+      if (p.note !== n.note) parts.push(`note: ${p.note || '-'} -> ${n.note || '-'}`);
+      entries.push({ item_name: n.name, old_qty: p.qty, new_qty: n.qty, unit: n.unit, note: parts.join('; ') });
+    }
+  }
+  for (const [id, p] of prevMap) {
+    if (!nextMap.has(id)) entries.push({ item_name: p.name, old_qty: p.qty, new_qty: null, unit: p.unit, note: 'deleted' });
+  }
+  return entries;
+}
+
 const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
 type WCat = typeof W_CATS[number];
 
@@ -272,6 +305,9 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
     {id:23,name:'หลอดไฟ LED',     qty:8,  unit:'ดวง',  note:'ขนาดปกติ 7 / เล็ก 2'},
   ]);
   const [nextSId, setNextSId] = useState(26);
+  // Snapshot of the last-known-saved stock state, used to diff against on save
+  // so we can write per-item audit log entries instead of just overwriting the blob.
+  const stockSnapshotRef = useRef<StockItem[]>(stockData);
   const [showStockModal, setShowStockModal] = useState(false);
   const [newStock, setNewStock] = useState({name:'',qty:0,unit:'',note:''});
 
@@ -481,6 +517,13 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
     setTimeout(() => setSaved(''), 2500);
   }, []);
 
+  const saveStock = useCallback(async () => {
+    const entries = diffStock(stockSnapshotRef.current, stockData);
+    await sbLogStockChanges(entries);
+    stockSnapshotRef.current = stockData;
+    await doSave('stock_data', stockData);
+  }, [stockData, doSave]);
+
   useEffect(() => {
     sbLoad('stock_data').then(d => {
       if (!d) return;
@@ -490,6 +533,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
       );
       const fixed = dedupeIds(migrated);
       setStockData(fixed);
+      stockSnapshotRef.current = fixed;
       if (fixed.length) setNextSId(Math.max(...fixed.map(r => r.id)) + 1);
       if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
     });
@@ -608,7 +652,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
             </h2>
             <div className="flex gap-2">
               <button onClick={()=>setShowStockModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
-              <button onClick={()=>doSave('stock_data', stockData)}
+              <button onClick={saveStock}
                 className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('stock_data')}>
                 {saving==='stock_data'?'...' : saved==='stock_data'?t('sp_saved') : t('sp_save')}
               </button>
