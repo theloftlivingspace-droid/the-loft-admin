@@ -41,9 +41,8 @@ export function FoilRule() {
 }
 
 export const fontImports = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
-  .f-display { font-family: 'Cormorant Garamond', 'Prompt', serif; }
-  .f-thai { font-family: 'Prompt', sans-serif; }
+  .f-display { font-family: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', sans-serif; letter-spacing: -0.01em; }
+  .f-thai { font-family: 'IBM Plex Sans Thai', sans-serif; }
   .f-num { font-family: 'Work Sans', sans-serif; font-variant-numeric: tabular-nums; }
   .tabular { font-variant-numeric: tabular-nums; }
   .eyebrow { text-transform: uppercase; letter-spacing: 0.06em; }
