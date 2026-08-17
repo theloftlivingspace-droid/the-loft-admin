@@ -41,7 +41,7 @@ export function FoilRule() {
 }
 
 export const fontImports = `
-  .f-display { font-family: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', sans-serif; letter-spacing: -0.01em; }
+  .f-display { font-family: 'Bricolage Grotesque', 'IBM Plex Sans Thai', sans-serif; letter-spacing: -0.01em; }
   .f-thai { font-family: 'IBM Plex Sans Thai', sans-serif; }
   .f-num { font-family: 'Work Sans', sans-serif; font-variant-numeric: tabular-nums; }
   .tabular { font-variant-numeric: tabular-nums; }
