@@ -41,7 +41,6 @@ export function FoilRule() {
 }
 
 export const fontImports = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
   .f-display { font-family: 'Cormorant Garamond', 'Prompt', serif; }
   .f-thai { font-family: 'Prompt', sans-serif; }
   .f-num { font-family: 'Work Sans', sans-serif; font-variant-numeric: tabular-nums; }
