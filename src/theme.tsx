@@ -41,8 +41,8 @@ export function FoilRule() {
 }
 
 export const fontImports = `
-  .f-display { font-family: 'Playfair Display', 'Noto Serif Thai', serif; }
-  .f-thai { font-family: 'Noto Serif Thai', serif; }
+  .f-display { font-family: 'Manrope', 'IBM Plex Sans Thai', sans-serif; letter-spacing: -0.01em; }
+  .f-thai { font-family: 'IBM Plex Sans Thai', sans-serif; }
   .f-num { font-family: 'Work Sans', sans-serif; font-variant-numeric: tabular-nums; }
   .tabular { font-variant-numeric: tabular-nums; }
   .eyebrow { text-transform: uppercase; letter-spacing: 0.06em; }

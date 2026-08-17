@@ -4,7 +4,7 @@
 
 @layer base {
   html, body {
-    font-family: 'Noto Serif Thai', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   }
 }
 
