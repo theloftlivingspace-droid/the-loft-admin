@@ -240,26 +240,31 @@ const STATUS_CONFIG = {
 // Static — room numbers/types don't change at runtime. Used to render the
 // always-complete room-status grid (unlike `stays`, which only contains
 // rooms that currently have a booking record).
-// Ordered alphabetically by room type (2026-08-21) so the grid below renders
-// as 2 tidy rows of 8, grouped by type instead of in room-number order.
+// Column-major order (2026-08-22): with grid-cols-8 below, each pair of
+// entries 8 apart lands in the same column, stacking same-type rooms
+// top/bottom. Column 5 (Luxury/Retro) is the one exception — those two
+// types have only 1 room each, so they share a column instead of getting
+// their own.
 const ROOM_LIST: { num: string; type: string }[] = [
+  // Row 1
   { num: '203', type: 'Allure' },
-  { num: '205', type: 'Allure' },
   { num: '103', type: 'Elegance' },
-  { num: '204', type: 'Elegance' },
-  { num: '105', type: 'Emerald' },
-  { num: '211', type: 'Emerald' },
+  { num: '209', type: 'Radiance' },
   { num: '113', type: 'Legacy' },
-  { num: '214', type: 'Legacy' },
   { num: '300', type: 'Luxury' },
   { num: '104', type: 'Noir' },
-  { num: '207', type: 'Noir' },
-  { num: '209', type: 'Radiance' },
-  { num: '210', type: 'Radiance' },
-  { num: '108', type: 'Retro' },
+  { num: '105', type: 'Emerald' },
   // Added 2026-08-21 — under renovation, forced "closed" via
   // MANUALLY_CLOSED_ROOMS below until they're ready to sell (~pre-Oct 2026).
   { num: '112', type: 'Rhythm' },
+  // Row 2
+  { num: '205', type: 'Allure' },
+  { num: '204', type: 'Elegance' },
+  { num: '210', type: 'Radiance' },
+  { num: '214', type: 'Legacy' },
+  { num: '108', type: 'Retro' },
+  { num: '207', type: 'Noir' },
+  { num: '211', type: 'Emerald' },
   { num: '208', type: 'Rhythm' },
 ];
 
