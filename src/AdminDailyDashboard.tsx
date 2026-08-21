@@ -865,7 +865,7 @@ export default function AdminDailyDashboard() {
             <div className="flex md:hidden items-center justify-between gap-1.5 mt-2.5">
               <span className="f-thai" style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
                 {(() => {
-                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stock: t('tab_stock'), parking: t('tab_parking'), users: t('adm_tab_users'), revenue: t('tab_revenue') } as Record<string, string>;
+                  const activeLabel = { dashboard: t('tab_dashboard'), todo: t('tab_booking'), checkinout: t('tab_checkinout'), stock: t('tab_stock'), parking: t('tab_parking'), users: t('adm_tab_users'), revenue: t('tab_revenue'), calendar: t('tab_calendar') } as Record<string, string>;
                   return activeLabel[adminTab] || '';
                 })()}
               </span>
