@@ -257,7 +257,7 @@ export default function CalendarView() {
             {ROOM_GROUPS.map(group => (
               <div key={group.label}>
                 <div className="f-thai text-xs font-bold px-3 py-1.5" style={{ background: T.navyTint, color: T.navy }}>
-                  {lang === 'th' ? group.labelTh : group.label}
+                  {group.label}
                 </div>
                 {group.rooms.map(room => {
                   const roomStays = stayByRoom[room.num] || [];
