@@ -16,13 +16,13 @@ const DAYS_COUNT = 21;
 
 // ─── Physical room list (all 10 units), grouped exactly like the property
 // sections shown in Little Hotelier's own calendar ───────────────────────────
-const ROOM_GROUPS: { label: string; rooms: { num: string; type: string }[] }[] = [
-  { label: 'The Loft Elegance Living Space', rooms: [{ num: '103', type: 'Elegance' }, { num: '204', type: 'Elegance' }] },
-  { label: 'The Loft Allure Living Space',   rooms: [{ num: '203', type: 'Allure' },   { num: '205', type: 'Allure' }] },
-  { label: 'The Loft Legacy Living Space',   rooms: [{ num: '113', type: 'Legacy' },   { num: '214', type: 'Legacy' }] },
-  { label: 'The Loft Radiance Living Space', rooms: [{ num: '209', type: 'Radiance' }, { num: '210', type: 'Radiance' }] },
-  { label: 'The Loft Retro Living Space',    rooms: [{ num: '108', type: 'Retro' }] },
-  { label: 'The Loft Luxury Living Space',   rooms: [{ num: '300', type: 'Luxury' }] },
+const ROOM_GROUPS: { label: string; labelTh: string; rooms: { num: string; type: string }[] }[] = [
+  { label: 'The Loft Elegance Living Space', labelTh: 'เดอะลอฟท์ เอเลแกนซ์', rooms: [{ num: '103', type: 'Elegance' }, { num: '204', type: 'Elegance' }] },
+  { label: 'The Loft Allure Living Space',   labelTh: 'เดอะลอฟท์ อัลลัวร์',   rooms: [{ num: '203', type: 'Allure' },   { num: '205', type: 'Allure' }] },
+  { label: 'The Loft Legacy Living Space',   labelTh: 'เดอะลอฟท์ เลกาซี',    rooms: [{ num: '113', type: 'Legacy' },   { num: '214', type: 'Legacy' }] },
+  { label: 'The Loft Radiance Living Space', labelTh: 'เดอะลอฟท์ เรเดียนซ์', rooms: [{ num: '209', type: 'Radiance' }, { num: '210', type: 'Radiance' }] },
+  { label: 'The Loft Retro Living Space',    labelTh: 'เดอะลอฟท์ เรโทร',     rooms: [{ num: '108', type: 'Retro' }] },
+  { label: 'The Loft Luxury Living Space',   labelTh: 'เดอะลอฟท์ ลักซ์ชัวรี่', rooms: [{ num: '300', type: 'Luxury' }] },
 ];
 
 // ─── OTA colour accents — matches otaTheme() in BookingInvoiceTodo.tsx so a
@@ -232,7 +232,7 @@ export default function CalendarView() {
             {ROOM_GROUPS.map(group => (
               <div key={group.label}>
                 <div className="f-thai text-xs font-bold px-3 py-1.5" style={{ background: T.navyTint, color: T.navy }}>
-                  {group.label}
+                  {lang === 'th' ? group.labelTh : group.label}
                 </div>
                 {group.rooms.map(room => {
                   const roomStays = stayByRoom[room.num] || [];

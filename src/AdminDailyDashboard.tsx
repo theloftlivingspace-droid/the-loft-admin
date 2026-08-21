@@ -297,7 +297,7 @@ export default function AdminDailyDashboard() {
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
   const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>>(
-    ['dashboard', 'checkinout', 'stock', 'parking', 'calendar']
+    ['dashboard', 'checkinout', 'calendar', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
   // an effect) — must not live after any early `return`, or it'd violate the
@@ -308,7 +308,7 @@ export default function AdminDailyDashboard() {
     const isAdminNow = currentUser?.role === 'admin';
     const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = ['dashboard'];
     if (isAdminNow) order.push('todo', 'revenue');
-    order.push('checkinout', 'stock', 'parking', 'calendar');
+    order.push('checkinout', 'calendar', 'stock', 'parking');
     if (isAdminNow) order.push('users');
     mobileTabOrderRef.current = order;
   }
@@ -902,9 +902,9 @@ export default function AdminDailyDashboard() {
         <div className="flex-shrink-0 hidden md:flex px-6 md:px-8" style={{ borderBottom: `1px solid ${T.hair}` }}>
           {([
             { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
+            { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
             { key: 'stock' as const,      Icon: Package,         label: t('tab_stock') },
             { key: 'parking' as const,    Icon: Car,             label: t('tab_parking') },
-            { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
             { key: 'etc' as const,        Icon: MoreHorizontal,  label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} title={m.label} aria-label={m.label}
@@ -930,9 +930,9 @@ export default function AdminDailyDashboard() {
           }}>
           {([
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
             { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
             { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
-            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
             { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
