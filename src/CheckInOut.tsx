@@ -1090,6 +1090,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       const list: Stay[] = [];
 
       for (const row of json.stays) {
+        // ข้ามแถวที่ถูกยกเลิกแล้ว (getRoomStatus_() ส่ง room string ดิบมา
+        // เช่น "203 ยกเลิก" โดยไม่กรองทิ้ง) — ไม่งั้นการ์ด arriving-soon /
+        // arriving-today / room-grid จะยังโผล่ทั้งที่ cancelBooking_() (manual
+        // หรือ auto จาก CancellationEmailWatcher.gs) อัปเดต Sheet1 ไปแล้ว.
+        // ใช้ pattern เดียวกับ isCxl เช็คที่ manual-search panel ด้านล่าง.
+        if (/ยกเลิก|cancel/i.test(row.room || '')) continue;
         const ciStr = (row.checkin || '').substring(0, 10);
         const coStr = (row.checkout || '').substring(0, 10);
         if (!ciStr || !coStr) continue;
