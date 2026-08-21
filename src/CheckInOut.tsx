@@ -271,12 +271,12 @@ type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
 // Summary KPI row above, rather than the solid saturated blocks used before.
 const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
-  vacant:          { bg: '#E7E9ED', fg: '#5B6472' },
-  occupied:        { bg: T.sageTint,  fg: T.sage },
-  'checkout-today':{ bg: T.wineTint,  fg: T.wine },
-  'needs-cleaning':{ bg: T.plumTint,  fg: T.plum },
-  'arriving-today':{ bg: T.brassPale, fg: T.brassDeep },
-  'arriving-soon': { bg: T.navyTint,  fg: T.navy },
+  vacant:          { bg: '#D9DCE3', fg: '#5B6472' },
+  occupied:        { bg: '#C2DACA',  fg: T.sage },
+  'checkout-today':{ bg: '#E4BDC3',  fg: T.wine },
+  'needs-cleaning':{ bg: '#D1C4DF',  fg: T.plum },
+  'arriving-today':{ bg: '#EEDCB2', fg: T.brassDeep },
+  'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
 };
 
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
@@ -1417,11 +1417,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const isNoShow     = s.status === 'arriving-today' && s.checkin < refDate && !isCheckedIn && !isCheckedOut;
 
             // สี: cancelled=แดง(wine) | checkedOut=ทองเข้ม | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
-            const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: T.wineTint }
-                             : isCheckedOut              ? { border: `1px solid ${T.brassDeep}40`, background: T.brassPale }
-                             : isCheckedIn               ? { border: `1px solid ${T.sage}40`, background: T.sageTint }
+            const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: '#E4BDC3' }
+                             : isCheckedOut              ? { border: `1px solid ${T.brassDeep}40`, background: '#EEDCB2' }
+                             : isCheckedIn               ? { border: `1px solid ${T.sage}40`, background: '#C2DACA' }
                              : isNoShow                  ? { border: `1px solid ${T.hair}`, background: T.bone }
-                             : s.status==='arriving-soon'? { border: `1px solid ${T.navy}30`, background: T.navyTint }
+                             : s.status==='arriving-soon'? { border: `1px solid ${T.navy}30`, background: '#BAC4D6' }
                                                          : { border: `1px solid ${T.hair}`, background: T.card };
             const topBarBg     = isCancelled  ? T.wine
                                 : isCheckedOut ? T.brassDeep
@@ -1781,10 +1781,10 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       )}
       <div className="grid grid-cols-5 gap-2 mb-5">
         {[
-          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: T.sageTint, fg: T.sage },
-          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: T.wineTint, fg: T.wine },
-          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: T.brassPale, fg: T.brassDeep },
-          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: T.navyTint, fg: T.navy },
+          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: '#C2DACA', fg: T.sage },
+          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: '#E4BDC3', fg: T.wine },
+          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: '#EEDCB2', fg: T.brassDeep },
+          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: '#BAC4D6', fg: T.navy },
           { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
         ].map(k => (
           <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
