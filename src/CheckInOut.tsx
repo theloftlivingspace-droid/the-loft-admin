@@ -251,21 +251,39 @@ const ROOM_LIST: { num: string; type: string }[] = [
   { num: '214', type: 'Legacy' },
   { num: '209', type: 'Radiance' },
   { num: '210', type: 'Radiance' },
+  // Added 2026-08-21 — under renovation, forced "closed" via
+  // MANUALLY_CLOSED_ROOMS below until they're ready to sell (~pre-Oct 2026).
+  { num: '112', type: 'Rhythm' },
+  { num: '208', type: 'Rhythm' },
+  { num: '105', type: 'Emerald' },
+  { num: '211', type: 'Emerald' },
+  { num: '104', type: 'Noir' },
+  { num: '207', type: 'Noir' },
 ];
 
-type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'needs-cleaning' | 'arriving-today' | 'arriving-soon';
+// Rooms forced to show "closed" on the grid regardless of booking/checkout
+// data — e.g. mid-renovation rooms with no stays or housekeeping logs to
+// derive a status from. Remove a room's number from this set once it's
+// ready to go back on sale.
+const MANUALLY_CLOSED_ROOMS = new Set<string>(['112', '208', '105', '211', '104', '207']);
+
+type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'closed' | 'arriving-today' | 'arriving-soon';
 
 // Reuses the exact same colors already used elsewhere in this file:
 // occupied      → same green as the "checked-in" status card (STATUS_CONFIG)
 // checkout-today→ same wine/red as the "checking-out-today" status card
-// needs-cleaning→ dedicated plum/purple — brass was tried first but that's
+// closed        → dedicated plum/purple — brass was tried first but that's
 //                  also the color of the "arriving today" KPI card just
 //                  above the grid, so a gold room tile read as "arriving
-//                  today" at a glance instead of "needs cleaning"
+//                  today" at a glance instead of "closed". Covers both a
+//                  room mid-renovation (manually forced, see
+//                  MANUALLY_CLOSED_ROOMS below) and an uninspected checkout
+//                  still awaiting housekeeping — both render identically as
+//                  "Closed" per 2026-08-21 decision to merge the two states.
 // arriving-today→ brass/gold — matches the "arriving today" KPI card and
-//                  stay-card badge. This used to clash with needs-cleaning
-//                  when needs-cleaning was also brass; now that needs-
-//                  cleaning is plum, brass is free for this again.
+//                  stay-card badge. This used to clash with closed when
+//                  closed was also brass; now that closed is plum, brass is
+//                  free for this again.
 // arriving-soon → same navy tint used for "arriving-soon" stay cards below
 // vacant        → neutral gray (no matching status color exists for "nothing going on")
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
@@ -274,7 +292,7 @@ const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
   vacant:          { bg: '#D9DCE3', fg: '#5B6472' },
   occupied:        { bg: '#C2DACA',  fg: T.sage },
   'checkout-today':{ bg: '#E4BDC3',  fg: T.wine },
-  'needs-cleaning':{ bg: '#D1C4DF',  fg: T.plum },
+  'closed':        { bg: '#D1C4DF',  fg: T.plum },
   'arriving-today':{ bg: '#EEDCB2', fg: T.brassDeep },
   'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
 };
@@ -1315,7 +1333,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     // let a lower-priority status (e.g. arriving-soon) stick after a
     // higher-priority one (e.g. needs-cleaning) is found later in the loop.
     const RANK: Record<RoomGridStatus, number> = {
-      vacant: 0, 'arriving-soon': 1, 'arriving-today': 2, 'needs-cleaning': 3, 'checkout-today': 4, occupied: 5,
+      vacant: 0, 'arriving-soon': 1, 'arriving-today': 2, 'closed': 3, 'checkout-today': 4, occupied: 5,
     };
     let status: RoomGridStatus = 'vacant';
     let targetKey: string | null = null;
@@ -1331,7 +1349,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         candidate = 'checkout-today';
       } else if (isCheckedOut) {
         const co = findCoForStay(s, coStatus);
-        if (!co?.inspected) candidate = 'needs-cleaning';
+        if (!co?.inspected) candidate = 'closed';
       } else if (s.status === 'arriving-today') {
         candidate = 'arriving-today';
       } else if (s.status === 'arriving-soon') {
@@ -1350,12 +1368,19 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     // as uninspected — e.g. a blocked/damaged room whose checkout date has
     // aged past the stays window. Without this, such a room silently reverts
     // to "vacant" a day or two after checkout even though it's not sellable.
-    if (RANK[status] < RANK['needs-cleaning']) {
+    if (RANK[status] < RANK['closed']) {
       const latest = latestCoByRoom[room.num];
       if (latest && !latest.inspected) {
-        status = 'needs-cleaning';
+        status = 'closed';
         targetKey = null;
       }
+    }
+
+    // Manual override — always wins, even over an in-progress stay record,
+    // since a room mid-renovation shouldn't show as bookable/occupied.
+    if (MANUALLY_CLOSED_ROOMS.has(room.num)) {
+      status = 'closed';
+      targetKey = null;
     }
 
     return { ...room, status, targetKey };
@@ -1363,8 +1388,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
   function goToRoomCard(targetKey: string | null, roomLabel: string, status?: RoomGridStatus) {
     if (!targetKey) {
-      const msg = status === 'needs-cleaning'
-        ? `ห้อง ${roomLabel} ต้องทำความสะอาด — ไม่มีการ์ดให้เปิด (เช็คเอาท์เกินช่วงที่แสดงในรายการแล้ว)`
+      const msg = status === 'closed'
+        ? `ห้อง ${roomLabel} ปิดปรับปรุง — ไม่มีการ์ดให้เปิด`
         : `ห้อง ${roomLabel} ว่าง — ไม่มีการ์ดให้เปิด`;
       showToast(msg);
       return;
@@ -1802,7 +1827,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             ['vacant', t('ci_legend_vacant')],
             ['occupied', t('ci_legend_occupied')],
             ['checkout-today', t('ci_legend_checkout_today')],
-            ['needs-cleaning', t('ci_legend_needs_cleaning')],
+            ['closed', t('ci_legend_needs_cleaning')],
             ['arriving-today', t('ci_legend_arriving_today')],
             ['arriving-soon', t('ci_legend_arriving_soon')],
           ] as [RoomGridStatus, string][]).map(([key, label]) => (
