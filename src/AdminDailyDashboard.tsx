@@ -270,8 +270,8 @@ export default function AdminDailyDashboard() {
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
   // (labeled) sub-menu, since those pages don't need top-level real estate.
-  const mainSection: 'checkinout' | 'stock' | 'parking' | 'etc' =
-    (adminTab === 'checkinout' || adminTab === 'stock' || adminTab === 'parking') ? adminTab : 'etc';
+  const mainSection: 'checkinout' | 'stock' | 'parking' | 'calendar' | 'etc' =
+    (adminTab === 'checkinout' || adminTab === 'stock' || adminTab === 'parking' || adminTab === 'calendar') ? adminTab : 'etc';
 
   // ── Pull-to-refresh (mobile only) — wired to whichever tab has a manual
   // refresh button (Check-in/out, Booking/Invoice To-Do). Other tabs ignore it.
@@ -297,7 +297,7 @@ export default function AdminDailyDashboard() {
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
   const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>>(
-    ['dashboard', 'checkinout', 'stock', 'parking']
+    ['dashboard', 'checkinout', 'stock', 'parking', 'calendar']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
   // an effect) — must not live after any early `return`, or it'd violate the
@@ -307,8 +307,8 @@ export default function AdminDailyDashboard() {
   {
     const isAdminNow = currentUser?.role === 'admin';
     const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = ['dashboard'];
-    if (isAdminNow) order.push('todo', 'calendar', 'revenue');
-    order.push('checkinout', 'stock', 'parking');
+    if (isAdminNow) order.push('todo', 'revenue');
+    order.push('checkinout', 'stock', 'parking', 'calendar');
     if (isAdminNow) order.push('users');
     mobileTabOrderRef.current = order;
   }
@@ -904,6 +904,7 @@ export default function AdminDailyDashboard() {
             { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
             { key: 'stock' as const,      Icon: Package,         label: t('tab_stock') },
             { key: 'parking' as const,    Icon: Car,             label: t('tab_parking') },
+            { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
             { key: 'etc' as const,        Icon: MoreHorizontal,  label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} title={m.label} aria-label={m.label}
@@ -931,6 +932,7 @@ export default function AdminDailyDashboard() {
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
             { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
             { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
             { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
@@ -951,7 +953,6 @@ export default function AdminDailyDashboard() {
             {([
               { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
-              ...(isAdmin ? [{ key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
@@ -1084,7 +1085,7 @@ export default function AdminDailyDashboard() {
         {isAdmin && adminTab === 'revenue' && (
           <RevenueDashboard />
         )}
-        {isAdmin && adminTab === 'calendar' && (
+        {adminTab === 'calendar' && (
           <CalendarView />
         )}
 
