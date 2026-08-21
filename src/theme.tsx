@@ -52,4 +52,12 @@ export const fontImports = `
   .press { transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease; }
   @media (prefers-reduced-motion: reduce) { .press { transition: none; } }
   .focus-ring:focus-visible { outline: 2px solid ${T.brass}; outline-offset: 2px; }
+  /* Visible, thin horizontal scrollbar — used where a hidden scrollbar would
+     leave mouse-only users with no way to discover/grab it (e.g. the booking
+     calendar's day grid). */
+  .cal-hscroll { scrollbar-width: thin; scrollbar-color: ${T.brass} transparent; }
+  .cal-hscroll::-webkit-scrollbar { height: 10px; }
+  .cal-hscroll::-webkit-scrollbar-track { background: transparent; }
+  .cal-hscroll::-webkit-scrollbar-thumb { background: ${T.brass}; border-radius: 6px; }
+  .cal-hscroll::-webkit-scrollbar-thumb:hover { background: ${T.brassDeep}; }
 `;

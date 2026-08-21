@@ -134,6 +134,27 @@ export default function CalendarView() {
   const totalW = LABEL_W + DAYS_COUNT * CELL_W;
   const todayIdx = diffDays(startDate, today());
 
+  // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
+  // The grid can be wider than the screen; besides native touch/trackpad
+  // scrolling, desktop mouse users can click-drag the grid itself to pan
+  // horizontally (the scrollbar is also left visible as a fallback — see
+  // the `cal-hscroll` class).
+  const dragState = useRef<{ active: boolean; startX: number; startLeft: number }>({ active: false, startX: 0, startLeft: 0 });
+  function onDragStart(e: React.MouseEvent<HTMLDivElement>) {
+    // Ignore drags starting on an interactive element (a booking bar button).
+    if ((e.target as HTMLElement).closest('button')) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    dragState.current = { active: true, startX: e.clientX, startLeft: el.scrollLeft };
+  }
+  function onDragMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!dragState.current.active) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollLeft = dragState.current.startLeft - (e.clientX - dragState.current.startX);
+  }
+  function endDrag() { dragState.current.active = false; }
+
   return (
     <div>
       {/* Header controls */}
@@ -204,11 +225,15 @@ export default function CalendarView() {
       ) : (
         <div
           ref={scrollRef}
-          className="rounded-2xl loft-scroll"
-          style={{ border: `1px solid ${T.hair}`, background: T.card, overflow: 'auto', maxHeight: 'calc(100vh - 320px)' }}
+          className="rounded-2xl cal-hscroll"
+          onMouseDown={onDragStart}
+          onMouseMove={onDragMove}
+          onMouseUp={endDrag}
+          onMouseLeave={endDrag}
+          style={{ border: `1px solid ${T.hair}`, background: T.card, overflowX: 'auto', overflowY: 'visible', cursor: 'grab' }}
         >
           <div style={{ width: totalW, minWidth: totalW }}>
-            {/* Header row: sticky top */}
+            {/* Header row: sticky top (relative to the page's own scroll area) */}
             <div className="flex" style={{ position: 'sticky', top: 0, zIndex: 20, background: T.card }}>
               <div style={{ width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 30, background: T.card, borderBottom: `1px solid ${T.hair}`, borderRight: `1px solid ${T.hair}` }} />
               {days.map((d, i) => {
