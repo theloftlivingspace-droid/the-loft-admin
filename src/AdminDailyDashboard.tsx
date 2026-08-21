@@ -915,8 +915,17 @@ export default function AdminDailyDashboard() {
           ))}
         </div>
 
-        {/* Mobile bottom tab bar (below md) — fixed at bottom of screen, 4 icon-only entries */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex pb-safe" style={{ background: T.card, borderTop: `1px solid ${T.hair}` }}>
+        {/* Mobile bottom tab bar (below md) — floating island, detached from screen edges */}
+        <div
+          className="fixed left-4 right-4 z-50 md:hidden flex items-center justify-around rounded-[26px]"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+            background: T.card,
+            border: `1px solid ${T.hair}`,
+            boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          }}>
           {([
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
             { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
@@ -925,9 +934,12 @@ export default function AdminDailyDashboard() {
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
               onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex-1 flex flex-col items-center justify-center py-3 gap-1 min-w-0 relative">
-              <m.Icon size={22} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-              <span style={{ width: 21, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
+              className="press focus-ring flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-w-0 relative">
+              <div className="flex items-center justify-center rounded-full transition-all"
+                style={{ width: 40, height: 30, background: mainSection === m.key ? T.navyTint : 'transparent' }}>
+                <m.Icon size={21} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+              </div>
+              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
@@ -958,7 +970,7 @@ export default function AdminDailyDashboard() {
         {/* Scrollable content */}
         <div
           ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto px-4 md:px-8 pb-24 md:pb-8 pt-4 md:pt-6"
+          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 md:pb-8 pt-4 md:pt-6"
           onTouchStart={handlePtrTouchStart}
           onTouchMove={handlePtrTouchMove}
           onTouchEnd={handlePtrTouchEnd}
