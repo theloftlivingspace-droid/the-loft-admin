@@ -22,9 +22,23 @@ const DICT: Record<string, { th: string; en: string }> = {
   tab_parking:          { th: 'Parking', en: 'Parking' },
   tab_etc:              { th: 'อื่นๆ', en: 'Etc' },
   tab_revenue:          { th: 'สรุปรายรับ', en: 'Revenue' },
+  tab_calendar:         { th: 'ปฏิทิน', en: 'Calendar' },
   notif_booking_invoice:{ th: 'booking รอเพิ่ม', en: 'bookings pending' },
   notif_invoice_pending:{ th: 'invoice รอสร้าง', en: 'invoices pending' },
   notif_low_stock:      { th: 'รายการสต๊อกต่ำกว่าขั้นต่ำ', en: 'items below min stock' },
+
+  // ── CalendarView.tsx ──
+  cal_title:            { th: 'ปฏิทินการจอง', en: 'Booking Calendar' },
+  cal_refresh:          { th: 'รีเฟรช', en: 'Refresh' },
+  cal_updated:          { th: 'อัปเดต', en: 'Updated' },
+  cal_today:            { th: 'วันนี้', en: 'Today' },
+  cal_load_failed:      { th: 'โหลดข้อมูลปฏิทินไม่สำเร็จ', en: 'Failed to load calendar data' },
+  cal_no_name:          { th: '(ไม่มีชื่อ)', en: '(no name)' },
+  cal_room_word:        { th: 'ห้อง', en: 'Room' },
+  cal_nights:           { th: 'คืน', en: 'nights' },
+  cal_channel:          { th: 'ช่องทาง', en: 'Channel' },
+  cal_res_id:           { th: 'รหัสการจอง', en: 'Booking ID' },
+  cal_close:            { th: 'ปิด', en: 'Close' },
 
   // ── RevenueDashboard.tsx ──
   rev_title:            { th: '📊 สรุปยอดรายรับ', en: '📊 Revenue Summary' },

@@ -4,10 +4,11 @@ import CheckInOut, { type CheckInOutHandle } from './CheckInOut';
 import StockParking from './StockParking';
 import UserManagement from './UserManagement';
 import RevenueDashboard from './RevenueDashboard';
+import CalendarView from './CalendarView';
 import { useLang } from './LanguageContext';
 import { T, FoilRule, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -264,7 +265,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>('checkinout');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
@@ -295,7 +296,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>>(
     ['dashboard', 'checkinout', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -305,8 +306,8 @@ export default function AdminDailyDashboard() {
   // derive without depending on the later `isAdmin` const.
   {
     const isAdminNow = currentUser?.role === 'admin';
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue'> = ['dashboard'];
-    if (isAdminNow) order.push('todo', 'revenue');
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = ['dashboard'];
+    if (isAdminNow) order.push('todo', 'calendar', 'revenue');
     order.push('checkinout', 'stock', 'parking');
     if (isAdminNow) order.push('users');
     mobileTabOrderRef.current = order;
@@ -950,6 +951,7 @@ export default function AdminDailyDashboard() {
             {([
               { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
+              ...(isAdmin ? [{ key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
@@ -1081,6 +1083,9 @@ export default function AdminDailyDashboard() {
         )}
         {isAdmin && adminTab === 'revenue' && (
           <RevenueDashboard />
+        )}
+        {isAdmin && adminTab === 'calendar' && (
+          <CalendarView />
         )}
 
         {/* Dashboard Tab */}
