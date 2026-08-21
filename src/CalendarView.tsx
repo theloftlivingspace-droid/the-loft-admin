@@ -29,11 +29,11 @@ const ROOM_GROUPS: { label: string; labelTh: string; rooms: { num: string; type:
 // channel reads the same color everywhere in the app ─────────────────────────
 function channelAccent(channel: string): { accent: string; tint: string; label: string } {
   const ch = (channel || '').toLowerCase();
-  if (ch.includes('airbnb'))  return { accent: '#e11d48', tint: '#fff1f2', label: 'Airbnb' };
-  if (ch.includes('booking')) return { accent: '#1d4ed8', tint: '#eff6ff', label: 'Booking.com' };
-  if (ch.includes('expedia')) return { accent: '#b45309', tint: '#fffbeb', label: 'Expedia' };
-  if (ch.includes('trip'))    return { accent: '#16a34a', tint: '#f0fdf4', label: 'Trip.com' };
-  return { accent: '#6b7280', tint: '#f9fafb', label: channel || 'Other' };
+  if (ch.includes('airbnb'))  return { accent: '#e11d48', tint: '#ffd9de', label: 'Airbnb' };
+  if (ch.includes('booking')) return { accent: '#1d4ed8', tint: '#c7ddff', label: 'Booking.com' };
+  if (ch.includes('expedia')) return { accent: '#b45309', tint: '#fde3ad', label: 'Expedia' };
+  if (ch.includes('trip'))    return { accent: '#16a34a', tint: '#c3f5d6', label: 'Trip.com' };
+  return { accent: '#6b7280', tint: '#e2e4e8', label: channel || 'Other' };
 }
 
 interface RawStay {
