@@ -304,6 +304,19 @@ const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
   'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
 };
 
+// Mixes a hex color toward white — used to produce the "dimmed" pastel
+// version of a tile/chip's own color when the legend filter has a different
+// status selected, so unselected rooms stay visible (just quiet) rather
+// than disappearing from the grid.
+function dimToward(hex: string, amount = 0.72): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
 // Reads the whole document image via OCR (general text, not restricted to
 // the MRZ charset) so it still returns something useful even on blurry or
@@ -751,6 +764,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
+  // Room-status grid legend filter — clicking a legend chip highlights only
+  // that status's tiles (full color) and dims every other tile to a pastel
+  // tint, rather than hiding rooms outright. null = no filter, all tiles at
+  // full color. Click the active chip again (or "clear") to reset.
+  const [gridFilter, setGridFilter] = useState<RoomGridStatus | null>(null);
   const [lastRefresh, setLastRefresh] = useState('');
   // Docs keyed by cardKey (resId or roomNum+checkin) — mirrors the Drive folder name "{room}_{checkin}_{resId}"
   const [docs, setDocs]             = useState<Record<string, DocFile[]>>({});
@@ -1827,9 +1845,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         ))}
       </div>
 
-      {/* Room status grid — every physical room, colored by live status */}
+      {/* Room status grid — every physical room, colored by live status.
+          Legend doubles as a filter menu: click a chip to highlight only
+          that status (full color) and dim every other tile to a pastel
+          tint — rooms stay visible, just quieter, so nothing disappears
+          from the grid. Click the active chip again, or "clear", to reset. */}
       <div className="mb-5">
-        <div className="flex items-center gap-3 mb-2 flex-wrap">
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
           {([
             ['vacant', t('ci_legend_vacant')],
             ['occupied', t('ci_legend_occupied')],
@@ -1837,23 +1859,48 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             ['closed', t('ci_legend_needs_cleaning')],
             ['arriving-today', t('ci_legend_arriving_today')],
             ['arriving-soon', t('ci_legend_arriving_soon')],
-          ] as [RoomGridStatus, string][]).map(([key, label]) => (
-            <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
-              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-8 gap-2">
-          {roomGrid.map(r => (
-            <button key={r.num}
-              onClick={() => goToRoomCard(r.targetKey, r.num, r.status)}
-              className="press f-thai rounded-2xl py-2.5 text-center"
-              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
-              <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
-              <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
+          ] as [RoomGridStatus, string][]).map(([key, label]) => {
+            const cfg = ROOM_GRID_CONFIG[key];
+            const isDimmed = gridFilter !== null && gridFilter !== key;
+            const isSelected = gridFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setGridFilter(cur => (cur === key ? null : key))}
+                className="press f-thai flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors"
+                style={{
+                  background: isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg,
+                  color: isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg,
+                  boxShadow: isSelected ? `0 0 0 2px ${T.navy}` : 'none',
+                  opacity: isDimmed ? 0.6 : 1,
+                }}>
+                {label}
+              </button>
+            );
+          })}
+          {gridFilter && (
+            <button onClick={() => setGridFilter(null)}
+              className="f-thai text-[11px] underline ml-1" style={{ color: T.inkSoft }}>
+              {t('ci_legend_clear')}
             </button>
-          ))}
+          )}
+        </div>
+        <div className="grid grid-cols-8 gap-1">
+          {roomGrid.map(r => {
+            const cfg = ROOM_GRID_CONFIG[r.status];
+            const isDimmed = gridFilter !== null && gridFilter !== r.status;
+            const bg = isDimmed ? dimToward(cfg.bg) : cfg.bg;
+            const fg = isDimmed ? dimToward(cfg.fg, 0.55) : cfg.fg;
+            return (
+              <button key={r.num}
+                onClick={() => goToRoomCard(r.targetKey, r.num, r.status)}
+                className="press f-thai rounded-md py-1 px-0.5 text-center overflow-hidden transition-colors"
+                style={{ background: bg, border: `1px solid ${fg}30` }}>
+                <div className="f-num text-[12px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
+                <div className="leading-none truncate w-full mt-0.5" style={{ color: fg, opacity: 0.65, fontSize: '5px' }}>{r.type}</div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

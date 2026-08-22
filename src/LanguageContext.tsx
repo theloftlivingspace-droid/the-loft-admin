@@ -160,6 +160,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_legend_needs_cleaning:{ th: 'ปิดปรับปรุง', en: 'Closed' },
   ci_legend_arriving_soon:{ th: 'กำลังจะเข้า', en: 'Arriving soon' },
   ci_legend_arriving_today:{ th: 'เข้าวันนี้', en: 'Arriving today' },
+  ci_legend_clear:      { th: 'ล้างตัวกรอง', en: 'Clear filter' },
 
   // ── AdminDailyDashboard.tsx ──
   adm_task_reply:        { th: 'ตอบข้อความลูกค้า', en: 'Reply to customer messages' },
