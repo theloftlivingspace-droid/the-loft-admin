@@ -772,23 +772,23 @@ export default function AdminDailyDashboard() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
               <button
                 onClick={() => setLang('th')}
                 className="press focus-ring rounded-full"
-                style={{ padding: '5px 12px', fontSize: 11.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
                 TH
               </button>
               <button
                 onClick={() => setLang('en')}
                 className="press focus-ring rounded-full"
-                style={{ padding: '5px 12px', fontSize: 11.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
                 EN
               </button>
             </div>
             <div
-              className="hidden lg:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium f-thai whitespace-nowrap"
+              className="hidden lg:flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium f-thai whitespace-nowrap"
               style={{
                 background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : T.navyDeep,
                 color: isOfficeNetwork ? '#EAF7EE' : T.brass,
@@ -803,19 +803,19 @@ export default function AdminDailyDashboard() {
               value={reportDate}
               onChange={e => setReportDate(e.target.value)}
               title={t('report_date_label')}
-              className="rounded-full px-3 py-2 text-xs focus-ring"
+              className="rounded-full px-2 py-1 text-[10px] focus-ring"
               style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: '#FFFFFF' }}
             />
             <button
               onClick={handleEnableNotifications}
               title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
               className="press focus-ring flex items-center justify-center rounded-full shrink-0"
-              style={{ width: 34, height: 34, background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-              {pushPerm === 'granted' ? <BellRing size={14} /> : <Bell size={14} />}
+              style={{ width: 26, height: 26, background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+              {pushPerm === 'granted' ? <BellRing size={12} /> : <Bell size={12} />}
             </button>
             <button
               onClick={handleLogout}
-              className="press focus-ring flex items-center gap-1.5 px-4 py-2 rounded-full text-xs f-thai whitespace-nowrap"
+              className="press focus-ring flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] f-thai whitespace-nowrap"
               style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
               {t('logout_btn')}
             </button>

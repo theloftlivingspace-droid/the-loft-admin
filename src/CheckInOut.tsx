@@ -1660,12 +1660,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
                       <>
                         {!isCheckedIn && !isNoShow && isViewingToday && (
-                          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
-                            onClick={() => markCheckedIn(s.resId)}
+                          <button
+                            onClick={() => { markCheckedIn(s.resId); window.open(TM30_URL, '_blank', 'noopener,noreferrer'); }}
                             className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                             style={{ background: T.sage, color: '#fff' }}>
                             ✅ {t('ci_checkin_tm30')}
-                          </a>
+                          </button>
                         )}
                         {!isCheckedIn && !isNoShow && !isViewingToday && (
                           <span className="f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
@@ -1767,11 +1767,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {refDate}</p>
         </div>
         <div className="flex items-center gap-2">
-          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+          <button onClick={() => window.open(TM30_URL, '_blank', 'noopener,noreferrer')}
             className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
             style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
             {t('ci_create_tm30')}
-          </a>
+          </button>
           <button onClick={() => { load(); refreshDocs(); }}
             className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
             style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
