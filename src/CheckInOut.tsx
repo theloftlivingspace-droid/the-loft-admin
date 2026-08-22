@@ -1850,62 +1850,50 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           )}
         </div>
       )}
-      <div className="grid grid-cols-5 gap-2 mb-5">
-        {[
-          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: '#C2DACA', fg: T.sage },
-          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: '#E4BDC3', fg: T.wine },
-          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: '#EEDCB2', fg: T.brassDeep },
-          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: '#BAC4D6', fg: T.navy },
-          { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
-        ].map(k => (
-          <div key={k.label} className="f-thai rounded-xl p-2 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
-            <div className="text-base mb-0.5">{k.icon}</div>
-            <div className="f-num text-lg font-bold">{k.val}</div>
-            <div className="text-[10px] leading-tight mt-0.5">{k.label}</div>
-          </div>
-        ))}
+      {/* KPI cards double as the room-grid filter — no separate legend row
+          needed. Tap a card to highlight only that status in the grid
+          below (full color, everything else dims to a pastel tint); tap
+          the same card again to clear. */}
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {([
+          { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel'),            val: kpiCounts.checkedin, icon: '🛏️' },
+          { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today'),  val: kpiCounts.checkouts, icon: '🧳' },
+          { key: 'arriving-today' as RoomGridStatus, label: t('ci_arriving_today'),      val: kpiCounts.today_ci,  icon: '📥' },
+          { key: 'arriving-soon' as RoomGridStatus,  label: t('ci_arriving_soon'),       val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅' },
+          { key: 'vacant' as RoomGridStatus,         label: t('ci_kpi_vacant'),          val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪' },
+          { key: 'closed' as RoomGridStatus,         label: t('ci_kpi_closed'),          val: roomGrid.filter(r => r.status === 'closed').length, icon: '🔧' },
+        ]).map(k => {
+          const cfg = ROOM_GRID_CONFIG[k.key];
+          const isSelected = gridFilter === k.key;
+          const isDimmed = gridFilter !== null && !isSelected;
+          const bg = isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg;
+          const fg = isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg;
+          return (
+            <button key={k.key}
+              onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
+              className="press f-thai rounded-xl p-2 text-center transition-colors"
+              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
+              <div className="text-base mb-0.5">{k.icon}</div>
+              <div className="f-num text-lg font-bold">{k.val}</div>
+              <div className="text-[10px] leading-tight mt-0.5">{k.label}</div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Room status grid — every physical room, colored by live status.
-          Legend doubles as a filter menu: click a chip to highlight only
-          that status (full color) and dim every other tile to a pastel
-          tint — rooms stay visible, just quieter, so nothing disappears
-          from the grid. Click the active chip again, or "clear", to reset. */}
+          Filtered via the KPI cards above: the selected status shows full
+          color, everything else dims to a pastel tint — rooms stay
+          visible, just quieter, so nothing disappears from the grid. */}
       <div className="mb-5">
-        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-          {([
-            ['vacant', t('ci_legend_vacant')],
-            ['occupied', t('ci_legend_occupied')],
-            ['checkout-today', t('ci_legend_checkout_today')],
-            ['closed', t('ci_legend_needs_cleaning')],
-            ['arriving-today', t('ci_legend_arriving_today')],
-            ['arriving-soon', t('ci_legend_arriving_soon')],
-          ] as [RoomGridStatus, string][]).map(([key, label]) => {
-            const cfg = ROOM_GRID_CONFIG[key];
-            const isDimmed = gridFilter !== null && gridFilter !== key;
-            const isSelected = gridFilter === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setGridFilter(cur => (cur === key ? null : key))}
-                className="press f-thai flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors"
-                style={{
-                  background: isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg,
-                  color: isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg,
-                  boxShadow: isSelected ? `0 0 0 2px ${T.navy}` : 'none',
-                  opacity: isDimmed ? 0.6 : 1,
-                }}>
-                {label}
-              </button>
-            );
-          })}
-          {gridFilter && (
+        {gridFilter && (
+          <div className="flex items-center justify-end mb-1.5">
             <button onClick={() => setGridFilter(null)}
-              className="f-thai text-[11px] underline ml-1" style={{ color: T.inkSoft }}>
+              className="f-thai text-[11px] underline" style={{ color: T.inkSoft }}>
               {t('ci_legend_clear')}
             </button>
-          )}
-        </div>
+          </div>
+        )}
         <div className="grid grid-cols-8 gap-1">
           {roomGrid.map(r => {
             // If a legend filter is active and this room's *top* status
