@@ -802,6 +802,32 @@ export default function AdminDailyDashboard() {
             nav/notification row below don't render underneath it */}
         <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
 
+        {/* Desktop top nav — horizontal tab row, fixed just below the
+            header (same fixed+spacer pattern as the header itself).
+            Mobile keeps the floating bottom pill instead — see that
+            block further down, now hidden on desktop. */}
+        <div
+          className="hidden md:flex md:fixed md:left-6 md:right-6 md:z-40 items-center gap-1.5 rounded-2xl px-2 py-2"
+          style={{ top: 84, background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
+          {([
+            { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+            { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+            { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+            { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+          ]).map(m => (
+            <button key={m.key} aria-label={m.label}
+              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+              className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-xl f-thai text-sm"
+              style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
+              <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {/* Spacer for the desktop top nav row above */}
+        <div className="hidden md:block flex-shrink-0" style={{ height: 60 }} />
+
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
           <div className="hidden md:flex flex-wrap items-center gap-2 px-6 mt-2.5">
@@ -966,13 +992,12 @@ export default function AdminDailyDashboard() {
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
 
-        {/* Main nav — a single floating bottom bar shared by mobile AND
-            desktop now (previously desktop had its own separate in-flow
-            row up top that permanently ate a strip of vertical space;
-            removed so desktop gets the same full-height content area as
-            mobile, with navigation floating over the content instead). */}
+        {/* Mobile main nav — floating bottom pill (thumb-reach friendly).
+            Desktop uses the fixed top tab row above instead (see the
+            "Desktop top nav" block); this whole bar is hidden on desktop
+            now rather than double-rendering the same tabs twice. */}
         <div
-          className="fixed left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto z-50 flex items-center justify-around rounded-[26px]"
+          className="md:hidden fixed left-4 right-4 z-50 flex items-center justify-around rounded-[26px]"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
             background: T.card,
@@ -1027,7 +1052,7 @@ export default function AdminDailyDashboard() {
         {/* Scrollable content */}
         <div
           ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 pt-20 md:pt-6"
+          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 md:pb-8 pt-20 md:pt-6"
           onTouchStart={handlePtrTouchStart}
           onTouchMove={handlePtrTouchMove}
           onTouchEnd={handlePtrTouchEnd}
