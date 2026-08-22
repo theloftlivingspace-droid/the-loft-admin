@@ -738,81 +738,69 @@ export default function AdminDailyDashboard() {
             mobile: each cluster (brand card, TH/EN, badge, date, bell,
             logout) is its own separate floating pill with its own navy
             background and shadow, with visible gaps between them, instead
-            of one connected strip. */}
-        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-start justify-between gap-4" style={{ top: 20 }}>
-          <div className="flex items-center gap-3 rounded-[26px] px-5 py-3" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 28px rgba(11,30,66,0.35)' }}>
-            <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 50, height: 50, border: `1px solid ${T.brass}55` }}>
+            of one connected strip. Kept to a single row and small sizes so
+            it doesn't eat up vertical space on shorter laptop screens. */}
+        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3" style={{ top: 12 }}>
+          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
+            <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
-            <div>
-              <p className="f-thai" style={{ fontSize: 11, fontWeight: 700, color: T.brass, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
-                The Loft Living Space
-              </p>
-              <h1 className="f-display" style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
-                {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
-              </h1>
-              <p className="f-thai" style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-                {isAdmin ? t('admin_subtitle') : t('daily_subtitle')}
-              </p>
-            </div>
+            <h1 className="f-display whitespace-nowrap" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
+              {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
+            </h1>
           </div>
-          <div className="flex flex-col items-end gap-2.5 flex-shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 24px rgba(11,30,66,0.3)' }}>
-                <button
-                  onClick={() => setLang('th')}
-                  className="press focus-ring rounded-full"
-                  style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                  TH
-                </button>
-                <button
-                  onClick={() => setLang('en')}
-                  className="press focus-ring rounded-full"
-                  style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                  EN
-                </button>
-              </div>
-              <div
-                className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium f-thai"
-                style={{
-                  background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : T.navyDeep,
-                  color: isOfficeNetwork ? '#EAF7EE' : T.brass,
-                  border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.5)' : T.hairGold}`,
-                  boxShadow: '0 10px 24px rgba(11,30,66,0.3)',
-                }}>
-                <span className="w-2 h-2 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
-                {isOfficeNetwork ? t('office_badge') : t('online_badge')}
-                <span style={{ color: isOfficeNetwork ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.45)', fontWeight: 400 }}>({clientIP})</span>
-              </div>
-            </div>
-            <div className="flex items-end gap-2.5">
-              <input
-                type="date"
-                value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
-                title={t('report_date_label')}
-                className="rounded-full px-4 py-2.5 text-sm focus-ring"
-                style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 24px rgba(11,30,66,0.3)', color: '#FFFFFF' }}
-              />
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
               <button
-                onClick={handleEnableNotifications}
-                title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
-                className="press focus-ring flex items-center justify-center rounded-full shrink-0"
-                style={{ width: 44, height: 44, background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 24px rgba(11,30,66,0.3)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-                {pushPerm === 'granted' ? <BellRing size={17} /> : <Bell size={17} />}
+                onClick={() => setLang('th')}
+                className="press focus-ring rounded-full"
+                style={{ padding: '5px 12px', fontSize: 11.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                TH
               </button>
               <button
-                onClick={handleLogout}
-                className="press focus-ring flex items-center gap-2 px-5 py-2.5 rounded-full text-sm f-thai"
-                style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 24px rgba(11,30,66,0.3)', color: 'rgba(255,255,255,0.9)' }}>
-                {t('logout_btn')}
+                onClick={() => setLang('en')}
+                className="press focus-ring rounded-full"
+                style={{ padding: '5px 12px', fontSize: 11.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                EN
               </button>
             </div>
+            <div
+              className="hidden lg:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium f-thai whitespace-nowrap"
+              style={{
+                background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : T.navyDeep,
+                color: isOfficeNetwork ? '#EAF7EE' : T.brass,
+                border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.5)' : T.hairGold}`,
+                boxShadow: '0 8px 20px rgba(11,30,66,0.25)',
+              }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
+              {isOfficeNetwork ? t('office_badge') : t('online_badge')}
+            </div>
+            <input
+              type="date"
+              value={reportDate}
+              onChange={e => setReportDate(e.target.value)}
+              title={t('report_date_label')}
+              className="rounded-full px-3 py-2 text-xs focus-ring"
+              style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: '#FFFFFF' }}
+            />
+            <button
+              onClick={handleEnableNotifications}
+              title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
+              className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+              style={{ width: 34, height: 34, background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+              {pushPerm === 'granted' ? <BellRing size={14} /> : <Bell size={14} />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="press focus-ring flex items-center gap-1.5 px-4 py-2 rounded-full text-xs f-thai whitespace-nowrap"
+              style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
+              {t('logout_btn')}
+            </button>
           </div>
         </div>
         {/* Spacer — reserves room for the now-fixed desktop header so the
             nav/notification row below don't render underneath it */}
-        <div className="hidden md:block flex-shrink-0" style={{ height: 140 }} />
+        <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
 
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
