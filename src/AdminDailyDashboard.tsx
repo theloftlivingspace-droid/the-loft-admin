@@ -734,14 +734,17 @@ export default function AdminDailyDashboard() {
       <style>{fontImports}</style>
       <div className="max-w-6xl mx-auto h-full flex flex-col overflow-hidden md:rounded-[32px]" style={{ background: T.paper, boxShadow: '0 20px 50px rgba(11,30,66,0.18)', border: `1px solid ${T.hairGold}` }}>
 
-        {/* Header */}
-        <div className="flex-shrink-0 px-4 md:px-6 pt-2 md:pt-3 pb-0">
+        {/* Header — desktop stays in normal flow (unchanged); mobile is a
+            separate fixed floating island, same treatment as the bottom
+            tab bar below, so it visually floats like a Claude-app header
+            instead of sitting flush against the top edge. */}
+        <div className="flex-shrink-0 px-4 md:px-6 pt-2 md:pt-3 pb-0 hidden md:block">
           <div
-            className="rounded-[22px] md:rounded-[26px] px-4 md:px-5 pt-2 pb-2 md:pt-2.5 md:pb-2.5"
+            className="rounded-[26px] px-5 pt-2.5 pb-2.5"
             style={{ background: T.navyDeep, boxShadow: '0 10px 28px rgba(11,30,66,0.45)' }}
           >
             {/* Desktop header — full */}
-            <div className="hidden md:flex md:items-center md:justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 50, height: 50, border: `1px solid ${T.brass}55` }}>
                   <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -802,7 +805,7 @@ export default function AdminDailyDashboard() {
             </div>
             {/* Desktop notification row */}
             {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
-              <div className="hidden md:flex flex-wrap items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                   <button
                     onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
@@ -825,96 +828,110 @@ export default function AdminDailyDashboard() {
                 )}
               </div>
             )}
-            {/* Mobile header — single line: logo + date + floating "more"
-                button. Title removed per request; date shown directly so
-                it's changeable without opening the menu. Everything else
-                (TH/EN, notifications, logout) lives in the "more" panel. */}
-            <div className="flex md:hidden items-center justify-between gap-2.5 min-w-0 relative">
-              <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 34, height: 34, border: `1px solid ${T.brass}55` }}>
-                <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <input
-                  type="date"
-                  value={reportDate}
-                  onChange={e => setReportDate(e.target.value)}
-                  className="rounded-full px-3 py-1.5 text-xs font-medium f-thai focus-ring"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }}
-                />
-                {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
-                  <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: T.wine }} />
-                )}
-                <button
-                  onClick={() => setHeaderMenuOpen(v => !v)}
-                  className="press focus-ring flex items-center justify-center rounded-full shrink-0"
-                  style={{ width: 32, height: 32, background: headerMenuOpen ? T.brass : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: headerMenuOpen ? T.navyDeep : 'rgba(255,255,255,0.85)' }}>
-                  <MoreHorizontal size={17} />
-                </button>
-              </div>
+          </div>
+        </div>
 
-              {headerMenuOpen && (
-                <>
-                  {/* backdrop — tap outside to close, sits above content but below the panel */}
-                  <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
-                  {/* floating stack — each control is its own separate pill/card
-                      (own shadow, own rounded corners), not one bordered box,
-                      so it reads as "floating buttons" rather than a menu bar */}
-                  <div className="absolute right-0 top-full mt-2 z-50 w-64 flex flex-col gap-2">
-                    <div
-                      className="flex items-center gap-0.5 rounded-full p-0.5"
-                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)' }}>
-                      <button
-                        onClick={() => setLang('th')}
-                        className="press focus-ring flex-1 rounded-full"
-                        style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                        TH
-                      </button>
-                      <button
-                        onClick={() => setLang('en')}
-                        className="press focus-ring flex-1 rounded-full"
-                        style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                        EN
-                      </button>
-                    </div>
+        {/* Mobile header — floating island, detached from screen edges,
+            same visual treatment as the bottom tab bar (fixed, rounded,
+            shadow, backdrop blur) instead of a bar flush against the top.
+            Logo + date sit directly on the pill; everything else (TH/EN,
+            notifications, logout) opens as ONE card below the "more"
+            button — the panel itself doesn't float piece by piece. */}
+        <div
+          className="md:hidden fixed left-4 right-4 z-50 rounded-[26px] px-4 py-2.5"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 14px)',
+            background: T.navyDeep,
+            border: `1px solid ${T.hairGold}`,
+            boxShadow: '0 16px 36px rgba(11,30,66,0.35), 0 4px 12px rgba(11,30,66,0.20)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          }}>
+          <div className="flex items-center justify-between gap-2.5 min-w-0 relative">
+            <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 34, height: 34, border: `1px solid ${T.brass}55` }}>
+              <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <input
+                type="date"
+                value={reportDate}
+                onChange={e => setReportDate(e.target.value)}
+                className="rounded-full px-3 py-1.5 text-xs font-medium f-thai focus-ring"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }}
+              />
+              {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
+                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: T.wine }} />
+              )}
+              <button
+                onClick={() => setHeaderMenuOpen(v => !v)}
+                className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+                style={{ width: 32, height: 32, background: headerMenuOpen ? T.brass : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: headerMenuOpen ? T.navyDeep : 'rgba(255,255,255,0.85)' }}>
+                <MoreHorizontal size={17} />
+              </button>
+            </div>
 
+            {headerMenuOpen && (
+              <>
+                {/* backdrop — tap outside to close */}
+                <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
+                {/* single panel — every row uses the same left-aligned
+                    icon + label layout and the same padding, so nothing
+                    reads as crooked/misaligned against the rest */}
+                <div
+                  className="absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl p-2 flex flex-col gap-1.5"
+                  style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
+                  <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
                     <button
-                      onClick={handleEnableNotifications}
-                      className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm f-thai text-left"
-                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-                      {pushPerm === 'granted' ? <BellRing size={16} className="shrink-0" /> : <Bell size={16} className="shrink-0" />}
-                      <span>{pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}</span>
+                      onClick={() => setLang('th')}
+                      className="press focus-ring flex-1 rounded-full"
+                      style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                      TH
                     </button>
-
-                    {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
-                      <button
-                        onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold text-left"
-                        style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 26px rgba(11,30,66,0.25)', color: T.brassDeep }}>
-                        {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
-                        {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
-                        {notifInvoice > 0 && <span>🧾 {notifInvoice} {t('notif_invoice_pending')}</span>}
-                      </button>
-                    )}
-                    {notifLowStock > 0 && (
-                      <button
-                        onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold text-left"
-                        style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, boxShadow: '0 10px 26px rgba(11,30,66,0.25)', color: T.wine }}>
-                        🔴 {notifLowStock} {t('notif_low_stock')}
-                      </button>
-                    )}
-
                     <button
-                      onClick={handleLogout}
-                      className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm f-thai text-left"
-                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)', color: 'rgba(255,255,255,0.85)' }}>
-                      <span className="shrink-0">🚪</span>
-                      <span>{t('logout_label')}</span>
+                      onClick={() => setLang('en')}
+                      className="press focus-ring flex-1 rounded-full"
+                      style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                      EN
                     </button>
                   </div>
-                </>
-              )}
-            </div>
+
+                  <button
+                    onClick={handleEnableNotifications}
+                    className="press focus-ring w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm f-thai text-left"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                    {pushPerm === 'granted' ? <BellRing size={16} className="shrink-0" /> : <Bell size={16} className="shrink-0" />}
+                    <span>{pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}</span>
+                  </button>
+
+                  {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
+                    <button
+                      onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); setHeaderMenuOpen(false); }}
+                      className="press focus-ring w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-left"
+                      style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
+                      {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
+                      {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
+                      {notifInvoice > 0 && <span>🧾 {notifInvoice} {t('notif_invoice_pending')}</span>}
+                    </button>
+                  )}
+                  {notifLowStock > 0 && (
+                    <button
+                      onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); setHeaderMenuOpen(false); }}
+                      className="press focus-ring w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-left"
+                      style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
+                      🔴 {notifLowStock} {t('notif_low_stock')}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className="press focus-ring w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm f-thai text-left"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
+                    <span className="shrink-0">🚪</span>
+                    <span>{t('logout_label')}</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
@@ -971,7 +988,7 @@ export default function AdminDailyDashboard() {
 
         {/* Etc sub-menu — labeled, shown only when the "Etc" main section is active */}
         {mainSection === 'etc' && (
-          <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
+          <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto mt-16 md:mt-0" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
             {([
               { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
@@ -995,7 +1012,7 @@ export default function AdminDailyDashboard() {
         {/* Scrollable content */}
         <div
           ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 md:pb-8 pt-4 md:pt-6"
+          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 md:pb-8 pt-20 md:pt-6"
           onTouchStart={handlePtrTouchStart}
           onTouchMove={handlePtrTouchMove}
           onTouchEnd={handlePtrTouchEnd}
