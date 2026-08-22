@@ -1837,10 +1837,10 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: '#BAC4D6', fg: T.navy },
           { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
         ].map(k => (
-          <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
-            <div className="text-xl mb-0.5">{k.icon}</div>
-            <div className="f-num text-2xl font-bold">{k.val}</div>
-            <div className="text-xs leading-tight mt-0.5">{k.label}</div>
+          <div key={k.label} className="f-thai rounded-xl p-2 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
+            <div className="text-base mb-0.5">{k.icon}</div>
+            <div className="f-num text-lg font-bold">{k.val}</div>
+            <div className="text-[10px] leading-tight mt-0.5">{k.label}</div>
           </div>
         ))}
       </div>
