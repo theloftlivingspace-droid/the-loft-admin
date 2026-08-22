@@ -745,7 +745,7 @@ export default function AdminDailyDashboard() {
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
-            <h1 className="f-display whitespace-nowrap hidden xl:block" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
+            <h1 className="f-display whitespace-nowrap hidden lg:block" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
               {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
             </h1>
           </div>
@@ -767,7 +767,7 @@ export default function AdminDailyDashboard() {
                 className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
                 style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
                 <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-                <span className="hidden xl:inline">{m.label}</span>
+                <span className="hidden md:inline">{m.label}</span>
               </button>
             ))}
           </div>
