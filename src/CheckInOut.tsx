@@ -1395,6 +1395,15 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           targetKey = folderKey(s.roomNum, s.checkin, s.resId);
         }
       }
+      // A stay checked in early (isCheckedInEarly in isInHouse) keeps its
+      // stored s.status as 'arriving-today' — inHouse wins the candidate
+      // above (correctly colors the tile 'occupied'), but that leaves this
+      // stay's *arrival* invisible to the "arriving today" filter, since
+      // the else-if chain above never reaches the arriving-today branch
+      // once inHouse is true. Record it independently of the chain so the
+      // filter still finds it.
+      if (s.status === 'arriving-today') secondaryTargets['arriving-today'] = folderKey(s.roomNum, s.checkin, s.resId);
+      if (s.status === 'arriving-soon')  secondaryTargets['arriving-soon']  = folderKey(s.roomNum, s.checkin, s.resId);
       // (no early break — a room can hold more than one relevant stay, e.g.
       // a current occupied guest plus a future arriving-soon booking, and
       // we need to see all of them for the secondaryTargets above)
