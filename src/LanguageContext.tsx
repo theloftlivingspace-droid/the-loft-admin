@@ -26,6 +26,8 @@ const DICT: Record<string, { th: string; en: string }> = {
   notif_booking_invoice:{ th: 'booking รอเพิ่ม', en: 'bookings pending' },
   notif_invoice_pending:{ th: 'invoice รอสร้าง', en: 'invoices pending' },
   notif_low_stock:      { th: 'รายการสต๊อกต่ำกว่าขั้นต่ำ', en: 'items below min stock' },
+  notif_on:             { th: 'เปิดแจ้งเตือนแล้ว', en: 'Notifications on' },
+  notif_enable:         { th: 'เปิดการแจ้งเตือน', en: 'Enable notifications' },
 
   // ── CalendarView.tsx ──
   cal_title:            { th: 'ปฏิทินการจอง', en: 'Booking Calendar' },
