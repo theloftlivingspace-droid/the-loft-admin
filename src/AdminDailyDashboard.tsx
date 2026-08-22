@@ -825,26 +825,32 @@ export default function AdminDailyDashboard() {
                 )}
               </div>
             )}
-            {/* Mobile header — single line: logo + title, floating "more"
-                button opens the controls (TH/EN, date, bell, logout) as a
-                card that overlays the content below instead of taking up
-                permanent header height. */}
-            <div className="flex md:hidden items-center gap-2.5 min-w-0 relative">
+            {/* Mobile header — single line: logo + date + floating "more"
+                button. Title removed per request; date shown directly so
+                it's changeable without opening the menu. Everything else
+                (TH/EN, notifications, logout) lives in the "more" panel. */}
+            <div className="flex md:hidden items-center justify-between gap-2.5 min-w-0 relative">
               <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 34, height: 34, border: `1px solid ${T.brass}55` }}>
                 <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-              <h1 className="f-display flex-1 min-w-0 truncate" style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>
-                {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
-              </h1>
-              {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
-                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: T.wine }} />
-              )}
-              <button
-                onClick={() => setHeaderMenuOpen(v => !v)}
-                className="press focus-ring flex items-center justify-center rounded-full shrink-0"
-                style={{ width: 32, height: 32, background: headerMenuOpen ? T.brass : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: headerMenuOpen ? T.navyDeep : 'rgba(255,255,255,0.85)' }}>
-                <MoreHorizontal size={17} />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <input
+                  type="date"
+                  value={reportDate}
+                  onChange={e => setReportDate(e.target.value)}
+                  className="rounded-full px-3 py-1.5 text-xs font-medium f-thai focus-ring"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }}
+                />
+                {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
+                  <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: T.wine }} />
+                )}
+                <button
+                  onClick={() => setHeaderMenuOpen(v => !v)}
+                  className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+                  style={{ width: 32, height: 32, background: headerMenuOpen ? T.brass : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)', color: headerMenuOpen ? T.navyDeep : 'rgba(255,255,255,0.85)' }}>
+                  <MoreHorizontal size={17} />
+                </button>
+              </div>
 
               {headerMenuOpen && (
                 <>
@@ -868,7 +874,6 @@ export default function AdminDailyDashboard() {
                         EN
                       </button>
                     </div>
-                    <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="w-full rounded-xl px-3 py-2 text-sm focus-ring mb-2" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
                     <button onClick={handleEnableNotifications} className="press focus-ring w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm f-thai mb-2" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
                       {pushPerm === 'granted' ? <BellRing size={15} /> : <Bell size={15} />}
                       {pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}
