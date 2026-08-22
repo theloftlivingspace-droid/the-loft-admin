@@ -1856,12 +1856,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           the same card again to clear. */}
       <div className="grid grid-cols-6 gap-1 mb-5">
         {([
-          { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel') },
-          { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today') },
-          { key: 'arriving-today' as RoomGridStatus, label: t('ci_arriving_today') },
-          { key: 'arriving-soon' as RoomGridStatus,  label: t('ci_arriving_soon') },
-          { key: 'vacant' as RoomGridStatus,         label: t('ci_kpi_vacant') },
-          { key: 'closed' as RoomGridStatus,         label: t('ci_kpi_closed') },
+          { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel'),           icon: '🛏️' },
+          { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today'), icon: '🧳' },
+          { key: 'arriving-today' as RoomGridStatus, label: t('ci_arriving_today'),     icon: '📥' },
+          { key: 'arriving-soon' as RoomGridStatus,  label: t('ci_arriving_soon'),      icon: '📅' },
+          { key: 'vacant' as RoomGridStatus,         label: t('ci_kpi_vacant'),         icon: '🚪' },
+          { key: 'closed' as RoomGridStatus,         label: t('ci_kpi_closed'),         icon: '🔧' },
         ]).map(k => {
           const val =
             k.key === 'occupied' ? kpiCounts.checkedin :
@@ -1879,6 +1879,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
               onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
               className="press f-thai rounded-lg py-1.5 px-0.5 text-center transition-colors overflow-hidden"
               style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
+              <div className="text-sm leading-none mb-0.5">{k.icon}</div>
               <div className="f-num text-base font-bold leading-none">{val}</div>
               <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 8 }}>{k.label}</div>
             </button>
