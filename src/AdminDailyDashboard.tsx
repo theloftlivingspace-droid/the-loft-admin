@@ -933,7 +933,7 @@ export default function AdminDailyDashboard() {
 
                     <button
                       onClick={handleEnableNotifications}
-                      className="press focus-ring w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs f-thai text-left"
+                      className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs f-thai text-center"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
                       {pushPerm === 'granted' ? <BellRing size={14} className="shrink-0" /> : <Bell size={14} className="shrink-0" />}
                       <span>{pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}</span>
@@ -942,7 +942,7 @@ export default function AdminDailyDashboard() {
                     {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                       <button
                         onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-left"
+                        className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold text-center"
                         style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
                         {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
                         {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
@@ -952,7 +952,7 @@ export default function AdminDailyDashboard() {
                     {notifLowStock > 0 && (
                       <button
                         onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-left"
+                        className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold text-center"
                         style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
                         🔴 {notifLowStock} {t('notif_low_stock')}
                       </button>
@@ -960,7 +960,7 @@ export default function AdminDailyDashboard() {
 
                     <button
                       onClick={handleLogout}
-                      className="press focus-ring w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs f-thai text-left"
+                      className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs f-thai text-center"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
                       <span className="shrink-0">🚪</span>
                       <span>{t('logout_label')}</span>
