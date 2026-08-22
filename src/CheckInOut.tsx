@@ -1879,9 +1879,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
               onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
               className="press f-thai rounded-lg py-1.5 px-0.5 text-center transition-colors overflow-hidden"
               style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
-              <div className="text-sm leading-none mb-0.5">{k.icon}</div>
-              <div className="f-num text-base font-bold leading-none">{val}</div>
-              <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 8 }}>{k.label}</div>
+              <div className="text-base leading-none mb-0.5">{k.icon}</div>
+              <div className="f-num text-xl font-bold leading-none">{val}</div>
+              <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 9.5 }}>{k.label}</div>
             </button>
           );
         })}
