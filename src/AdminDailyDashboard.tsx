@@ -966,28 +966,13 @@ export default function AdminDailyDashboard() {
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
 
-        {/* Desktop main nav (md and up) — 4 icon-only entries */}
-        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8" style={{ borderBottom: `1px solid ${T.hair}` }}>
-          {([
-            { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
-            { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
-            { key: 'stock' as const,      Icon: Package,         label: t('tab_stock') },
-            { key: 'parking' as const,    Icon: Car,             label: t('tab_parking') },
-            { key: 'etc' as const,        Icon: MoreHorizontal,  label: t('tab_etc') },
-          ]).map(m => (
-            <button key={m.key} title={m.label} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex-1 py-4 flex items-center justify-center gap-2"
-              style={{ borderBottom: `2.5px solid ${mainSection === m.key ? T.brass : 'transparent'}` }}>
-              <m.Icon size={26} color={mainSection === m.key ? T.navy : T.inkSoft} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-              <span className="f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Mobile bottom tab bar (below md) — floating island, detached from screen edges */}
+        {/* Main nav — a single floating bottom bar shared by mobile AND
+            desktop now (previously desktop had its own separate in-flow
+            row up top that permanently ate a strip of vertical space;
+            removed so desktop gets the same full-height content area as
+            mobile, with navigation floating over the content instead). */}
         <div
-          className="fixed left-4 right-4 z-50 md:hidden flex items-center justify-around rounded-[26px]"
+          className="fixed left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto z-50 flex items-center justify-around rounded-[26px]"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
             background: T.card,
@@ -1005,12 +990,13 @@ export default function AdminDailyDashboard() {
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
               onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-w-0 relative">
+              className="press focus-ring flex flex-col md:flex-row items-center justify-center py-2.5 md:py-3 md:px-5 gap-1 md:gap-2 min-w-0 flex-1 md:flex-none relative">
               <div className="flex items-center justify-center rounded-full transition-all"
                 style={{ width: 40, height: 30, background: mainSection === m.key ? T.navyTint : 'transparent' }}>
                 <m.Icon size={21} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
               </div>
-              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
+              <span className="hidden md:inline f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
+              <span className="md:hidden" style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
@@ -1041,7 +1027,7 @@ export default function AdminDailyDashboard() {
         {/* Scrollable content */}
         <div
           ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 md:pb-8 pt-20 md:pt-6"
+          className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 pt-20 md:pt-6"
           onTouchStart={handlePtrTouchStart}
           onTouchMove={handlePtrTouchMove}
           onTouchEnd={handlePtrTouchEnd}
