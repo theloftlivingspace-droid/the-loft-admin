@@ -741,14 +741,37 @@ export default function AdminDailyDashboard() {
             of one connected strip. Kept to a single row and small sizes so
             it doesn't eat up vertical space on shorter laptop screens. */}
         <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3" style={{ top: 12 }}>
-          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
+          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
-            <h1 className="f-display whitespace-nowrap" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
+            <h1 className="f-display whitespace-nowrap hidden xl:block" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
               {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
             </h1>
           </div>
+
+          {/* Main tab nav — merged into the same fixed row as the header
+              (was a separate fixed row below it) so desktop stays down
+              to one top row. Label hides below xl to leave room for the
+              header/controls clusters on narrower laptop widths. */}
+          <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
+            {([
+              { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+              { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+              { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+              { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+              { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+            ]).map(m => (
+              <button key={m.key} aria-label={m.label} title={m.label}
+                onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+                className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
+                style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
+                <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+                <span className="hidden xl:inline">{m.label}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
               <button
@@ -798,35 +821,10 @@ export default function AdminDailyDashboard() {
             </button>
           </div>
         </div>
-        {/* Spacer — reserves room for the now-fixed desktop header so the
-            nav/notification row below don't render underneath it */}
+        {/* Spacer — reserves room for the now-fixed desktop header (which
+            now also holds the main nav) so content below doesn't render
+            underneath it */}
         <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
-
-        {/* Desktop top nav — horizontal tab row, fixed just below the
-            header (same fixed+spacer pattern as the header itself).
-            Mobile keeps the floating bottom pill instead — see that
-            block further down, now hidden on desktop. */}
-        <div
-          className="hidden md:flex md:fixed md:left-6 md:right-6 md:z-40 items-center gap-1.5 rounded-2xl px-2 py-2"
-          style={{ top: 84, background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
-          {([
-            { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
-            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
-            { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
-            { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
-            { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
-          ]).map(m => (
-            <button key={m.key} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-xl f-thai text-sm"
-              style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
-              <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {/* Spacer for the desktop top nav row above */}
-        <div className="hidden md:block flex-shrink-0" style={{ height: 60 }} />
 
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
