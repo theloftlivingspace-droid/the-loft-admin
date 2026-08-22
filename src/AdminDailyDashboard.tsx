@@ -730,16 +730,16 @@ export default function AdminDailyDashboard() {
   const isAdmin = currentUser?.role === 'admin';
 
   return (
-    <div className="h-screen overflow-hidden p-0 md:p-6" style={{ background: T.bone }}>
+    <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
       <style>{fontImports}</style>
-      <div className="max-w-6xl mx-auto h-full flex flex-col overflow-hidden md:rounded-[32px]" style={{ background: T.paper, boxShadow: '0 20px 50px rgba(11,30,66,0.18)', border: `1px solid ${T.hairGold}` }}>
+      <div className="h-full flex flex-col overflow-hidden" style={{ background: T.paper }}>
 
         {/* Header — desktop uses the same "no shared bar" language as
             mobile: each cluster (brand card, TH/EN, badge, date, bell,
             logout) is its own separate floating pill with its own navy
             background and shadow, with visible gaps between them, instead
             of one connected strip. */}
-        <div className="flex-shrink-0 hidden md:flex items-start justify-between gap-4 px-6 pt-3 pb-0">
+        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-start justify-between gap-4" style={{ top: 20 }}>
           <div className="flex items-center gap-3 rounded-[26px] px-5 py-3" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 28px rgba(11,30,66,0.35)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 50, height: 50, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -810,6 +810,10 @@ export default function AdminDailyDashboard() {
             </div>
           </div>
         </div>
+        {/* Spacer — reserves room for the now-fixed desktop header so the
+            nav/notification row below don't render underneath it */}
+        <div className="hidden md:block flex-shrink-0" style={{ height: 140 }} />
+
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
           <div className="hidden md:flex flex-wrap items-center gap-2 px-6 mt-2.5">
@@ -975,7 +979,7 @@ export default function AdminDailyDashboard() {
 
 
         {/* Desktop main nav (md and up) — 4 icon-only entries */}
-        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8 mt-4" style={{ borderBottom: `1px solid ${T.hair}` }}>
+        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8" style={{ borderBottom: `1px solid ${T.hair}` }}>
           {([
             { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
             { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
