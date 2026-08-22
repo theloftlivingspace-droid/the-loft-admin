@@ -1362,6 +1362,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     };
     let status: RoomGridStatus = 'vacant';
     let targetKey: string | null = null;
+    // Every status this room touches across ALL its stays this loop finds —
+    // not just the top-ranked one. A room showing "occupied" (current guest)
+    // can still have a future stay that's "arriving-soon"; that booking is
+    // invisible on the tile normally, but the legend filter below needs to
+    // find it when the person clicks "Arriving soon", so we keep a target
+    // key per secondary status too (for the click-through).
+    const secondaryTargets: Partial<Record<RoomGridStatus, string>> = {};
 
     for (const s of roomStays) {
       const isCheckedOut = checkedOutSet.has(s.resId);
@@ -1381,11 +1388,16 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         candidate = 'arriving-soon';
       }
 
-      if (candidate && RANK[candidate] > RANK[status]) {
-        status = candidate;
-        targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+      if (candidate) {
+        secondaryTargets[candidate] = folderKey(s.roomNum, s.checkin, s.resId);
+        if (RANK[candidate] > RANK[status]) {
+          status = candidate;
+          targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+        }
       }
-      if (status === 'occupied') break; // top rank — no need to keep scanning this room
+      // (no early break — a room can hold more than one relevant stay, e.g.
+      // a current occupied guest plus a future arriving-soon booking, and
+      // we need to see all of them for the secondaryTargets above)
     }
 
     // Fallback: nothing in the (date-windowed) `stays` list explained this
@@ -1408,7 +1420,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       targetKey = null;
     }
 
-    return { ...room, status, targetKey };
+    return { ...room, status, targetKey, secondaryTargets };
   });
 
   function goToRoomCard(targetKey: string | null, roomLabel: string, status?: RoomGridStatus) {
@@ -1887,13 +1899,31 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         </div>
         <div className="grid grid-cols-8 gap-1">
           {roomGrid.map(r => {
-            const cfg = ROOM_GRID_CONFIG[r.status];
-            const isDimmed = gridFilter !== null && gridFilter !== r.status;
+            // If a legend filter is active and this room's *top* status
+            // doesn't match it, check whether the room has a secondary
+            // (lower-ranked, currently-hidden) stay that does — e.g. a
+            // room showing "occupied" can still have a future
+            // "arriving-soon" booking. When filtering, that secondary
+            // match takes over the tile's color instead of just dimming,
+            // since that's specifically what the person clicked to see.
+            const matchesFilter = gridFilter !== null && (
+              r.status === gridFilter || r.secondaryTargets[gridFilter] !== undefined
+            );
+            const displayStatus: RoomGridStatus =
+              gridFilter !== null && r.status !== gridFilter && r.secondaryTargets[gridFilter] !== undefined
+                ? gridFilter
+                : r.status;
+            const displayTargetKey =
+              gridFilter !== null && r.status !== gridFilter && r.secondaryTargets[gridFilter] !== undefined
+                ? r.secondaryTargets[gridFilter]!
+                : r.targetKey;
+            const cfg = ROOM_GRID_CONFIG[displayStatus];
+            const isDimmed = gridFilter !== null && !matchesFilter;
             const bg = isDimmed ? dimToward(cfg.bg) : cfg.bg;
             const fg = isDimmed ? dimToward(cfg.fg, 0.55) : cfg.fg;
             return (
               <button key={r.num}
-                onClick={() => goToRoomCard(r.targetKey, r.num, r.status)}
+                onClick={() => goToRoomCard(displayTargetKey, r.num, displayStatus)}
                 className="press f-thai rounded-md py-1 px-0.5 text-center overflow-hidden transition-colors"
                 style={{ background: bg, border: `1px solid ${fg}30` }}>
                 <div className="f-num text-[12px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
