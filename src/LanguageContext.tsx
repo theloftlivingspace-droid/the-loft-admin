@@ -15,6 +15,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   online_badge:         { th: '🌐 ออนไลน์', en: '🌐 Online' },
   report_date_label:    { th: 'วันที่ (รายงาน / สถานะห้อง)', en: 'Date (report / room status)' },
   logout_btn:           { th: '🚪 Logout', en: '🚪 Logout' },
+  logout_label:         { th: 'Logout', en: 'Logout' },
   tab_dashboard:        { th: 'แดชบอร์ด', en: 'Dashboard' },
   tab_booking:          { th: 'การจอง', en: 'Booking' },
   tab_checkinout:       { th: 'เช็คอิน/เอาท์', en: 'Check-in/out' },

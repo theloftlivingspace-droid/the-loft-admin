@@ -856,33 +856,40 @@ export default function AdminDailyDashboard() {
                 <>
                   {/* backdrop — tap outside to close, sits above content but below the panel */}
                   <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
-                  {/* floating panel — absolutely positioned, overlays content, doesn't reserve space */}
-                  <div
-                    className="absolute right-0 top-full mt-2 z-50 rounded-2xl p-3 w-64"
-                    style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
-                    <div className="flex items-center gap-0.5 rounded-full p-0.5 mb-2.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                  {/* floating stack — each control is its own separate pill/card
+                      (own shadow, own rounded corners), not one bordered box,
+                      so it reads as "floating buttons" rather than a menu bar */}
+                  <div className="absolute right-0 top-full mt-2 z-50 w-64 flex flex-col gap-2">
+                    <div
+                      className="flex items-center gap-0.5 rounded-full p-0.5"
+                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)' }}>
                       <button
                         onClick={() => setLang('th')}
                         className="press focus-ring flex-1 rounded-full"
-                        style={{ padding: '6px 0', fontSize: 12, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                        style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
                         TH
                       </button>
                       <button
                         onClick={() => setLang('en')}
                         className="press focus-ring flex-1 rounded-full"
-                        style={{ padding: '6px 0', fontSize: 12, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                        style={{ padding: '8px 0', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
                         EN
                       </button>
                     </div>
-                    <button onClick={handleEnableNotifications} className="press focus-ring w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm f-thai mb-2" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-                      {pushPerm === 'granted' ? <BellRing size={15} /> : <Bell size={15} />}
-                      {pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}
+
+                    <button
+                      onClick={handleEnableNotifications}
+                      className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm f-thai text-left"
+                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                      {pushPerm === 'granted' ? <BellRing size={16} className="shrink-0" /> : <Bell size={16} className="shrink-0" />}
+                      <span>{pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}</span>
                     </button>
+
                     {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
                       <button
                         onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold mb-2"
-                        style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
+                        className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold text-left"
+                        style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, boxShadow: '0 10px 26px rgba(11,30,66,0.25)', color: T.brassDeep }}>
                         {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
                         {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
                         {notifInvoice > 0 && <span>🧾 {notifInvoice} {t('notif_invoice_pending')}</span>}
@@ -891,13 +898,18 @@ export default function AdminDailyDashboard() {
                     {notifLowStock > 0 && (
                       <button
                         onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); setHeaderMenuOpen(false); }}
-                        className="press focus-ring w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold mb-2"
-                        style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
+                        className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold text-left"
+                        style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, boxShadow: '0 10px 26px rgba(11,30,66,0.25)', color: T.wine }}>
                         🔴 {notifLowStock} {t('notif_low_stock')}
                       </button>
                     )}
-                    <button onClick={handleLogout} className="press focus-ring w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                      🚪 {t('logout_btn')}
+
+                    <button
+                      onClick={handleLogout}
+                      className="press focus-ring w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm f-thai text-left"
+                      style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 10px 26px rgba(11,30,66,0.5)', color: 'rgba(255,255,255,0.85)' }}>
+                      <span className="shrink-0">🚪</span>
+                      <span>{t('logout_label')}</span>
                     </button>
                   </div>
                 </>
