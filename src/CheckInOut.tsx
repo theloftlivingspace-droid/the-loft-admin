@@ -1926,8 +1926,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 onClick={() => goToRoomCard(displayTargetKey, r.num, displayStatus)}
                 className="press f-thai rounded-md py-1.5 px-0.5 text-center overflow-hidden transition-colors"
                 style={{ background: bg, border: `1px solid ${fg}30` }}>
-                <div className="f-num text-[16px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
-                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.65, fontSize: '7px' }}>{r.type}</div>
+                <div className="f-num text-[13px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
+                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.7, fontSize: '8.5px' }}>{r.type}</div>
               </button>
             );
           })}
