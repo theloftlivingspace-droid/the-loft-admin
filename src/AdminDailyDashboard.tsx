@@ -8,7 +8,7 @@ import CalendarView from './CalendarView';
 import { useLang } from './LanguageContext';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays, Flag } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -487,6 +487,10 @@ export default function AdminDailyDashboard() {
     new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   );
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  // Flags the shared date pill (mobile + desktop) whenever it's not pointed
+  // at the real today, so preview mode is visible right on the control
+  // itself — not just in the banner further down the page.
+  const isPreviewDate = reportDate !== new Date().toISOString().split('T')[0];
   // Mobile header floating menu (TH/EN, date, notifications, logout) — kept
   // out of the always-visible header row so the header stays one line and
   // never eats into content space. Opens as a floating card over the
@@ -799,14 +803,39 @@ export default function AdminDailyDashboard() {
               {isOfficeNetwork ? t('office_badge') : t('online_badge')}
             </div>
             {(mainSection === 'checkinout' || mainSection === 'calendar') && (
-              <input
-                type="date"
-                value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
-                title={t('report_date_label')}
-                className="rounded-full px-2 py-1 text-[10px] focus-ring"
-                style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: '#FFFFFF' }}
-              />
+              <div className="flex items-center gap-1.5">
+                {!isPreviewDate && (
+                  <span className="f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                    {t('cal_today')}
+                  </span>
+                )}
+                <div className="relative">
+                  <div
+                    className="flex items-center rounded-full px-2 py-1"
+                    style={{
+                      background: T.navyDeep,
+                      border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
+                      boxShadow: isPreviewDate ? `0 8px 20px rgba(11,30,66,0.25), 0 0 0 2px ${T.brass}55` : '0 8px 20px rgba(11,30,66,0.25)',
+                    }}>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={e => setReportDate(e.target.value)}
+                      title={t('report_date_label')}
+                      className="text-[10px] focus-ring"
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                    />
+                  </div>
+                  {isPreviewDate && (
+                    <span
+                      className="absolute flex items-center justify-center rounded-full"
+                      title={t('ci_preview_readonly')}
+                      style={{ top: -5, right: -5, width: 15, height: 15, background: T.brass, border: `1.5px solid ${T.navyDeep}`, color: T.navyDeep }}>
+                      <Flag size={9} strokeWidth={2.5} fill={T.navyDeep} />
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
             <button
               onClick={handleEnableNotifications}
@@ -888,22 +917,41 @@ export default function AdminDailyDashboard() {
                 room-status date) and Calendar (which day range to view) — one
                 control instead of two so they never look duplicated. */}
             {(mainSection === 'checkinout' || mainSection === 'calendar') && (
-              <div
-                className="flex items-center rounded-full px-3.5 py-2.5"
-                style={{
-                  background: T.navyDeep,
-                  border: `1px solid ${T.hairGold}`,
-                  boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
-                  backdropFilter: 'saturate(180%) blur(20px)',
-                  WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-                }}>
-                <input
-                  type="date"
-                  value={reportDate}
-                  onChange={e => setReportDate(e.target.value)}
-                  className="text-xs font-medium f-thai focus-ring"
-                  style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
-                />
+              <div className="flex items-center gap-1.5">
+                {!isPreviewDate && (
+                  <span className="f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                    {t('cal_today')}
+                  </span>
+                )}
+                <div className="relative">
+                  <div
+                    className="flex items-center rounded-full px-3.5 py-2.5"
+                    style={{
+                      background: T.navyDeep,
+                      border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
+                      boxShadow: isPreviewDate
+                        ? `0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18), 0 0 0 2px ${T.brass}55`
+                        : '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
+                      backdropFilter: 'saturate(180%) blur(20px)',
+                      WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+                    }}>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={e => setReportDate(e.target.value)}
+                      className="text-xs font-medium f-thai focus-ring"
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                    />
+                  </div>
+                  {isPreviewDate && (
+                    <span
+                      className="absolute flex items-center justify-center rounded-full"
+                      title={t('ci_preview_readonly')}
+                      style={{ top: -5, right: -5, width: 17, height: 17, background: T.brass, border: `1.5px solid ${T.navyDeep}`, color: T.navyDeep, boxShadow: '0 2px 6px rgba(11,30,66,0.4)' }}>
+                      <Flag size={10} strokeWidth={2.5} fill={T.navyDeep} />
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
