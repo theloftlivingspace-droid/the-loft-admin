@@ -13,7 +13,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   daily_subtitle:       { th: 'ระบบเช็คงานและสรุปรายงานประจำวันพนักงานธุรการ',       en: 'Daily task checklist and report summary for admin staff' },
   office_badge:         { th: '🏢 ออฟฟิศ', en: '🏢 Office' },
   online_badge:         { th: '🌐 ออนไลน์', en: '🌐 Online' },
-  report_date_label:    { th: 'วันที่ (รายงาน / สถานะห้อง)', en: 'Date (report / room status)' },
+  report_date_label:    { th: 'วันที่', en: 'Date' },
   logout_btn:           { th: '🚪 Logout', en: '🚪 Logout' },
   logout_label:         { th: 'Logout', en: 'Logout' },
   tab_dashboard:        { th: 'แดชบอร์ด', en: 'Dashboard' },

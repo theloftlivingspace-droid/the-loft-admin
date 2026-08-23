@@ -798,7 +798,7 @@ export default function AdminDailyDashboard() {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
               {isOfficeNetwork ? t('office_badge') : t('online_badge')}
             </div>
-            {mainSection === 'checkinout' && (
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
               <input
                 type="date"
                 value={reportDate}
@@ -884,10 +884,10 @@ export default function AdminDailyDashboard() {
           {/* Pill 2 — date, and Pill 3 — menu button, each floating on their
               own; this wrapper is layout-only (no bg/border/shadow of its own) */}
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Pill 2 — date (Check-in/out's report date only — irrelevant on other
-                tabs like Calendar, which has its own date navigation, so hide it
-                there to avoid two date pickers looking like they're stacked) */}
-            {mainSection === 'checkinout' && (
+            {/* Pill 2 — shared date picker, used by both Check-in/out (report /
+                room-status date) and Calendar (which day range to view) — one
+                control instead of two so they never look duplicated. */}
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
               <div
                 className="flex items-center rounded-full px-3.5 py-2.5"
                 style={{
@@ -1169,7 +1169,7 @@ export default function AdminDailyDashboard() {
           <RevenueDashboard />
         )}
         {adminTab === 'calendar' && (
-          <CalendarView />
+          <CalendarView viewDate={reportDate} onViewDateChange={setReportDate} />
         )}
 
         {/* Dashboard Tab */}

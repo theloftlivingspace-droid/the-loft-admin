@@ -98,13 +98,19 @@ function roomNum(r: string): string {
 const WD_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 const WD_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function CalendarView() {
+interface CalendarViewProps {
+  viewDate: string;
+  onViewDateChange: (d: string) => void;
+}
+
+export default function CalendarView({ viewDate, onViewDateChange }: CalendarViewProps) {
   const { t, lang } = useLang();
   const [stays, setStays] = useState<CalStay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefresh, setLastRefresh] = useState('');
-  const [startDate, setStartDate] = useState(today());
+  const startDate = viewDate;
+  const setStartDate = onViewDateChange;
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -211,9 +217,11 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Date navigation */}
+      {/* Date navigation — the ± week / Today shortcuts. Jumping to an exact
+          date is done from the shared date picker in the header pill above
+          (same one Check-in/out uses), so there's no second date input here. */}
       <div className="flex items-center gap-2 mb-3">
-        <button onClick={() => setStartDate(d => addDays(d, -7))}
+        <button onClick={() => setStartDate(addDays(startDate, -7))}
           className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
           <ChevronLeft size={16} color={T.navy} />
         </button>
@@ -222,14 +230,11 @@ export default function CalendarView() {
           style={{ background: T.navyTint, color: T.navy }}>
           {t('cal_today')}
         </button>
-        <button onClick={() => setStartDate(d => addDays(d, 7))}
+        <button onClick={() => setStartDate(addDays(startDate, 7))}
           className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
           <ChevronRight size={16} color={T.navy} />
         </button>
-        <input type="date" value={startDate} onChange={e => e.target.value && setStartDate(e.target.value)}
-          className="focus-ring rounded-lg px-2 py-1.5 text-xs f-num"
-          style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} />
-        <span className="f-num text-xs ml-auto hidden sm:inline" style={{ color: T.inkSoft }}>
+        <span className="f-num text-xs" style={{ color: T.inkSoft }}>
           {startDate} → {addDays(startDate, DAYS_COUNT - 1)}
         </span>
       </div>
