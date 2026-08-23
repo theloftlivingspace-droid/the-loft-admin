@@ -126,7 +126,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_loading_data:      { th: 'กำลังโหลดข้อมูล...', en: 'Loading data...' },
   ci_retry:             { th: 'ลองใหม่', en: 'Retry' },
   ci_room_status_title: { th: 'สถานะห้องพัก', en: 'Room Status' },
-  ci_create_tm30:       { th: '📋 สร้าง TM30', en: '📋 Create TM30' },
+  ci_create_tm30:       { th: '📋 TM30', en: '📋 TM30' },
   ci_refresh:           { th: '🔄 รีเฟรช', en: '🔄 Refresh' },
   ci_checkout_btn:      { th: '🧳 Checkout', en: '🧳 Checkout' },
   ci_cancel_booking_btn:{ th: '🚫 Cancel Booking', en: '🚫 Cancel Booking' },
