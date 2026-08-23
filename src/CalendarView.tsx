@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const CELL_W = 68;   // px per day column
-const LABEL_W = 104; // px for the sticky room-label column
+const LABEL_W = 76;  // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
 const DAYS_COUNT = 21;
 
@@ -300,7 +300,7 @@ export default function CalendarView() {
                     <div key={room.num} className="flex" style={{ height: ROW_H, borderBottom: `1px solid ${T.hair}` }}>
                       <div style={{
                         width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 10, background: T.card,
-                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
+                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 6px',
                       }}>
                         <div className="f-num text-sm font-bold" style={{ color: T.ink }}>{room.num}</div>
                         <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
