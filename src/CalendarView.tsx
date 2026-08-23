@@ -234,8 +234,8 @@ export default function CalendarView() {
         </span>
       </div>
 
-      {/* Legend — status colors (matches Check-in/out), not OTA */}
-      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
+      {/* Legend — status colors (matches Check-in/out) */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
         {(Object.keys(STATUS_STYLE) as CalStatus[]).map(st => {
           const s = STATUS_STYLE[st];
           return (
@@ -245,14 +245,6 @@ export default function CalendarView() {
             </div>
           );
         })}
-      </div>
-      {/* Secondary legend — OTA text colors */}
-      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
-        {['Airbnb', 'Booking.com', 'Expedia', 'Trip.com', 'Other'].map(ch => (
-          <span key={ch} className="f-thai text-[11px] font-semibold" style={{ color: channelColor(ch === 'Other' ? '' : ch) }}>
-            {ch}
-          </span>
-        ))}
       </div>
 
       {error && (
