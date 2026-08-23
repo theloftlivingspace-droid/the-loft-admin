@@ -25,15 +25,48 @@ const ROOM_GROUPS: { label: string; labelTh: string; rooms: { num: string; type:
   { label: 'The Loft Luxury Living Space',   labelTh: 'เดอะลอฟท์ ลักซ์ชัวรี่', rooms: [{ num: '300', type: 'Luxury' }] },
 ];
 
-// ─── OTA colour accents — matches otaTheme() in BookingInvoiceTodo.tsx so a
-// channel reads the same color everywhere in the app ─────────────────────────
-function channelAccent(channel: string): { accent: string; tint: string; label: string } {
+// ─── OTA label (text only — bar color encodes stay status; the label itself
+// is colored per-channel so channels are still easy to tell apart at a glance)
+function channelLabel(channel: string): string {
   const ch = (channel || '').toLowerCase();
-  if (ch.includes('airbnb'))  return { accent: '#e11d48', tint: '#ffd9de', label: 'Airbnb' };
-  if (ch.includes('booking')) return { accent: '#1d4ed8', tint: '#c7ddff', label: 'Booking.com' };
-  if (ch.includes('expedia')) return { accent: '#b45309', tint: '#fde3ad', label: 'Expedia' };
-  if (ch.includes('trip'))    return { accent: '#16a34a', tint: '#c3f5d6', label: 'Trip.com' };
-  return { accent: '#6b7280', tint: '#e2e4e8', label: channel || 'Other' };
+  if (ch.includes('airbnb'))  return 'Airbnb';
+  if (ch.includes('booking')) return 'Booking.com';
+  if (ch.includes('expedia')) return 'Expedia';
+  if (ch.includes('trip'))    return 'Trip.com';
+  return channel || 'Other';
+}
+function channelColor(channel: string): string {
+  const ch = (channel || '').toLowerCase();
+  if (ch.includes('airbnb'))  return '#f43f5e';
+  if (ch.includes('booking')) return '#1d4ed8';
+  if (ch.includes('expedia')) return '#b45309';
+  if (ch.includes('trip'))    return '#16a34a';
+  return '#6b7280';
+}
+
+// ─── Status colors — same darker tints used on the Check-in/out page
+// (ROOM_GRID_CONFIG / stay-card cardStyle in CheckInOut.tsx) so a booking's
+// color means the same thing on both screens ────────────────────────────────
+type CalStatus = 'checked-in' | 'arriving-today' | 'arriving-soon' | 'checking-out-today';
+const STATUS_STYLE: Record<CalStatus, { bg: string; accent: string; label: string }> = {
+  'checked-in':         { bg: '#C2DACA', accent: T.sage,      label: 'cal_status_checked_in' },
+  'arriving-today':     { bg: '#EEDCB2', accent: T.brassDeep, label: 'cal_status_arriving_today' },
+  'arriving-soon':      { bg: '#BAC4D6', accent: T.navy,      label: 'cal_status_arriving_soon' },
+  'checking-out-today': { bg: '#E4BDC3', accent: T.wine,      label: 'cal_status_checking_out' },
+};
+// Same date-based classification as stayFromRawRow() in CheckInOut.tsx, so a
+// stay's color always matches what Check-in/out would show for it today.
+function computeStatus(checkin: string, checkout: string): CalStatus {
+  const tod = today();
+  const checkedIn        = checkin <= tod && checkout > tod;
+  const arrivingToday     = checkin === tod;
+  const checkingOutToday  = checkout === tod && checkin < tod;
+  const arrivingSoon      = checkin > tod;
+  if (arrivingToday) return 'arriving-today';
+  if (checkingOutToday) return 'checking-out-today';
+  if (arrivingSoon) return 'arriving-soon';
+  if (!checkedIn) return 'checking-out-today'; // fully in the past — closest fit
+  return 'checked-in';
 }
 
 interface RawStay {
@@ -43,7 +76,7 @@ interface RawStay {
 }
 interface CalStay {
   roomNum: string; guest: string; checkin: string; checkout: string;
-  channel: string; resId: string; nights: number;
+  channel: string; resId: string; nights: number; note: string; status: CalStatus;
 }
 
 function toLocalDate(d: Date): string {
@@ -102,7 +135,9 @@ export default function CalendarView() {
           checkout: co,
           channel: row.channel || '',
           resId: row.resId || '',
+          note: row.note || '',
           nights,
+          status: computeStatus(ci, co),
         });
       }
       setStays(list);
@@ -199,14 +234,14 @@ export default function CalendarView() {
         </span>
       </div>
 
-      {/* Legend */}
+      {/* Legend — status colors (matches Check-in/out) */}
       <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
-        {['Airbnb', 'Booking.com', 'Expedia', 'Trip.com', 'Other'].map(ch => {
-          const c = channelAccent(ch === 'Other' ? '' : ch);
+        {(Object.keys(STATUS_STYLE) as CalStatus[]).map(st => {
+          const s = STATUS_STYLE[st];
           return (
-            <div key={ch} className="flex items-center gap-1">
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: c.accent, display: 'inline-block' }} />
-              <span className="f-thai text-[11px]" style={{ color: T.inkSoft }}>{c.label}</span>
+            <div key={st} className="flex items-center gap-1">
+              <span style={{ width: 9, height: 9, borderRadius: 3, background: s.bg, border: `1.5px solid ${s.accent}`, display: 'inline-block' }} />
+              <span className="f-thai text-[11px]" style={{ color: T.inkSoft }}>{t(s.label)}</span>
             </div>
           );
         })}
@@ -283,7 +318,7 @@ export default function CalendarView() {
                           if (eIdx <= 0 || sIdx >= DAYS_COUNT) return null;
                           const clipL = Math.max(0, sIdx);
                           const clipR = Math.min(DAYS_COUNT, eIdx);
-                          const c = channelAccent(s.channel);
+                          const st = STATUS_STYLE[s.status];
                           return (
                             <button
                               key={s.resId + s.checkin}
@@ -292,17 +327,28 @@ export default function CalendarView() {
                               style={{
                                 position: 'absolute', top: 5, bottom: 5,
                                 left: clipL * CELL_W + 3, width: (clipR - clipL) * CELL_W - 6,
-                                background: c.tint, borderLeft: `4px solid ${c.accent}`,
-                                borderTop: `1px solid ${c.accent}44`, borderRight: `1px solid ${c.accent}44`, borderBottom: `1px solid ${c.accent}44`,
+                                background: st.bg, borderLeft: `4px solid ${st.accent}`,
+                                borderTop: `1px solid ${st.accent}44`, borderRight: `1px solid ${st.accent}44`, borderBottom: `1px solid ${st.accent}44`,
                                 borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
                               }}
-                              title={`${s.guest} · ${s.checkin} → ${s.checkout}`}
                             >
                               <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink }}>
                                 {s.guest || t('cal_no_name')}
                               </div>
-                              <div className="f-num text-[10px] whitespace-nowrap" style={{ color: T.inkSoft }}>
-                                🌙 {s.nights}
+                              <div className="f-thai text-[10px] whitespace-nowrap overflow-hidden text-ellipsis">
+                                <span className="font-semibold" style={{ color: channelColor(s.channel) }}>{channelLabel(s.channel)}</span>
+                                <span className="f-num" style={{ color: T.inkSoft }}> · 🌙{s.nights}</span>
+                                {s.note && (
+                                  <span
+                                    style={{ color: T.brassDeep }}
+                                    // Native tooltip — only worth showing when the note is long
+                                    // enough that the single-line ellipsis is actually cutting
+                                    // something off; short notes already fit and need no popup.
+                                    title={s.note.length > 20 ? s.note : undefined}
+                                  >
+                                    {' · 📝 '}{s.note}
+                                  </span>
+                                )}
                               </div>
                             </button>
                           );
@@ -322,15 +368,22 @@ export default function CalendarView() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
           <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: channelAccent(detail.channel).accent, display: 'inline-block' }} />
+              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.status].bg, color: STATUS_STYLE[detail.status].accent }}>
+                {t(STATUS_STYLE[detail.status].label)}
+              </span>
               <p className="f-thai font-bold text-sm" style={{ color: T.ink }}>{t('cal_room_word')} {detail.roomNum}</p>
             </div>
             <p className="f-thai text-sm font-semibold mb-1" style={{ color: T.ink }}>{detail.guest || t('cal_no_name')}</p>
             <p className="f-num text-xs mb-1" style={{ color: T.inkSoft }}>{detail.checkin} → {detail.checkout} · {detail.nights} {t('cal_nights')}</p>
-            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{t('cal_channel')}: {channelAccent(detail.channel).label}</p>
-            {detail.resId && <p className="f-num text-[11px] mb-3" style={{ color: T.inkSoft }}>{t('cal_res_id')}: {detail.resId}</p>}
+            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{t('cal_channel')}: <span className="font-bold" style={{ color: channelColor(detail.channel) }}>{channelLabel(detail.channel)}</span></p>
+            {detail.resId && <p className="f-num text-[11px] mb-1" style={{ color: T.inkSoft }}>{t('cal_res_id')}: {detail.resId}</p>}
+            {detail.note && (
+              <div className="rounded-lg px-3 py-2 mt-2 mb-3 f-thai text-xs" style={{ background: T.brassPale, color: T.brassDeep }}>
+                📝 {detail.note}
+              </div>
+            )}
             <button onClick={() => setDetail(null)}
-              className="press f-thai w-full rounded-lg py-2 text-sm font-bold"
+              className="press f-thai w-full rounded-lg py-2 text-sm font-bold mt-2"
               style={{ background: T.brass, color: T.navyDeep }}>
               {t('cal_close')}
             </button>
