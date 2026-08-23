@@ -12,6 +12,16 @@ import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellR
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Local (device-timezone) date as YYYY-MM-DD — NOT new Date().toISOString(),
+// which returns the UTC date and rolls over to "tomorrow" a full 7 hours
+// early in Bangkok (UTC+7): e.g. at 03:44 local on Aug 24 it still reads
+// Aug 23 in UTC. CheckInOut.tsx / CalendarView.tsx already use this same
+// local-component approach (toLocalDate/today()) — this keeps reportDate's
+// "is this actually today" check consistent with theirs.
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 // IP prefix โหลดจาก Supabase settings table
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -486,11 +496,11 @@ export default function AdminDailyDashboard() {
   const [checkInTime] = useState(
     new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   );
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportDate, setReportDate] = useState(localToday());
   // Flags the shared date pill (mobile + desktop) whenever it's not pointed
   // at the real today, so preview mode is visible right on the control
   // itself — not just in the banner further down the page.
-  const isPreviewDate = reportDate !== new Date().toISOString().split('T')[0];
+  const isPreviewDate = reportDate !== localToday();
   // Mobile header floating menu (TH/EN, date, notifications, logout) — kept
   // out of the always-visible header row so the header stays one line and
   // never eats into content space. Opens as a floating card over the
