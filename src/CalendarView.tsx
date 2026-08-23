@@ -25,8 +25,8 @@ const ROOM_GROUPS: { label: string; labelTh: string; rooms: { num: string; type:
   { label: 'The Loft Luxury Living Space',   labelTh: 'เดอะลอฟท์ ลักซ์ชัวรี่', rooms: [{ num: '300', type: 'Luxury' }] },
 ];
 
-// ─── OTA label (text only — color no longer encodes the channel; the bar
-// color now encodes the real stay status, matching Check-in/out) ───────────
+// ─── OTA label (text only — bar color encodes stay status; the label itself
+// is colored per-channel so channels are still easy to tell apart at a glance)
 function channelLabel(channel: string): string {
   const ch = (channel || '').toLowerCase();
   if (ch.includes('airbnb'))  return 'Airbnb';
@@ -34,6 +34,14 @@ function channelLabel(channel: string): string {
   if (ch.includes('expedia')) return 'Expedia';
   if (ch.includes('trip'))    return 'Trip.com';
   return channel || 'Other';
+}
+function channelColor(channel: string): string {
+  const ch = (channel || '').toLowerCase();
+  if (ch.includes('airbnb'))  return '#e11d48';
+  if (ch.includes('booking')) return '#1d4ed8';
+  if (ch.includes('expedia')) return '#b45309';
+  if (ch.includes('trip'))    return '#16a34a';
+  return '#6b7280';
 }
 
 // ─── Status colors — same darker tints used on the Check-in/out page
@@ -227,7 +235,7 @@ export default function CalendarView() {
       </div>
 
       {/* Legend — status colors (matches Check-in/out), not OTA */}
-      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
         {(Object.keys(STATUS_STYLE) as CalStatus[]).map(st => {
           const s = STATUS_STYLE[st];
           return (
@@ -237,6 +245,14 @@ export default function CalendarView() {
             </div>
           );
         })}
+      </div>
+      {/* Secondary legend — OTA text colors */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
+        {['Airbnb', 'Booking.com', 'Expedia', 'Trip.com', 'Other'].map(ch => (
+          <span key={ch} className="f-thai text-[11px] font-semibold" style={{ color: channelColor(ch === 'Other' ? '' : ch) }}>
+            {ch}
+          </span>
+        ))}
       </div>
 
       {error && (
@@ -328,8 +344,8 @@ export default function CalendarView() {
                               <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink }}>
                                 {s.note && '📝 '}{s.guest || t('cal_no_name')}
                               </div>
-                              <div className="f-thai text-[10px] whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.inkSoft }}>
-                                {channelLabel(s.channel)} · 🌙{s.nights}
+                              <div className="f-thai text-[10px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: channelColor(s.channel) }}>
+                                {channelLabel(s.channel)} · <span className="f-num" style={{ color: T.inkSoft, fontWeight: 400 }}>🌙{s.nights}</span>
                               </div>
                             </button>
                           );
@@ -356,7 +372,7 @@ export default function CalendarView() {
             </div>
             <p className="f-thai text-sm font-semibold mb-1" style={{ color: T.ink }}>{detail.guest || t('cal_no_name')}</p>
             <p className="f-num text-xs mb-1" style={{ color: T.inkSoft }}>{detail.checkin} → {detail.checkout} · {detail.nights} {t('cal_nights')}</p>
-            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{t('cal_channel')}: {channelLabel(detail.channel)}</p>
+            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{t('cal_channel')}: <span className="font-bold" style={{ color: channelColor(detail.channel) }}>{channelLabel(detail.channel)}</span></p>
             {detail.resId && <p className="f-num text-[11px] mb-1" style={{ color: T.inkSoft }}>{t('cal_res_id')}: {detail.resId}</p>}
             {detail.note && (
               <div className="rounded-lg px-3 py-2 mt-2 mb-3 f-thai text-xs" style={{ background: T.brassPale, color: T.brassDeep }}>
