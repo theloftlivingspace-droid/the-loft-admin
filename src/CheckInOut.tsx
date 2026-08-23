@@ -797,6 +797,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [checkoutArmed,  setCheckoutArmed]  = useState(false);
+
+  // ── Move room ─────────────────────────────────────────────────────────
+  const [moveModal, setMoveModal]     = useState<Stay | null>(null);
+  const [moveTargetRoom, setMoveTargetRoom] = useState('');
+  const [moveReason, setMoveReason]   = useState('ซ่อมบำรุง');
+  const [moveSaving, setMoveSaving]   = useState(false);
+  const [moveError, setMoveError]     = useState('');
+
   // แก้ไข/ต่อพัก — สำหรับกรณี Little Hotelier เปลี่ยนวันเช็คเอาท์แล้วแต่ไม่ส่งอีเมล
   // แจ้ง (ระบบ auto-sync จากอีเมลเลยไม่รู้) ต้องแก้มือผ่านหน้านี้แทน
   const [extendModal,   setExtendModal]     = useState<Stay | null>(null);
@@ -874,6 +882,48 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCheckoutSaving(false);
+    }
+  }
+
+  async function confirmMoveRoom() {
+    if (!moveModal || !moveTargetRoom) return;
+    setMoveSaving(true);
+    setMoveError('');
+    const s = moveModal;
+    try {
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'moveGuestRoom', resId: s.resId, newRoom: moveTargetRoom, reason: moveReason }),
+      });
+      let j: { ok?: boolean; error?: string; case?: string; segmentBResId?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+
+      // Case 1 (before checkin): same resId, just a new room number — safe
+      // to reflect locally. Case 2 (after checkin, split into Segment A/B):
+      // this stay's remaining nights actually moved to a NEW resId
+      // (`${s.resId}-B`), and this row's own checkout got shortened to
+      // today — a local patch can't correctly represent a second Stay
+      // appearing, so a full data reload is needed instead of an
+      // optimistic setStays patch. Since load() isn't called elsewhere on
+      // write success in this file (everything else patches setStays
+      // directly), be conservative here rather than inventing a call to a
+      // reload path nothing else uses — reflect what changed for THIS card
+      // (room number, for immediate feedback) and tell the person a
+      // refresh will show the split accurately.
+      setStays(prev => prev.map(x => x.resId === s.resId ? { ...x, room: moveTargetRoom, roomNum: moveTargetRoom } : x));
+      setMoveModal(null);
+      setMoveTargetRoom('');
+      if (j.case === 'after_checkin') {
+        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom} (${t('ci_checkout_label')} ${s.roomNum} + ${t('ci_room_word')} ${moveTargetRoom} ${j.segmentBResId ? `— ${j.segmentBResId}` : ''} — โหลดหน้าใหม่เพื่อดูรายละเอียดครบ)`);
+      } else {
+        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom}`);
+      }
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMoveSaving(false);
     }
   }
 
@@ -1561,8 +1611,23 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 <div className="px-4 pt-3 pb-1.5">
                   {/* Room + Guest row */}
                   <div className="flex items-center gap-3 mb-2.5">
-                    {/* Room badge */}
-                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center" style={{ background: T.navyDeep }}>
+                    {/* Room badge — tap to move room (only when viewing today
+                        and the stay isn't cancelled/checked-out; a room move
+                        for a past/future preview date or a closed-out stay
+                        doesn't make sense) */}
+                    <div
+                      role={isViewingToday && !isCancelled && !isCheckedOut ? 'button' : undefined}
+                      tabIndex={isViewingToday && !isCancelled && !isCheckedOut ? 0 : undefined}
+                      onClick={() => {
+                        if (!isViewingToday || isCancelled || isCheckedOut) return;
+                        setMoveTargetRoom('');
+                        setMoveReason('ซ่อมบำรุง');
+                        setMoveError('');
+                        setMoveModal(s);
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center ${isViewingToday && !isCancelled && !isCheckedOut ? 'press cursor-pointer' : ''}`}
+                      style={{ background: T.navyDeep }}
+                      title={isViewingToday && !isCancelled && !isCheckedOut ? t('ci_move_room_title') : undefined}>
                       <span className="f-num text-2xl font-semibold leading-none" style={{ color: T.brass }}>{s.roomNum}</span>
                       <span className="text-[9px] mt-1 tracking-wide uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
@@ -2068,6 +2133,78 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           </div>
         </div>
       )}
+
+      {/* ย้ายห้อง modal */}
+      {moveModal && (() => {
+        const s = moveModal;
+        // Client-side hint only — server (isRoomAvailable_ in RoomMove.gs)
+        // is the real authority and re-checks on submit. This just avoids
+        // showing an obviously-taken room as selectable.
+        const conflictRooms = new Set(
+          stays
+            .filter(x => x.resId !== s.resId && !cancelledSet.has(x.resId))
+            .filter(x => x.checkin < s.checkout && x.checkout > s.checkin)
+            .map(x => x.roomNum)
+        );
+        const candidateRooms = ROOM_LIST.filter(r => !MANUALLY_CLOSED_ROOMS.has(r.num) && r.num !== s.roomNum);
+
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !moveSaving && setMoveModal(null)}>
+            <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+              <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🏠 {t('ci_move_room_title')} — {t('ci_room_word')} {s.roomNum}</p>
+              <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{s.guest} · {s.checkin} → {s.checkout}</p>
+
+              <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+                {t('ci_move_room_new_room_label')}
+              </label>
+              <select
+                className="focus-ring w-full rounded-lg p-2 text-sm mb-3"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+                value={moveTargetRoom}
+                onChange={e => { setMoveTargetRoom(e.target.value); setMoveError(''); }}
+                autoFocus>
+                <option value="">{t('ci_move_room_select_placeholder')}</option>
+                {candidateRooms.map(r => (
+                  <option key={r.num} value={r.num} disabled={conflictRooms.has(r.num)}>
+                    {r.num} — {r.type}{conflictRooms.has(r.num) ? ` (${t('ci_move_room_not_available')})` : ''}
+                  </option>
+                ))}
+              </select>
+
+              <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+                {t('ci_move_room_reason_label')}
+              </label>
+              <select
+                className="focus-ring w-full rounded-lg p-2 text-sm"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+                value={moveReason}
+                onChange={e => setMoveReason(e.target.value)}>
+                <option value="ซ่อมบำรุง">{t('ci_move_room_reason_maintenance')}</option>
+                <option value="แขกร้องขอ">{t('ci_move_room_reason_guest_request')}</option>
+                <option value="Overbook">{t('ci_move_room_reason_overbook')}</option>
+                <option value="อื่นๆ">{t('ci_move_room_reason_other')}</option>
+              </select>
+
+              {moveError && (
+                <p className="f-thai text-xs mt-2" style={{ color: T.wine }}>⚠️ {moveError}</p>
+              )}
+
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setMoveModal(null)} disabled={moveSaving}
+                  className="press f-thai flex-1 rounded-lg py-2 text-sm disabled:opacity-50"
+                  style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+                  {t('ci_cancel')}
+                </button>
+                <button onClick={confirmMoveRoom} disabled={moveSaving || !moveTargetRoom}
+                  className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
+                  style={{ background: T.brass, color: T.navyDeep }}>
+                  {moveSaving ? t('ci_saving') : t('ci_move_room_confirm')}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* แก้ไขวันเช็คเอาท์ modal */}
       {extendModal && (
