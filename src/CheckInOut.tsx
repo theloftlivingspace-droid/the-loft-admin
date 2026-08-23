@@ -304,6 +304,19 @@ const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
   'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
 };
 
+// Mixes a hex color toward white — used to produce the "dimmed" pastel
+// version of a tile/chip's own color when the legend filter has a different
+// status selected, so unselected rooms stay visible (just quiet) rather
+// than disappearing from the grid.
+function dimToward(hex: string, amount = 0.72): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
 // ─── Passport MRZ scanning ─────────────────────────────────────────────────
 // Reads the whole document image via OCR (general text, not restricted to
 // the MRZ charset) so it still returns something useful even on blurry or
@@ -751,6 +764,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
+  // Room-status grid legend filter — clicking a legend chip highlights only
+  // that status's tiles (full color) and dims every other tile to a pastel
+  // tint, rather than hiding rooms outright. null = no filter, all tiles at
+  // full color. Click the active chip again (or "clear") to reset.
+  const [gridFilter, setGridFilter] = useState<RoomGridStatus | null>(null);
   const [lastRefresh, setLastRefresh] = useState('');
   // Docs keyed by cardKey (resId or roomNum+checkin) — mirrors the Drive folder name "{room}_{checkin}_{resId}"
   const [docs, setDocs]             = useState<Record<string, DocFile[]>>({});
@@ -779,6 +797,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [checkoutModal,  setCheckoutModal]  = useState<Stay | null>(null);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [checkoutArmed,  setCheckoutArmed]  = useState(false);
+
+  // ── Move room ─────────────────────────────────────────────────────────
+  const [moveModal, setMoveModal]     = useState<Stay | null>(null);
+  const [moveTargetRoom, setMoveTargetRoom] = useState('');
+  const [moveReason, setMoveReason]   = useState('ซ่อมบำรุง');
+  const [moveSaving, setMoveSaving]   = useState(false);
+  const [moveError, setMoveError]     = useState('');
+
   // แก้ไข/ต่อพัก — สำหรับกรณี Little Hotelier เปลี่ยนวันเช็คเอาท์แล้วแต่ไม่ส่งอีเมล
   // แจ้ง (ระบบ auto-sync จากอีเมลเลยไม่รู้) ต้องแก้มือผ่านหน้านี้แทน
   const [extendModal,   setExtendModal]     = useState<Stay | null>(null);
@@ -861,6 +887,50 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       showToast(`❌ ${t('ci_save_failed')}`);
     } finally {
       setCheckoutSaving(false);
+    }
+  }
+
+  async function confirmMoveRoom() {
+    if (!moveModal || !moveTargetRoom) return;
+    setMoveSaving(true);
+    setMoveError('');
+    const s = moveModal;
+    try {
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'moveGuestRoom', resId: s.resId, newRoom: moveTargetRoom, reason: moveReason }),
+      });
+      let j: { ok?: boolean; error?: string; case?: string; segmentBResId?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+
+      setMoveModal(null);
+      setMoveTargetRoom('');
+
+      // Full reload instead of a local patch — needed for both cases:
+      // case 1 (before checkin) keeps the same resId but the row moved
+      // position in Sheet1; case 2 (split) makes a genuinely new second
+      // Stay (resId `${s.resId}-B`) appear that a local patch can't
+      // synthesize. load() now returns the freshly built list so we can
+      // find the target without waiting on a re-render.
+      const fresh = await load();
+      const targetResId = j.case === 'after_checkin' && j.segmentBResId ? j.segmentBResId : s.resId;
+      const target = fresh.find(x => x.resId === targetResId);
+
+      if (target) {
+        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom}`);
+        goToRoomCard(folderKey(target.roomNum, target.checkin, target.resId), target.roomNum);
+      } else {
+        // Moved successfully but the result fell outside load()'s window
+        // (checked-in / checking-out-today / arriving within 5 days) —
+        // still a success, just nothing to scroll to on this view.
+        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom} (${t('ci_move_room_not_in_view')})`);
+      }
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMoveSaving(false);
     }
   }
 
@@ -1116,7 +1186,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     });
   }
 
-  async function load() {
+  async function load(): Promise<Stay[]> {
     setLoading(true);
     setError('');
     try {
@@ -1304,8 +1374,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           setLatestCoByRoom(latestPerRoom);
         }
       } catch (_) { /* optional */ }
+
+      return list;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : t('ci_load_failed'));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -1393,6 +1466,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     };
     let status: RoomGridStatus = 'vacant';
     let targetKey: string | null = null;
+    // Every status this room touches across ALL its stays this loop finds —
+    // not just the top-ranked one. A room showing "occupied" (current guest)
+    // can still have a future stay that's "arriving-soon"; that booking is
+    // invisible on the tile normally, but the legend filter below needs to
+    // find it when the person clicks "Arriving soon", so we keep a target
+    // key per secondary status too (for the click-through).
+    const secondaryTargets: Partial<Record<RoomGridStatus, string>> = {};
 
     for (const s of roomStays) {
       const isCheckedOut = checkedOutSet.has(s.resId);
@@ -1412,11 +1492,25 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         candidate = 'arriving-soon';
       }
 
-      if (candidate && RANK[candidate] > RANK[status]) {
-        status = candidate;
-        targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+      if (candidate) {
+        secondaryTargets[candidate] = folderKey(s.roomNum, s.checkin, s.resId);
+        if (RANK[candidate] > RANK[status]) {
+          status = candidate;
+          targetKey = folderKey(s.roomNum, s.checkin, s.resId);
+        }
       }
-      if (status === 'occupied') break; // top rank — no need to keep scanning this room
+      // A stay checked in early (isCheckedInEarly in isInHouse) keeps its
+      // stored s.status as 'arriving-today' — inHouse wins the candidate
+      // above (correctly colors the tile 'occupied'), but that leaves this
+      // stay's *arrival* invisible to the "arriving today" filter, since
+      // the else-if chain above never reaches the arriving-today branch
+      // once inHouse is true. Record it independently of the chain so the
+      // filter still finds it.
+      if (s.status === 'arriving-today') secondaryTargets['arriving-today'] = folderKey(s.roomNum, s.checkin, s.resId);
+      if (s.status === 'arriving-soon')  secondaryTargets['arriving-soon']  = folderKey(s.roomNum, s.checkin, s.resId);
+      // (no early break — a room can hold more than one relevant stay, e.g.
+      // a current occupied guest plus a future arriving-soon booking, and
+      // we need to see all of them for the secondaryTargets above)
     }
 
     // Fallback: nothing in the (date-windowed) `stays` list explained this
@@ -1439,7 +1533,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       targetKey = null;
     }
 
-    return { ...room, status, targetKey };
+    return { ...room, status, targetKey, secondaryTargets };
   });
 
   function goToRoomCard(targetKey: string | null, roomLabel: string, status?: RoomGridStatus) {
@@ -1571,8 +1665,23 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 <div className="px-4 pt-3 pb-1.5">
                   {/* Room + Guest row */}
                   <div className="flex items-center gap-3 mb-2.5">
-                    {/* Room badge */}
-                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center" style={{ background: T.navyDeep }}>
+                    {/* Room badge — tap to move room (only when viewing today
+                        and the stay isn't cancelled/checked-out; a room move
+                        for a past/future preview date or a closed-out stay
+                        doesn't make sense) */}
+                    <div
+                      role={isViewingToday && !isCancelled && !isCheckedOut ? 'button' : undefined}
+                      tabIndex={isViewingToday && !isCancelled && !isCheckedOut ? 0 : undefined}
+                      onClick={() => {
+                        if (!isViewingToday || isCancelled || isCheckedOut) return;
+                        setMoveTargetRoom('');
+                        setMoveReason('ซ่อมบำรุง');
+                        setMoveError('');
+                        setMoveModal(s);
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center ${isViewingToday && !isCancelled && !isCheckedOut ? 'press cursor-pointer' : ''}`}
+                      style={{ background: T.navyDeep }}
+                      title={isViewingToday && !isCancelled && !isCheckedOut ? t('ci_move_room_title') : undefined}>
                       <span className="f-num text-2xl font-semibold leading-none" style={{ color: T.brass }}>{s.roomNum}</span>
                       <span className="text-[9px] mt-1 tracking-wide uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
@@ -1682,12 +1791,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     {s.status === 'arriving-today' && !isCancelled && !isCheckedOut && (
                       <>
                         {!isCheckedIn && !isNoShow && isViewingToday && (
-                          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
-                            onClick={() => markCheckedIn(s.resId)}
+                          <button
+                            onClick={() => { markCheckedIn(s.resId); window.open(TM30_URL, '_blank', 'noopener,noreferrer'); }}
                             className="press f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                             style={{ background: T.sage, color: '#fff' }}>
                             ✅ {t('ci_checkin_tm30')}
-                          </a>
+                          </button>
                         )}
                         {!isCheckedIn && !isNoShow && !isViewingToday && (
                           <span className="f-thai inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: T.bone, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
@@ -1789,11 +1898,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {refDate}</p>
         </div>
         <div className="flex items-center gap-2">
-          <a href={TM30_URL} target="_blank" rel="noopener noreferrer"
+          <button onClick={() => window.open(TM30_URL, '_blank', 'noopener,noreferrer')}
             className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl font-medium"
             style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
             {t('ci_create_tm30')}
-          </a>
+          </button>
           <button onClick={() => { load(); refreshDocs(); }}
             className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
             style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
@@ -1872,49 +1981,90 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           )}
         </div>
       )}
-      <div className="grid grid-cols-5 gap-2 mb-5">
-        {[
-          { label: t('ci_in_hotel'), val: kpiCounts.checkedin,  icon: '🛏️', bg: '#C2DACA', fg: T.sage },
-          { label: t('ci_checking_out_today'), val: kpiCounts.checkouts, icon: '🧳', bg: '#E4BDC3', fg: T.wine },
-          { label: t('ci_arriving_today'),   val: kpiCounts.today_ci,  icon: '📥', bg: '#EEDCB2', fg: T.brassDeep },
-          { label: t('ci_arriving_soon'), val: kpiCounts.arrivals - kpiCounts.today_ci, icon: '📅', bg: '#BAC4D6', fg: T.navy },
-          { label: t('ci_kpi_vacant'), val: roomGrid.filter(r => r.status === 'vacant').length, icon: '🚪', bg: ROOM_GRID_CONFIG.vacant.bg, fg: ROOM_GRID_CONFIG.vacant.fg },
-        ].map(k => (
-          <div key={k.label} className="f-thai rounded-2xl p-3 text-center" style={{ background: k.bg, color: k.fg, border: `1px solid ${k.fg}30` }}>
-            <div className="text-xl mb-0.5">{k.icon}</div>
-            <div className="f-num text-2xl font-bold">{k.val}</div>
-            <div className="text-xs leading-tight mt-0.5">{k.label}</div>
-          </div>
-        ))}
+      {/* KPI cards double as the room-grid filter — no separate legend row
+          needed. Tap a card to highlight only that status in the grid
+          below (full color, everything else dims to a pastel tint); tap
+          the same card again to clear. */}
+      <div className="grid grid-cols-6 gap-1 mb-5">
+        {([
+          { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel'),           icon: '🛏️' },
+          { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today'), icon: '🧳' },
+          { key: 'arriving-today' as RoomGridStatus, label: t('ci_arriving_today'),     icon: '📥' },
+          { key: 'arriving-soon' as RoomGridStatus,  label: t('ci_arriving_soon'),      icon: '📅' },
+          { key: 'vacant' as RoomGridStatus,         label: t('ci_kpi_vacant'),         icon: '🚪' },
+          { key: 'closed' as RoomGridStatus,         label: t('ci_kpi_closed'),         icon: '🔧' },
+        ]).map(k => {
+          const val =
+            k.key === 'occupied' ? kpiCounts.checkedin :
+            k.key === 'checkout-today' ? kpiCounts.checkouts :
+            k.key === 'arriving-today' ? kpiCounts.today_ci :
+            k.key === 'arriving-soon' ? kpiCounts.arrivals - kpiCounts.today_ci :
+            roomGrid.filter(r => r.status === k.key).length;
+          const cfg = ROOM_GRID_CONFIG[k.key];
+          const isSelected = gridFilter === k.key;
+          const isDimmed = gridFilter !== null && !isSelected;
+          const bg = isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg;
+          const fg = isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg;
+          return (
+            <button key={k.key}
+              onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
+              className="press f-thai rounded-lg py-3 px-0.5 text-center transition-colors overflow-hidden"
+              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
+              <div className="text-base leading-none mb-0.5">{k.icon}</div>
+              <div className="f-num text-xl font-bold leading-none">{val}</div>
+              <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 9.5 }}>{k.label}</div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Room status grid — every physical room, colored by live status */}
+      {/* Room status grid — every physical room, colored by live status.
+          Filtered via the KPI cards above: the selected status shows full
+          color, everything else dims to a pastel tint — rooms stay
+          visible, just quieter, so nothing disappears from the grid. */}
       <div className="mb-5">
-        <div className="flex items-center gap-3 mb-2 flex-wrap">
-          {([
-            ['vacant', t('ci_legend_vacant')],
-            ['occupied', t('ci_legend_occupied')],
-            ['checkout-today', t('ci_legend_checkout_today')],
-            ['closed', t('ci_legend_needs_cleaning')],
-            ['arriving-today', t('ci_legend_arriving_today')],
-            ['arriving-soon', t('ci_legend_arriving_soon')],
-          ] as [RoomGridStatus, string][]).map(([key, label]) => (
-            <span key={key} className="f-thai flex items-center gap-1 text-[11px]" style={{ color: T.inkSoft }}>
-              <span className="inline-block w-2 h-2 rounded-full" style={{ background: ROOM_GRID_CONFIG[key].fg }} />
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-8 gap-2">
-          {roomGrid.map(r => (
-            <button key={r.num}
-              onClick={() => goToRoomCard(r.targetKey, r.num, r.status)}
-              className="press f-thai rounded-2xl py-2.5 text-center"
-              style={{ background: ROOM_GRID_CONFIG[r.status].bg, color: ROOM_GRID_CONFIG[r.status].fg, border: `1px solid ${ROOM_GRID_CONFIG[r.status].fg}30` }}>
-              <div className="f-num text-base font-semibold leading-tight">{r.num}</div>
-              <div className="text-[10px] leading-tight opacity-90">{r.type}</div>
+        {gridFilter && (
+          <div className="flex items-center justify-end mb-1.5">
+            <button onClick={() => setGridFilter(null)}
+              className="f-thai text-[11px] underline" style={{ color: T.inkSoft }}>
+              {t('ci_legend_clear')}
             </button>
-          ))}
+          </div>
+        )}
+        <div className="grid grid-cols-8 gap-1">
+          {roomGrid.map(r => {
+            // If a legend filter is active and this room's *top* status
+            // doesn't match it, check whether the room has a secondary
+            // (lower-ranked, currently-hidden) stay that does — e.g. a
+            // room showing "occupied" can still have a future
+            // "arriving-soon" booking. When filtering, that secondary
+            // match takes over the tile's color instead of just dimming,
+            // since that's specifically what the person clicked to see.
+            const matchesFilter = gridFilter !== null && (
+              r.status === gridFilter || r.secondaryTargets[gridFilter] !== undefined
+            );
+            const displayStatus: RoomGridStatus =
+              gridFilter !== null && r.status !== gridFilter && r.secondaryTargets[gridFilter] !== undefined
+                ? gridFilter
+                : r.status;
+            const displayTargetKey =
+              gridFilter !== null && r.status !== gridFilter && r.secondaryTargets[gridFilter] !== undefined
+                ? r.secondaryTargets[gridFilter]!
+                : r.targetKey;
+            const cfg = ROOM_GRID_CONFIG[displayStatus];
+            const isDimmed = gridFilter !== null && !matchesFilter;
+            const bg = isDimmed ? dimToward(cfg.bg) : cfg.bg;
+            const fg = isDimmed ? dimToward(cfg.fg, 0.55) : cfg.fg;
+            return (
+              <button key={r.num}
+                onClick={() => goToRoomCard(displayTargetKey, r.num, displayStatus)}
+                className="press f-thai rounded-md py-1.5 px-0.5 text-center overflow-hidden transition-colors"
+                style={{ background: bg, border: `1px solid ${fg}30` }}>
+                <div className="f-num text-[13px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
+                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.7, fontSize: '8.5px' }}>{r.type}</div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -2049,6 +2199,78 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           </div>
         </div>
       )}
+
+      {/* ย้ายห้อง modal */}
+      {moveModal && (() => {
+        const s = moveModal;
+        // Client-side hint only — server (isRoomAvailable_ in RoomMove.gs)
+        // is the real authority and re-checks on submit. This just avoids
+        // showing an obviously-taken room as selectable.
+        const conflictRooms = new Set(
+          stays
+            .filter(x => x.resId !== s.resId && !cancelledSet.has(x.resId))
+            .filter(x => x.checkin < s.checkout && x.checkout > s.checkin)
+            .map(x => x.roomNum)
+        );
+        const candidateRooms = ROOM_LIST.filter(r => !MANUALLY_CLOSED_ROOMS.has(r.num) && r.num !== s.roomNum);
+
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !moveSaving && setMoveModal(null)}>
+            <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+              <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🏠 {t('ci_move_room_title')} — {t('ci_room_word')} {s.roomNum}</p>
+              <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{s.guest} · {s.checkin} → {s.checkout}</p>
+
+              <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+                {t('ci_move_room_new_room_label')}
+              </label>
+              <select
+                className="focus-ring w-full rounded-lg p-2 text-sm mb-3"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+                value={moveTargetRoom}
+                onChange={e => { setMoveTargetRoom(e.target.value); setMoveError(''); }}
+                autoFocus>
+                <option value="">{t('ci_move_room_select_placeholder')}</option>
+                {candidateRooms.map(r => (
+                  <option key={r.num} value={r.num} disabled={conflictRooms.has(r.num)}>
+                    {r.num} — {r.type}{conflictRooms.has(r.num) ? ` (${t('ci_move_room_not_available')})` : ''}
+                  </option>
+                ))}
+              </select>
+
+              <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+                {t('ci_move_room_reason_label')}
+              </label>
+              <select
+                className="focus-ring w-full rounded-lg p-2 text-sm"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+                value={moveReason}
+                onChange={e => setMoveReason(e.target.value)}>
+                <option value="ซ่อมบำรุง">{t('ci_move_room_reason_maintenance')}</option>
+                <option value="แขกร้องขอ">{t('ci_move_room_reason_guest_request')}</option>
+                <option value="Overbook">{t('ci_move_room_reason_overbook')}</option>
+                <option value="อื่นๆ">{t('ci_move_room_reason_other')}</option>
+              </select>
+
+              {moveError && (
+                <p className="f-thai text-xs mt-2" style={{ color: T.wine }}>⚠️ {moveError}</p>
+              )}
+
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setMoveModal(null)} disabled={moveSaving}
+                  className="press f-thai flex-1 rounded-lg py-2 text-sm disabled:opacity-50"
+                  style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+                  {t('ci_cancel')}
+                </button>
+                <button onClick={confirmMoveRoom} disabled={moveSaving || !moveTargetRoom}
+                  className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
+                  style={{ background: T.brass, color: T.navyDeep }}>
+                  {moveSaving ? t('ci_saving') : t('ci_move_room_confirm')}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* แก้ไขวันเช็คเอาท์ modal */}
       {extendModal && (
