@@ -900,25 +900,27 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       try { j = await r.json(); } catch { /* non-JSON */ }
       if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
 
-      // Case 1 (before checkin): same resId, just a new room number — safe
-      // to reflect locally. Case 2 (after checkin, split into Segment A/B):
-      // this stay's remaining nights actually moved to a NEW resId
-      // (`${s.resId}-B`), and this row's own checkout got shortened to
-      // today — a local patch can't correctly represent a second Stay
-      // appearing, so a full data reload is needed instead of an
-      // optimistic setStays patch. Since load() isn't called elsewhere on
-      // write success in this file (everything else patches setStays
-      // directly), be conservative here rather than inventing a call to a
-      // reload path nothing else uses — reflect what changed for THIS card
-      // (room number, for immediate feedback) and tell the person a
-      // refresh will show the split accurately.
-      setStays(prev => prev.map(x => x.resId === s.resId ? { ...x, room: moveTargetRoom, roomNum: moveTargetRoom } : x));
       setMoveModal(null);
       setMoveTargetRoom('');
-      if (j.case === 'after_checkin') {
-        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom} (${t('ci_checkout_label')} ${s.roomNum} + ${t('ci_room_word')} ${moveTargetRoom} ${j.segmentBResId ? `— ${j.segmentBResId}` : ''} — โหลดหน้าใหม่เพื่อดูรายละเอียดครบ)`);
-      } else {
+
+      // Full reload instead of a local patch — needed for both cases:
+      // case 1 (before checkin) keeps the same resId but the row moved
+      // position in Sheet1; case 2 (split) makes a genuinely new second
+      // Stay (resId `${s.resId}-B`) appear that a local patch can't
+      // synthesize. load() now returns the freshly built list so we can
+      // find the target without waiting on a re-render.
+      const fresh = await load();
+      const targetResId = j.case === 'after_checkin' && j.segmentBResId ? j.segmentBResId : s.resId;
+      const target = fresh.find(x => x.resId === targetResId);
+
+      if (target) {
         showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom}`);
+        goToRoomCard(folderKey(target.roomNum, target.checkin, target.resId), target.roomNum);
+      } else {
+        // Moved successfully but the result fell outside load()'s window
+        // (checked-in / checking-out-today / arriving within 5 days) —
+        // still a success, just nothing to scroll to on this view.
+        showToast(`🏠 ${t('ci_move_room_success')}: ${s.roomNum} → ${moveTargetRoom} (${t('ci_move_room_not_in_view')})`);
       }
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : String(err));
@@ -1135,7 +1137,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     });
   }
 
-  async function load() {
+  async function load(): Promise<Stay[]> {
     setLoading(true);
     setError('');
     try {
@@ -1323,8 +1325,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           setLatestCoByRoom(latestPerRoom);
         }
       } catch (_) { /* optional */ }
+
+      return list;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : t('ci_load_failed'));
+      return [];
     } finally {
       setLoading(false);
     }

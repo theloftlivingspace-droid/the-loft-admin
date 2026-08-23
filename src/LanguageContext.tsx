@@ -143,6 +143,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_move_room_not_available: { th: 'ไม่ว่างช่วงนี้', en: 'Not available' },
   ci_move_room_confirm: { th: '🏠 ยืนยันย้ายห้อง', en: '🏠 Confirm move' },
   ci_move_room_success: { th: 'ย้ายห้องแล้ว', en: 'Room moved' },
+  ci_move_room_not_in_view: { th: 'ไม่อยู่ในมุมมองตอนนี้ ลอง refresh', en: 'not in current view, try refreshing' },
   ci_move_room_reason_maintenance: { th: 'ซ่อมบำรุง', en: 'Maintenance' },
   ci_move_room_reason_guest_request: { th: 'แขกร้องขอ', en: 'Guest request' },
   ci_move_room_reason_overbook: { th: 'Overbook', en: 'Overbook' },
