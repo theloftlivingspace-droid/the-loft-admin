@@ -11,7 +11,7 @@ const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const CELL_W = 68;   // px per day column
 const LABEL_W = 104; // px for the sticky room-label column
-const ROW_H = 62;    // px per room row
+const ROW_H = 74;    // px per room row (room label + guest + OTA + optional note line)
 const DAYS_COUNT = 21;
 
 // ─── Physical room list (all 10 units), grouped exactly like the property
@@ -37,7 +37,7 @@ function channelLabel(channel: string): string {
 }
 function channelColor(channel: string): string {
   const ch = (channel || '').toLowerCase();
-  if (ch.includes('airbnb'))  return '#e11d48';
+  if (ch.includes('airbnb'))  return '#f43f5e';
   if (ch.includes('booking')) return '#1d4ed8';
   if (ch.includes('expedia')) return '#b45309';
   if (ch.includes('trip'))    return '#16a34a';
@@ -339,14 +339,25 @@ export default function CalendarView() {
                                 borderTop: `1px solid ${st.accent}44`, borderRight: `1px solid ${st.accent}44`, borderBottom: `1px solid ${st.accent}44`,
                                 borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
                               }}
-                              title={`${s.guest} · ${s.checkin} → ${s.checkout}${s.note ? ' · ' + s.note : ''}`}
                             >
                               <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink }}>
-                                {s.note && '📝 '}{s.guest || t('cal_no_name')}
+                                {s.guest || t('cal_no_name')}
                               </div>
                               <div className="f-thai text-[10px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: channelColor(s.channel) }}>
                                 {channelLabel(s.channel)} · <span className="f-num" style={{ color: T.inkSoft, fontWeight: 400 }}>🌙{s.nights}</span>
                               </div>
+                              {s.note && (
+                                <div
+                                  className="f-thai text-[10px] whitespace-nowrap overflow-hidden text-ellipsis"
+                                  style={{ color: T.brassDeep }}
+                                  // Native tooltip — only worth showing when the note is long
+                                  // enough that the single-line ellipsis is actually cutting
+                                  // something off; short notes already fit and need no popup.
+                                  title={s.note.length > 20 ? s.note : undefined}
+                                >
+                                  📝 {s.note}
+                                </div>
+                              )}
                             </button>
                           );
                         })}
