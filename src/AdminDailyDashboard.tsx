@@ -997,7 +997,7 @@ export default function AdminDailyDashboard() {
         <div
           className="md:hidden fixed left-4 right-4 z-50 flex items-center justify-around rounded-[26px]"
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
             background: T.card,
             border: `1px solid ${T.hair}`,
             boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
