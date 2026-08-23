@@ -798,14 +798,16 @@ export default function AdminDailyDashboard() {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
               {isOfficeNetwork ? t('office_badge') : t('online_badge')}
             </div>
-            <input
-              type="date"
-              value={reportDate}
-              onChange={e => setReportDate(e.target.value)}
-              title={t('report_date_label')}
-              className="rounded-full px-2 py-1 text-[10px] focus-ring"
-              style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: '#FFFFFF' }}
-            />
+            {mainSection === 'checkinout' && (
+              <input
+                type="date"
+                value={reportDate}
+                onChange={e => setReportDate(e.target.value)}
+                title={t('report_date_label')}
+                className="rounded-full px-2 py-1 text-[10px] focus-ring"
+                style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: '#FFFFFF' }}
+              />
+            )}
             <button
               onClick={handleEnableNotifications}
               title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
@@ -882,24 +884,28 @@ export default function AdminDailyDashboard() {
           {/* Pill 2 — date, and Pill 3 — menu button, each floating on their
               own; this wrapper is layout-only (no bg/border/shadow of its own) */}
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Pill 2 — date */}
-            <div
-              className="flex items-center rounded-full px-3.5 py-2.5"
-              style={{
-                background: T.navyDeep,
-                border: `1px solid ${T.hairGold}`,
-                boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
-                backdropFilter: 'saturate(180%) blur(20px)',
-                WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-              }}>
-              <input
-                type="date"
-                value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
-                className="text-xs font-medium f-thai focus-ring"
-                style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
-              />
-            </div>
+            {/* Pill 2 — date (Check-in/out's report date only — irrelevant on other
+                tabs like Calendar, which has its own date navigation, so hide it
+                there to avoid two date pickers looking like they're stacked) */}
+            {mainSection === 'checkinout' && (
+              <div
+                className="flex items-center rounded-full px-3.5 py-2.5"
+                style={{
+                  background: T.navyDeep,
+                  border: `1px solid ${T.hairGold}`,
+                  boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
+                  backdropFilter: 'saturate(180%) blur(20px)',
+                  WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+                }}>
+                <input
+                  type="date"
+                  value={reportDate}
+                  onChange={e => setReportDate(e.target.value)}
+                  className="text-xs font-medium f-thai focus-ring"
+                  style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                />
+              </div>
+            )}
 
             {/* Pill 3 — menu button (+ notif badge + dropdown anchored to it) */}
             <div className="relative">
