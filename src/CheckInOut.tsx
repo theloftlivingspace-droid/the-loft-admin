@@ -1878,13 +1878,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           is a read-only reconstruction of another date rather than live state. */}
       {!isViewingToday && (
         <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center justify-between gap-2"
-          style={{ background: T.navyTint, color: T.navy, border: `1px solid ${T.navy}30` }}>
+          style={{ background: T.brassPale, color: T.brassDeep, border: `1.5px solid ${T.brass}` }}>
           <span>🔍 {t('ci_preview_mode')} {refDate} {t('ci_preview_readonly')}</span>
           {onViewDateChange && (
             <button
               onClick={() => onViewDateChange(realToday)}
               className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
-              style={{ background: T.navy, color: '#FFFFFF' }}>
+              style={{ background: T.brassDeep, color: '#FFFFFF' }}>
               {t('ci_preview_back_today')}
             </button>
           )}
