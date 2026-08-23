@@ -785,6 +785,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [extendDate,    setExtendDate]      = useState('');
   const [extendSaving,  setExtendSaving]    = useState(false);
   const [extendError,   setExtendError]     = useState('');
+  // แก้ไขวันเช็คอิน — เฉพาะก่อนเช็คอินจริง (ปุ่มจะหายไปทันทีที่สถานะขึ้นว่าเช็คอินแล้ว)
+  const [checkinEditModal,  setCheckinEditModal]  = useState<Stay | null>(null);
+  const [checkinEditDate,   setCheckinEditDate]   = useState('');
+  const [checkinEditSaving, setCheckinEditSaving] = useState(false);
+  const [checkinEditError,  setCheckinEditError]  = useState('');
 
   // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
   const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -959,6 +964,50 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     setExtendModal(s);
     setExtendDate(s.checkout);
     setExtendError('');
+  }
+
+  function openCheckinEditModal(s: Stay) {
+    setCheckinEditModal(s);
+    setCheckinEditDate(s.checkin);
+    setCheckinEditError('');
+  }
+
+  async function saveCheckinEdit() {
+    if (!checkinEditModal) return;
+    const { resId, checkin: oldCheckin } = checkinEditModal;
+    if (!checkinEditDate || checkinEditDate === oldCheckin) { setCheckinEditError(t('ci_extend_pick_diff_date')); return; }
+    setCheckinEditSaving(true);
+    setCheckinEditError('');
+    try {
+      const r = await fetch(GAS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateCheckin', resId, newCheckin: checkinEditDate }),
+      });
+      let j: { ok?: boolean; error?: string; conflict?: { guest: string; checkout: string }; apartmenterySynced?: boolean; apartmenteryNote?: string } = {};
+      try { j = await r.json(); } catch { /* non-JSON */ }
+      if (!r.ok || j.ok === false) {
+        if (j.error === 'conflict' && j.conflict) {
+          setCheckinEditError(`${t('ci_extend_conflict')} — ${j.conflict.guest} (${j.conflict.checkout})`);
+        } else {
+          setCheckinEditError(j.error || `HTTP ${r.status}`);
+        }
+        setCheckinEditSaving(false);
+        return;
+      }
+
+      setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkin: checkinEditDate } : x));
+      setCheckinEditModal(null);
+      // ไม่มีการ sync วันเช็คอินไป Apartmentery ตอนนี้ (มีแต่ sync วันเช็คเอาท์
+      // ใน updateApartmenteryBookingEndDateForRoom) — แจ้งเตือนเสมอให้ไปแก้เองที่
+      // Apartmentery ด้วย จนกว่าจะมีฟังก์ชัน sync วันเช็คอินจริง
+      setToast(`🗓️ บันทึกวันเช็คอินใหม่แล้ว — ${j.apartmenteryNote || 'อย่าลืมไปแก้วันเช็คอินใน Apartmentery ด้วย (ยังไม่ sync อัตโนมัติ)'}`);
+      setTimeout(() => setToast(''), 6000);
+    } catch (e) {
+      setCheckinEditError(String(e));
+    } finally {
+      setCheckinEditSaving(false);
+    }
   }
 
   async function saveExtend() {
@@ -1579,12 +1628,24 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     // checked-in / checking-out-today) ยกเว้นการจองที่ยกเลิกแล้ว
                     // หรือเช็คเอาท์ไปแล้ว — และเฉพาะตอนดูวันนี้จริง (ไม่ใช่ preview วันอื่น)
                     const canEditCheckout = isViewingToday && !isCancelled && !isCheckedOut;
+                    // แก้ไขวันเช็คอินได้เฉพาะก่อนเช็คอินจริง (arriving-soon /
+                    // arriving-today ที่ยังไม่กดเช็คอิน) — ปุ่มหายไปทันทีที่
+                    // สถานะขึ้นว่าเช็คอินแล้ว (status 'checked-in', 'checking-out-today',
+                    // หรือ arriving-today ที่เช็คอินไว้ล่วงหน้าแล้วผ่าน ciDoneSet)
+                    const canEditCheckin = isViewingToday && !isCancelled && !isCheckedOut && !isCheckedIn
+                      && (s.status === 'arriving-today' || s.status === 'arriving-soon');
                     return (
                       <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
-                        <div className="flex-1 px-3 py-2">
+                        <div
+                          onClick={canEditCheckin ? (e => { e.stopPropagation(); openCheckinEditModal(s); }) : undefined}
+                          className={`flex-1 px-3 py-2 relative${canEditCheckin ? ' press cursor-pointer' : ''}`}
+                          title={canEditCheckin ? t('ci_edit_checkin_date') : undefined}>
                           <div className="f-thai text-[9px] font-semibold tracking-widest uppercase mb-1" style={{ color: T.inkSoft }}>{t('ci_checkin_label')}</div>
                           <div className="f-num text-xl font-semibold leading-none" style={{ color: T.ink }}>{ci.day}</div>
                           <div className="text-xs mt-0.5" style={{ color: T.inkSoft }}>{ci.month} {ci.year}</div>
+                          {canEditCheckin && (
+                            <span className="absolute top-1.5 right-1.5 text-[10px]" style={{ color: T.brassDeep, opacity: 0.6 }}>✏️</span>
+                          )}
                         </div>
                         <div className="flex items-center justify-center px-3 text-[11px] font-medium" style={{ background: T.bone, color: T.brassDeep, borderLeft: `1px solid ${T.hairGold}`, borderRight: `1px solid ${T.hairGold}` }}>
                           {s.nights}<br/>{t('ci_nights')}
@@ -2020,6 +2081,43 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                 className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
                 style={{ background: T.brass, color: T.navyDeep }}>
                 {extendSaving ? t('ci_saving') : (extendModal.status === 'checking-out-today' ? t('ci_save_notify_line') : t('ci_save_only'))}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* แก้ไขวันเช็คอิน modal */}
+      {checkinEditModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !checkinEditSaving && setCheckinEditModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+            <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🗓️ {t('ci_edit_checkin_date')} — {t('ci_room_word')} {checkinEditModal.roomNum}</p>
+            <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{checkinEditModal.guest} · {t('ci_checkout_label')} {checkinEditModal.checkout}</p>
+            <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
+              {t('ci_edit_checkin_new_label')} ({t('ci_checkin_label')} {t('ci_extend_current')}: {checkinEditModal.checkin})
+            </label>
+            <input
+              type="date"
+              className="focus-ring w-full rounded-lg p-2 text-sm"
+              style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}
+              max={checkinEditModal.checkout}
+              value={checkinEditDate}
+              onChange={e => { setCheckinEditDate(e.target.value); setCheckinEditError(''); }}
+              autoFocus
+            />
+            {checkinEditError && (
+              <p className="f-thai text-xs mt-2" style={{ color: T.wine }}>⚠️ {checkinEditError}</p>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setCheckinEditModal(null)} disabled={checkinEditSaving}
+                className="press f-thai flex-1 rounded-lg py-2 text-sm disabled:opacity-50"
+                style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
+                {t('ci_cancel')}
+              </button>
+              <button onClick={saveCheckinEdit} disabled={checkinEditSaving}
+                className="press f-thai flex-1 rounded-lg py-2 text-sm font-bold disabled:opacity-50"
+                style={{ background: T.brass, color: T.navyDeep }}>
+                {checkinEditSaving ? t('ci_saving') : t('ci_save_only')}
               </button>
             </div>
           </div>

@@ -151,6 +151,8 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_extend_current:    { th: 'เดิม', en: 'current' },
   ci_extend_pick_diff_date: { th: 'กรุณาเลือกวันที่ต่างจากเดิม', en: 'Please pick a date different from the current one' },
   ci_extend_conflict:   { th: 'ชนกับบุ๊คกิ้งอื่นในห้องเดียวกัน', en: 'Conflicts with another booking in the same room' },
+  ci_edit_checkin_date: { th: 'แก้ไขวันเช็คอิน', en: 'Edit check-in date' },
+  ci_edit_checkin_new_label: { th: 'วันเช็คอินใหม่', en: 'New check-in date' },
   ci_download:          { th: 'ดาวน์โหลด', en: 'Download' },
   ci_click_download:    { th: 'คลิกเพื่อดาวน์โหลด', en: 'Click to download' },
   ci_kpi_vacant:        { th: 'ห้องว่าง', en: 'Vacant rooms' },
