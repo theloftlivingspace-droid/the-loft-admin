@@ -121,6 +121,289 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
+const EQUIP_CATS = ['อุปกรณ์ช่างทั่วไป', 'อุปกรณ์ซ่อมแซมตกแต่ง', 'อุปกรณ์งานประปา'] as const;
+type EquipCat = typeof EQUIP_CATS[number];
+
+interface EquipmentItem { id:number; cat:EquipCat; name:string; qty:number; unit:string; note:string }
+
+// ช่างอาคาร (maintenance) equipment list, imported from Nathan's อุปกรณ์ช่าง.xlsx
+// (2026-08) — seeds the Equipment tab's initial state (same pattern as the
+// hardcoded stockData/warrantyData defaults above); once saved, the live copy
+// in Supabase (key 'equipment_data') takes over.
+const EQUIPMENT_SEED: Omit<EquipmentItem, 'id'>[] = [
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เครื่องตัดเหล็กไฟเบอร์', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เครื่องเชื่อมไฟฟ้า', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'หินเจียร์', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'แท่นตัดกระเบื้อง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ประแจคอม้าตัวยาว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ประแจคอม้าตัวสั้น', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เลื่อยลันดา', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เกียงฉาบ (เหล็ก)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เกียงผสมปูน (เหล็ก)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เกียงฉาบ (ไม้)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'สว่านแบตmarkita', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ชุดสว่าน WORX', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เลื่อยวงเดือน 7 นิ้ว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ใบหินเจียร์ตัดเหล็ก 7นิ้ว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ใบหินเจียร์ ตัดไม้ 7นิ้ว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เครื่องขัดกระดาษทรายไฟฟ้า', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เลื่อยมือตัดเหล็ก', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เลื่อยมือตัดแผ่นยิปซั่ม', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เพาใบพัดปั่นปูน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรรไกรพลาสติก', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรรไกรตัดท่อ PVC', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ค้อนเหล็กด้ามไม้', qty: 0, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ค้อนเหล็กประดิษฐ์', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ปืนยิงกาว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'แปรงขัดลวดเล็ก', qty: 0, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'แปรงขัดลวดกลาง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'จอบ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ค้อนปอนด์', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ฉะแลงขุด', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เชือก10เมตร', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เชือกเส้นใหญ่', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'หินลับ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ลูกกลิ้งรีดวอลเปเปอร์', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'บันไดยาว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'บันไดกลาง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'พลาสติกซีนม้วน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กล่องสว่างไม่ได้ใช้', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ประแจร์', qty: 5, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ประแจร์เลื่อน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ลูกกลิ้งทาสี', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ลูกกลิ้งทาสีเล็ก', qty: 0, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'แปรงทาสีเล็ก', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'พุกพลาสติก', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ตะปู 3 นิ้ว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ชุดน็อตตัวผู้+น็อตตัวเมีย', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ตะปู ดำ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ระดับน้ำ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เกรียง โป๊ว', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากแหลม', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมตัด', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ไดโว่ MICAWA 50Hz', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ตลับเมตร (กลาง)', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ตลับเมตร (ใหญ่)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เลื่อยฉลุ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คราด', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมล็อค', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กะบะผสมปูน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กล่องตะปู และ สกรู', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ดอกสว่าน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (หนา)', qty: 5, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (บาง)', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ไฟเบอร์ ตัดเหล็ก SOLIX 4นิ้ว (บาง)', qty: 6, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรรไกรเหล็ก', qty: 6, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'สิ่วไม้', qty: 6, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมถอนตะปู', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากจิ้งจก', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'เครื่องถอดลูกปืน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากขยาย', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากตรง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากโค้ง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'คีมปากตรง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ปะแจร์  ปากตาย', qty: 11, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ปะแจร์  ปากแหวน', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'หัวจับดอกสว่าน Drill Chucks SUNKEY 0.6 - 6 mm (1/4") รูแบบเกลียว 3/8', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'Dimmer Wide Series 600W ดิมเมอร์หรี่ไฟ รุ่น RKW-803', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'สวิตไฟ (เล็ก)', qty: 14, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'สวิตไฟ (ใหญ่)', qty: 8, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรอบสวิตช์ไฟ  แบบ2ช่อง สั้น', qty: 8, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรอบสวิตช์ไฟ  แบบ1ช่อง สั้น', qty: 5, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรอบสวิตช์ไฟ  แบบ2ช่อง ยาว', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กรอบสวิตช์ไฟ  แบบ1ช่อง ยาว', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ตะปูคอนกรีตผิวเรียบ (Concrete Nails)    #12x1 นิ้ว', qty: 4, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'กระดาษทราย', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'ปืนยิงซิลิโคน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ช่างทั่วไป', name: 'สายไฟใหญ่เส้นขาว', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'ปูนสกรีมโค้ท', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'ซิลิโคน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'อาคลีลิค โป๊ว WALL PUTTY', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'เทบกาวกันซึม', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'เศษปูนยาแนวกระเบื้องที่เหลือใช้', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'เศษปูนยิปซั่มเหลือใช้', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'กาวอีพ็อกซี่ ซีล  (ใช้ในงานเหล็ก)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'น้ำยาเคลือบพื้นไฮบริต', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'น้ำยากันซึม ตราเสือ', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'น้ำยากันซึม ตรา J.U', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำ สีเทาอ่อน Madison Grey 8256', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำ เทาเข้ม สีรองพื้นหยุดสนิม RUST TECH', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำมัน สีดำด้าน(BoardBlack) GF888', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำมัน น้ำตาลแดง(Coral Red) KG163', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีเคลือบเงา ตรา กระทิง สีขาว  KG111', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำทาภายในกึ่งเงา   สีครีม                              MAJESTIC PERFECT BEAUTYANDCARE A BASE', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'กระเบื้อง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'กระเบื้องปูห้องยาวลายไม้', qty: 0, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'แผ่นลามิเนตลายไม้', qty: 4, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'แผ่นเหล็ก94cm×230cm.', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'แผ่นซีเมนต์บอร์ด', qty: 4, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'เศษสังกะสี', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'แผ่นอะคิลิค', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'กระจก', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำอะคิลิค  สีขาวด้าน ทาภายนอก  โฟร์ซีซันส์ แอดวานซ์  เบส 1/4 กล #000A (สีขาว) + A2004', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีทาหลังคา TOA ROOFPAINT แดงเอราวัญ (RUSTIC RED)  R19', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีเคลือบเงา SUPER COAT SHMRG395223', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีสเปรย์ ดำ FLAT BLACK 29', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'ซีเมนต์ขัดมันสำเร็จรูป  Decoration Cement (น้ำยาซีเมนต์ล็อฟ)', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'น้ำยาขจัดปัญหาท่ออุดตัน', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'JOTUN  GARDEX PREMIUM E.G.BASE A', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: 'สีน้ำด้าน ภายใน TOA รุ่น 4 Seasons Advance', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์ซ่อมแซมตกแต่ง', name: '4 SEASONS EMULSION MATT INT BASE 2.5 GL #000B', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อต่อเกียวใน pvc', qty: 21, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อต่อเกลียวนอก PVC', qty: 14, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อต่อเกลียวชุด', qty: 50, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้องอ เล็ก', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้องอ PVC 2 นิ้วครึ่ง', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อลด1 นิ้ว×6หุน', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ฝาเกลียวปิดท่อประปา', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อแยกลด3ทาง PVC 2.5"×4หุน', qty: 4, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'เศษท่อ PVC', qty: 1, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'คลิปจับท่อpvc 4หุน', qty: 3, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'เทปพันกลียว', qty: 2, unit: 'ชิ้น', note: '' },
+  { cat: 'อุปกรณ์งานประปา', name: 'ข้อต่อยูเนี่ยน PVC หนา', qty: 6, unit: 'ชิ้น', note: '' },
+];
+const EQUIP_NAME_EN: Record<string,string> = {
+  'เครื่องตัดเหล็กไฟเบอร์': 'Fiber metal cutter',
+  'เครื่องเชื่อมไฟฟ้า': 'Electric welding machine',
+  'หินเจียร์': 'Angle grinder',
+  'แท่นตัดกระเบื้อง': 'Tile cutting machine',
+  'ประแจคอม้าตัวยาว': 'Long pipe wrench',
+  'ประแจคอม้าตัวสั้น': 'Short pipe wrench',
+  'เลื่อยลันดา': 'Crosscut handsaw',
+  'เกียงฉาบ (เหล็ก)': 'Steel plastering trowel',
+  'เกียงผสมปูน (เหล็ก)': 'Steel mortar mixing trowel',
+  'เกียงฉาบ (ไม้)': 'Wood plastering trowel',
+  'สว่านแบตmarkita': 'Makita cordless drill',
+  'ชุดสว่าน WORX': 'WORX drill set',
+  'เลื่อยวงเดือน 7 นิ้ว': '7" circular saw',
+  'ใบหินเจียร์ตัดเหล็ก 7นิ้ว': '7" metal cutting disc',
+  'ใบหินเจียร์ ตัดไม้ 7นิ้ว': '7" wood cutting disc',
+  'เครื่องขัดกระดาษทรายไฟฟ้า': 'Electric sander',
+  'เลื่อยมือตัดเหล็ก': 'Hand hacksaw (metal)',
+  'เลื่อยมือตัดแผ่นยิปซั่ม': 'Hand saw for gypsum board',
+  'เพาใบพัดปั่นปูน': 'Mortar mixing paddle',
+  'กรรไกรพลาสติก': 'Plastic scissors',
+  'กรรไกรตัดท่อ PVC': 'PVC pipe cutter',
+  'ค้อนเหล็กด้ามไม้': 'Steel hammer, wooden handle',
+  'ค้อนเหล็กประดิษฐ์': 'Forged steel hammer',
+  'ปืนยิงกาว': 'Glue gun',
+  'แปรงขัดลวดเล็ก': 'Small wire brush',
+  'แปรงขัดลวดกลาง': 'Medium wire brush',
+  'จอบ': 'Hoe',
+  'ค้อนปอนด์': 'Sledgehammer',
+  'ฉะแลงขุด': 'Digging mattock',
+  'เชือก10เมตร': 'Rope, 10 m',
+  'เชือกเส้นใหญ่': 'Thick rope',
+  'หินลับ': 'Sharpening stone',
+  'ลูกกลิ้งรีดวอลเปเปอร์': 'Wallpaper seam roller',
+  'บันไดยาว': 'Long ladder',
+  'บันไดกลาง': 'Medium ladder',
+  'พลาสติกซีนม้วน': 'Plastic sheeting roll',
+  'กล่องสว่างไม่ได้ใช้': 'Spare light box (unused)',
+  'ประแจร์': 'Wrench',
+  'ประแจร์เลื่อน': 'Adjustable wrench',
+  'ลูกกลิ้งทาสี': 'Paint roller',
+  'ลูกกลิ้งทาสีเล็ก': 'Small paint roller',
+  'แปรงทาสีเล็ก': 'Small paint brush',
+  'พุกพลาสติก': 'Plastic wall anchors',
+  'ตะปู 3 นิ้ว': 'Nails, 3"',
+  'ชุดน็อตตัวผู้+น็อตตัวเมีย': 'Nut & bolt set',
+  'ตะปู ดำ': 'Black nails',
+  'ระดับน้ำ': 'Spirit level',
+  'เกรียง โป๊ว': 'Putty knife',
+  'คีมปากแหลม': 'Needle-nose pliers',
+  'คีมตัด': 'Cutting pliers',
+  'ไดโว่ MICAWA 50Hz': 'MICAWA submersible pump, 50Hz',
+  'ตลับเมตร (กลาง)': 'Measuring tape (medium)',
+  'ตลับเมตร (ใหญ่)': 'Measuring tape (large)',
+  'เลื่อยฉลุ': 'Coping saw',
+  'คราด': 'Rake',
+  'คีมล็อค': 'Locking pliers',
+  'กะบะผสมปูน': 'Mortar mixing tray',
+  'กล่องตะปู และ สกรู': 'Box of nails & screws',
+  'ดอกสว่าน': 'Drill bits',
+  'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (หนา)': 'Automac 4" metal cutting disc (thick)',
+  'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (บาง)': 'Automac 4" metal cutting disc (thin)',
+  'ไฟเบอร์ ตัดเหล็ก SOLIX 4นิ้ว (บาง)': 'SOLIX 4" metal cutting disc (thin)',
+  'กรรไกรเหล็ก': 'Tin snips',
+  'สิ่วไม้': 'Wood chisel',
+  'คีมถอนตะปู': 'Nail-puller pliers',
+  'คีมปากจิ้งจก': 'Long-nose pliers',
+  'เครื่องถอดลูกปืน': 'Bearing puller',
+  'คีมปากขยาย': 'Adjustable-jaw pliers',
+  'คีมปากตรง': 'Straight-nose pliers',
+  'คีมปากโค้ง': 'Curved-nose pliers',
+  'ปะแจร์  ปากตาย': 'Open-end wrench',
+  'ปะแจร์  ปากแหวน': 'Box-end wrench',
+  'หัวจับดอกสว่าน Drill Chucks SUNKEY 0.6 - 6 mm (1/4") รูแบบเกลียว 3/8': 'SUNKEY drill chuck 0.6–6mm (1/4"), 3/8" threaded bore',
+  'Dimmer Wide Series 600W ดิมเมอร์หรี่ไฟ รุ่น RKW-803': 'Dimmer switch, 600W Wide Series, RKW-803',
+  'สวิตไฟ (เล็ก)': 'Light switch (small)',
+  'สวิตไฟ (ใหญ่)': 'Light switch (large)',
+  'กรอบสวิตช์ไฟ  แบบ2ช่อง สั้น': 'Switch cover plate, 2-gang, short',
+  'กรอบสวิตช์ไฟ  แบบ1ช่อง สั้น': 'Switch cover plate, 1-gang, short',
+  'กรอบสวิตช์ไฟ  แบบ2ช่อง ยาว': 'Switch cover plate, 2-gang, long',
+  'กรอบสวิตช์ไฟ  แบบ1ช่อง ยาว': 'Switch cover plate, 1-gang, long',
+  'ตะปูคอนกรีตผิวเรียบ (Concrete Nails)    #12x1 นิ้ว': 'Smooth concrete nails #12 x 1"',
+  'กระดาษทราย': 'Sandpaper',
+  'ปืนยิงซิลิโคน': 'Silicone caulking gun',
+  'สายไฟใหญ่เส้นขาว': 'Large white electrical wire',
+  'ปูนสกรีมโค้ท': 'Skim coat cement',
+  'ซิลิโคน': 'Silicone',
+  'อาคลีลิค โป๊ว WALL PUTTY': 'Acrylic wall putty',
+  'เทบกาวกันซึม': 'Waterproof adhesive tape',
+  'เศษปูนยาแนวกระเบื้องที่เหลือใช้': 'Leftover tile grout',
+  'เศษปูนยิปซั่มเหลือใช้': 'Leftover gypsum plaster',
+  'กาวอีพ็อกซี่ ซีล  (ใช้ในงานเหล็ก)': 'Epoxy seal adhesive (for steel work)',
+  'น้ำยาเคลือบพื้นไฮบริต': 'Hybrid floor coating solution',
+  'น้ำยากันซึม ตราเสือ': 'Waterproofing solution, Tiger brand',
+  'น้ำยากันซึม ตรา J.U': 'Waterproofing solution, J.U brand',
+  'สีน้ำ สีเทาอ่อน Madison Grey 8256': 'Water paint, light grey, Madison Grey 8256',
+  'สีน้ำ เทาเข้ม สีรองพื้นหยุดสนิม RUST TECH': 'Water paint, dark grey, RUST TECH rust-stop primer',
+  'สีน้ำมัน สีดำด้าน(BoardBlack) GF888': 'Oil paint, matte black (BoardBlack) GF888',
+  'สีน้ำมัน น้ำตาลแดง(Coral Red) KG163': 'Oil paint, reddish brown (Coral Red) KG163',
+  'สีเคลือบเงา ตรา กระทิง สีขาว  KG111': 'Gloss enamel, Bison brand, white, KG111',
+  'สีน้ำทาภายในกึ่งเงา   สีครีม                              MAJESTIC PERFECT BEAUTYANDCARE A BASE': 'Semi-gloss interior water paint, cream, Majestic Perfect Beauty & Care A Base',
+  'กระเบื้อง': 'Tile',
+  'กระเบื้องปูห้องยาวลายไม้': 'Wood-look plank floor tile',
+  'แผ่นลามิเนตลายไม้': 'Wood-grain laminate sheet',
+  'แผ่นเหล็ก94cm×230cm.': 'Steel sheet, 94×230cm',
+  'แผ่นซีเมนต์บอร์ด': 'Cement board sheet',
+  'เศษสังกะสี': 'Leftover zinc sheet',
+  'แผ่นอะคิลิค': 'Acrylic sheet',
+  'กระจก': 'Glass',
+  'สีน้ำอะคิลิค  สีขาวด้าน ทาภายนอก  โฟร์ซีซันส์ แอดวานซ์  เบส 1/4 กล #000A (สีขาว) + A2004': 'Acrylic exterior paint, matte white, Four Seasons Advance, Base 1/4gal #000A + A2004',
+  'สีทาหลังคา TOA ROOFPAINT แดงเอราวัญ (RUSTIC RED)  R19': 'TOA Roofpaint, Rustic Red R19',
+  'สีเคลือบเงา SUPER COAT SHMRG395223': 'Super Coat gloss enamel, SHMRG395223',
+  'สีสเปรย์ ดำ FLAT BLACK 29': 'Spray paint, flat black 29',
+  'ซีเมนต์ขัดมันสำเร็จรูป  Decoration Cement (น้ำยาซีเมนต์ล็อฟ)': 'Ready-mix polished cement, Decoration Cement (loft finish)',
+  'น้ำยาขจัดปัญหาท่ออุดตัน': 'Drain unclogging solution',
+  'JOTUN  GARDEX PREMIUM E.G.BASE A': 'Jotun Gardex Premium E.G. Base A',
+  'สีน้ำด้าน ภายใน TOA รุ่น 4 Seasons Advance': 'TOA matte interior paint, 4 Seasons Advance',
+  '4 SEASONS EMULSION MATT INT BASE 2.5 GL #000B': '4 Seasons Emulsion Matt Interior Base 2.5gal #000B',
+  'ข้อต่อเกียวใน pvc': 'PVC female threaded connector',
+  'ข้อต่อเกลียวนอก PVC': 'PVC male threaded connector',
+  'ข้อต่อเกลียวชุด': 'Threaded connector set',
+  'ข้องอ เล็ก': 'Small elbow',
+  'ข้องอ PVC 2 นิ้วครึ่ง': 'PVC elbow, 2.5"',
+  'ข้อลด1 นิ้ว×6หุน': 'Reducer, 1"×3/4"',
+  'ฝาเกลียวปิดท่อประปา': 'Threaded pipe cap',
+  'ข้อแยกลด3ทาง PVC 2.5"×4หุน': 'PVC 3-way reducing tee, 2.5"×1/2"',
+  'เศษท่อ PVC': 'PVC pipe offcuts',
+  'คลิปจับท่อpvc 4หุน': 'PVC pipe clip, 1/2"',
+  'เทปพันกลียว': 'Thread seal tape',
+  'ข้อต่อยูเนี่ยน PVC หนา': 'PVC union connector, heavy-duty',
+};
+const EQUIP_NAME_TH: Record<string,string> = Object.fromEntries(
+  Object.entries(EQUIP_NAME_EN).map(([th, en]) => [en, th])
+);
+
+const EQUIP_CAT_EN: Record<string,string> = {
+  'อุปกรณ์ช่างทั่วไป': 'General Tools',
+  'อุปกรณ์ซ่อมแซมตกแต่ง': 'Repair & Decoration',
+  'อุปกรณ์งานประปา': 'Plumbing',
+};
+
+
 
 // ── Patrol types & helpers ────────────────────────────────────────────────
 interface PatrolUnknown { id: string; plate: string; timestamp: string; photos: string[]; notes: string; spotNumber: string }
@@ -258,14 +541,14 @@ function useDndSensors() {
 }
 
 
-export default function StockParking({ group, initialTab, onLowStockChange }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'; onLowStockChange?: (count: number) => void }) {
+export default function StockParking({ group, initialTab, onLowStockChange }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void }) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const SECTION_GROUPS = {
-    stock:   ['stock', 'warranty'],
+    stock:   ['stock', 'warranty', 'equipment'],
     parking: ['parking-in', 'parking-out', 'patrol'],
   } as const;
-  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'>(initialTab ?? SECTION_GROUPS[group][0]);
+  const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'>(initialTab ?? SECTION_GROUPS[group][0]);
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
   // If the active main tab (group) changes and the current sub-tab doesn't
   // belong to it, snap to that group's first sub-tab.
@@ -449,6 +732,32 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
     setShowWModal(false);
   };
 
+  // ── equipment (ช่างอาคาร) ───────────────────────────────────────────────
+  const [equipmentData, setEquipmentData] = useState<EquipmentItem[]>(
+    EQUIPMENT_SEED.map((r, i) => ({ id: i + 1, ...r }))
+  );
+  const equipmentSnapshotRef = useRef<EquipmentItem[]>(equipmentData);
+  const [nextEqId, setNextEqId] = useState(EQUIPMENT_SEED.length + 1);
+  const [eqCat, setEqCat] = useState<EquipCat>(EQUIP_CATS[0]);
+  const [showEqModal, setShowEqModal] = useState(false);
+  const [newEq, setNewEq] = useState<Omit<EquipmentItem,'id'>>({cat:EQUIP_CATS[0],name:'',qty:0,unit:'ชิ้น',note:''});
+  const changeEqQty = (id:number, delta:number) =>
+    setEquipmentData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
+  const updateEqNote = (id:number, note:string) =>
+    setEquipmentData(d => d.map(r => r.id===id ? {...r, note} : r));
+  const updateEqName = (id:number, name:string) =>
+    setEquipmentData(d => d.map(r => r.id===id ? {...r, name} : r));
+  const updateEqUnit = (id:number, unit:string) =>
+    setEquipmentData(d => d.map(r => r.id===id ? {...r, unit} : r));
+  const delEquipment = (id:number) => setEquipmentData(d => d.filter(r=>r.id!==id));
+  const addEquipment = () => {
+    if(!newEq.name.trim()) return;
+    setEquipmentData(d=>[...d,{id:nextEqId,...newEq}]);
+    setNextEqId(n=>n+1); setEqCat(newEq.cat);
+    setNewEq({cat:newEq.cat,name:'',qty:0,unit:'ชิ้น',note:''});
+    setShowEqModal(false);
+  };
+
 
   // ── patrol ─────────────────────────────────────────────────────────────────
   const [patrolUnknowns, setPatrolUnknowns] = useState<PatrolUnknown[]>([]);
@@ -517,6 +826,11 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
     setTimeout(() => setSaved(''), 2500);
   }, []);
 
+  const saveEquipment = useCallback(async () => {
+    equipmentSnapshotRef.current = equipmentData;
+    await doSave('equipment_data', equipmentData);
+  }, [equipmentData, doSave]);
+
   const saveStock = useCallback(async () => {
     const entries = diffStock(stockSnapshotRef.current, stockData);
     await sbLogStockChanges(entries);
@@ -557,6 +871,14 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
       setWarrantyData(fixed);
       if (fixed.length) setNextWId(Math.max(...fixed.map(r => r.id)) + 1);
       if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
+    });
+    sbLoad('equipment_data').then(d => {
+      if (!d) return;
+      const fixed = dedupeIds(d as EquipmentItem[]);
+      setEquipmentData(fixed);
+      equipmentSnapshotRef.current = fixed;
+      if (fixed.length) setNextEqId(Math.max(...fixed.map(r => r.id)) + 1);
+      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('equipment_data', fixed);
     });
     sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
   }, []);
@@ -628,6 +950,16 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
       return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
     });
   };
+  // Same reasoning as onWarrantyDragEnd above — equipment rows are dragged
+  // within one category at a time (see EQUIP_CATS filter below).
+  const onEquipmentDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setEquipmentData(arr => {
+      const oldIdx = arr.findIndex(r=>r.id===active.id), newIdx = arr.findIndex(r=>r.id===over.id);
+      return oldIdx===-1||newIdx===-1 ? arr : arrayMove(arr, oldIdx, newIdx);
+    });
+  };
 
   return (
     <div className="pb-24">
@@ -635,6 +967,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
         ? sectionNav([
             {key:'stock',      label:'Stock',        emoji:'📦'},
             {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
+            {key:'equipment',  label:t('sp_tab_equipment'), emoji:'🔧'},
           ])
         : sectionNav([
             {key:'parking-in', label:'Car · In',      emoji:'🚗'},
@@ -727,6 +1060,106 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
               <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
               <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
+            </Modal>
+          )}
+        </div>
+      )}
+
+      {/* ── EQUIPMENT (ช่างอาคาร) ── */}
+      {section==='equipment' && (
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
+              <span className="truncate f-thai">{t('sp_tab_equipment')}</span>
+              <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.sageTint, color: T.sage }}>{equipmentData.length} {t('sp_items_unit')}</span>
+            </h2>
+            <div className="flex gap-2">
+              <button onClick={()=>{ setNewEq(p=>({...p, cat: eqCat})); setShowEqModal(true); }} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
+              <button onClick={saveEquipment}
+                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('equipment_data')}>
+                {saving==='equipment_data'?'...' : saved==='equipment_data'?t('sp_saved') : t('sp_save')}
+              </button>
+            </div>
+          </div>
+          {/* category tabs */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {EQUIP_CATS.map(c=>(
+              <button key={c} onClick={()=>setEqCat(c)}
+                className="press f-thai px-3 py-1.5 rounded-xl text-xs font-medium"
+                style={c===eqCat ? { background: T.brass, color: T.navyDeep, border: `1px solid ${T.brass}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
+                {lang==='en' ? (EQUIP_CAT_EN[c]||c) : c} <span style={{ opacity: 0.7 }}>({equipmentData.filter(r=>r.cat===c).length})</span>
+              </button>
+            ))}
+          </div>
+          <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
+            <table className="w-full text-sm">
+              <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
+                <tr>{['#','',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_unit'),t('sp_col_note'),''].map((h,hi)=>(
+                  <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: T.inkSoft }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onEquipmentDragEnd}>
+                  <SortableContext items={equipmentData.filter(r=>r.cat===eqCat).map(r=>r.id)} strategy={verticalListSortingStrategy}>
+                    {equipmentData.filter(r=>r.cat===eqCat).map((r,i)=>(
+                      <SortableRow key={r.id} id={r.id} style={{ borderBottom: `1px solid ${T.hair}` }}>
+                        {(handleProps) => (<>
+                          <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
+                          <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                          <td className="px-3 py-2 font-medium f-thai" style={{ color: T.ink }}>
+                            <input
+                              className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
+                              style={{ color: T.ink, border: '1px solid transparent', minWidth: '80px' }}
+                              value={lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name)}
+                              onChange={e=>updateEqName(r.id, e.target.value)}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <button onClick={()=>changeEqQty(r.id,-1)}
+                                className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
+                              <span className="f-num min-w-[28px] text-center font-semibold" style={{ color: T.ink }}>{r.qty}</span>
+                              <button onClick={()=>changeEqQty(r.id,+1)}
+                                className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 f-thai">
+                            <input
+                              className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
+                              style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                              value={lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}
+                              onChange={e=>updateEqUnit(r.id, e.target.value)}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-xs f-thai">
+                            <input
+                              className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-thai"
+                              style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                              value={r.note}
+                              onChange={e=>updateEqNote(r.id, e.target.value)}
+                              placeholder={t('sp_field_note')}
+                            />
+                          </td>
+                          <td className="px-3 py-2"><button onClick={()=>delEquipment(r.id)} className={btnDel} style={btnDelStyle}>{t('sp_delete')}</button></td>
+                        </>)}
+                      </SortableRow>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </tbody>
+            </table>
+          </div>
+          {showEqModal && (
+            <Modal title={t('sp_modal_add_item')} onClose={()=>setShowEqModal(false)} onSave={addEquipment} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
+              <Field label={t('sp_field_category')}>
+                <select className={inputCls} style={inputStyle} value={newEq.cat} onChange={e=>setNewEq(p=>({...p,cat:e.target.value as EquipCat}))}>
+                  {EQUIP_CATS.map(c=><option key={c} value={c}>{lang==='en' ? (EQUIP_CAT_EN[c]||c) : c}</option>)}
+                </select>
+              </Field>
+              <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newEq.name} onChange={e=>setNewEq(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newEq.qty} onChange={e=>setNewEq(p=>({...p,qty:+e.target.value}))} /></Field>
+              <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newEq.unit} onChange={e=>setNewEq(p=>({...p,unit:e.target.value}))} /></Field>
+              <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newEq.note} onChange={e=>setNewEq(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
           )}
         </div>

@@ -268,6 +268,13 @@ const ROOM_LIST: { num: string; type: string }[] = [
   { num: '208', type: 'Rhythm' },
 ];
 
+// Room-number → type lookup, built from ROOM_LIST above (the actual source
+// of truth for the property layout). Used for the room-type label on each
+// stay card instead of parsing it out of the raw `room` string from the
+// sheet — that string doesn't always include the type suffix (e.g. a row
+// synced in as just "205" with no "Allure"), which left the label blank.
+const ROOM_TYPE_MAP: Record<string, string> = Object.fromEntries(ROOM_LIST.map(r => [r.num, r.type]));
+
 // Rooms forced to show "closed" on the grid regardless of booking/checkout
 // data — e.g. mid-renovation rooms with no stays or housekeeping logs to
 // derive a status from. Remove a room's number from this set once it's
@@ -1684,7 +1691,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                       title={isViewingToday && !isCancelled && !isCheckedOut ? t('ci_move_room_title') : undefined}>
                       <span className="f-num text-2xl font-semibold leading-none" style={{ color: T.brass }}>{s.roomNum}</span>
                       <span className="text-[9px] mt-1 tracking-wide uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                        {s.room.replace(s.roomNum, '').trim().split(' ')[0]}
+                        {ROOM_TYPE_MAP[s.roomNum] || s.room.replace(s.roomNum, '').trim().split(' ')[0]}
                       </span>
                     </div>
 
@@ -1878,13 +1885,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           is a read-only reconstruction of another date rather than live state. */}
       {!isViewingToday && (
         <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center justify-between gap-2"
-          style={{ background: T.navyTint, color: T.navy, border: `1px solid ${T.navy}30` }}>
+          style={{ background: T.brassPale, color: T.brassDeep, border: `1.5px solid ${T.brass}` }}>
           <span>🔍 {t('ci_preview_mode')} {refDate} {t('ci_preview_readonly')}</span>
           {onViewDateChange && (
             <button
               onClick={() => onViewDateChange(realToday)}
               className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
-              style={{ background: T.navy, color: '#FFFFFF' }}>
+              style={{ background: T.brassDeep, color: '#FFFFFF' }}>
               {t('ci_preview_back_today')}
             </button>
           )}

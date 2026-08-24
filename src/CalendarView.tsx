@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const CELL_W = 68;   // px per day column
-const LABEL_W = 104; // px for the sticky room-label column
+const LABEL_W = 76;  // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
 const DAYS_COUNT = 21;
 const CENTER_OFFSET = Math.floor(DAYS_COUNT / 2); // 10 — puts "today" at the middle day column
@@ -57,8 +57,8 @@ const STATUS_STYLE: Record<CalStatus, { bg: string; accent: string; label: strin
 };
 // Same date-based classification as stayFromRawRow() in CheckInOut.tsx, so a
 // stay's color always matches what Check-in/out would show for it today.
-function computeStatus(checkin: string, checkout: string): CalStatus {
-  const tod = today();
+function computeStatus(checkin: string, checkout: string, refDate: string): CalStatus {
+  const tod = refDate;
   const checkedIn        = checkin <= tod && checkout > tod;
   const arrivingToday     = checkin === tod;
   const checkingOutToday  = checkout === tod && checkin < tod;
@@ -77,7 +77,7 @@ interface RawStay {
 }
 interface CalStay {
   roomNum: string; guest: string; checkin: string; checkout: string;
-  channel: string; resId: string; nights: number; note: string; status: CalStatus;
+  channel: string; resId: string; nights: number; note: string;
 }
 
 function toLocalDate(d: Date): string {
@@ -99,15 +99,19 @@ function roomNum(r: string): string {
 const WD_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 const WD_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function CalendarView() {
+interface CalendarViewProps {
+  viewDate: string;
+  onViewDateChange: (d: string) => void;
+}
+
+export default function CalendarView({ viewDate, onViewDateChange }: CalendarViewProps) {
   const { t, lang } = useLang();
   const [stays, setStays] = useState<CalStay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefresh, setLastRefresh] = useState('');
-  // เริ่มต้นให้ "วันนี้" อยู่กลางช่วง 21 วัน (ไม่ใช่ซ้ายสุด) จะได้ scroll ให้อยู่
-  // กลางจอได้จริง — ดู CENTER_OFFSET ด้านล่าง
-  const [startDate, setStartDate] = useState(addDays(today(), -CENTER_OFFSET));
+  const startDate = viewDate;
+  const setStartDate = onViewDateChange;
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -140,7 +144,6 @@ export default function CalendarView() {
           resId: row.resId || '',
           note: row.note || '',
           nights,
-          status: computeStatus(ci, co),
         });
       }
       setStays(list);
@@ -154,11 +157,16 @@ export default function CalendarView() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ช่วง 21 วันที่แสดงบนจอ เริ่มก่อน startDate (=วันที่กำลังดู/reportDate ที่
+  // แชร์กับแท็บ Check-in/out) ไป CENTER_OFFSET วัน เพื่อให้ startDate ตกอยู่
+  // กลางกริดพอดี — เป็นแค่ตัวแปรเรนเดอร์ในนี้เท่านั้น ไม่กระทบ reportDate จริง
+  const rangeStart = addDays(startDate, -CENTER_OFFSET);
+
   const days = useMemo(() => {
     const arr: string[] = [];
-    for (let i = 0; i < DAYS_COUNT; i++) arr.push(addDays(startDate, i));
+    for (let i = 0; i < DAYS_COUNT; i++) arr.push(addDays(rangeStart, i));
     return arr;
-  }, [startDate]);
+  }, [rangeStart]);
 
   const stayByRoom = useMemo(() => {
     const map: Record<string, CalStay[]> = {};
@@ -170,19 +178,20 @@ export default function CalendarView() {
   }, [stays]);
 
   const totalW = LABEL_W + DAYS_COUNT * CELL_W;
-  const todayIdx = diffDays(startDate, today());
+  const todayIdx = diffDays(rangeStart, today());
 
   // แถบสีเหลือง "วันนี้" ให้อยู่กลางจอเสมอ — เลื่อน scroll ของกริดให้คอลัมน์
   // วันนี้อยู่ตรงกลางพื้นที่มองเห็นจริง ๆ (ไม่ใช่แค่กลางช่วง 21 วัน) ทุกครั้งที่
-  // เปลี่ยนช่วงวันที่ (ปุ่ม วันนี้ / ◀ ▶ / date picker) หรือโหลดข้อมูลเสร็จ
-  // (ตอนโหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
+  // เปลี่ยนวันที่ (ปุ่ม วันนี้ / ◀ ▶ / date picker) หรือโหลดข้อมูลเสร็จ (ตอน
+  // โหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (todayIdx < 0 || todayIdx >= DAYS_COUNT) return; // วันนี้ไม่อยู่ในช่วงที่แสดง — ไม่ต้องเลื่อน
     const todayColCenter = LABEL_W + todayIdx * CELL_W + CELL_W / 2;
     el.scrollLeft = Math.max(0, todayColCenter - el.clientWidth / 2);
-  }, [startDate, loading, todayIdx]);
+  }, [rangeStart, loading, todayIdx]);
+
 
   // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
   // The grid can be wider than the screen; besides native touch/trackpad
@@ -207,6 +216,21 @@ export default function CalendarView() {
 
   return (
     <div>
+      {/* Preview-mode banner — same as Check-in/out's, so it's never ambiguous
+          that the calendar below is a read-only reconstruction of another date. */}
+      {startDate !== today() && (
+        <div className="mb-4 px-4 py-2.5 rounded-2xl f-thai text-xs font-semibold flex items-center justify-between gap-2"
+          style={{ background: T.brassPale, color: T.brassDeep, border: `1.5px solid ${T.brass}` }}>
+          <span>🔍 {t('ci_preview_mode')} {startDate} {t('ci_preview_readonly')}</span>
+          <button
+            onClick={() => setStartDate(today())}
+            className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
+            style={{ background: T.brassDeep, color: '#FFFFFF' }}>
+            {t('ci_preview_back_today')}
+          </button>
+        </div>
+      )}
+
       {/* Header controls */}
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-1.5">
@@ -226,26 +250,25 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Date navigation */}
+      {/* Date navigation — the ± week / Today shortcuts. Jumping to an exact
+          date is done from the shared date picker in the header pill above
+          (same one Check-in/out uses), so there's no second date input here. */}
       <div className="flex items-center gap-2 mb-3">
-        <button onClick={() => setStartDate(d => addDays(d, -7))}
+        <button onClick={() => setStartDate(addDays(startDate, -7))}
           className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
           <ChevronLeft size={16} color={T.navy} />
         </button>
-        <button onClick={() => setStartDate(addDays(today(), -CENTER_OFFSET))}
+        <button onClick={() => setStartDate(today())}
           className="press focus-ring f-thai px-3 py-1.5 rounded-lg text-xs font-semibold"
           style={{ background: T.navyTint, color: T.navy }}>
           {t('cal_today')}
         </button>
-        <button onClick={() => setStartDate(d => addDays(d, 7))}
+        <button onClick={() => setStartDate(addDays(startDate, 7))}
           className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
           <ChevronRight size={16} color={T.navy} />
         </button>
-        <input type="date" value={startDate} onChange={e => e.target.value && setStartDate(e.target.value)}
-          className="focus-ring rounded-lg px-2 py-1.5 text-xs f-num"
-          style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} />
-        <span className="f-num text-xs ml-auto hidden sm:inline" style={{ color: T.inkSoft }}>
-          {startDate} → {addDays(startDate, DAYS_COUNT - 1)}
+        <span className="f-num text-xs" style={{ color: T.inkSoft }}>
+          {rangeStart} → {addDays(rangeStart, DAYS_COUNT - 1)}
         </span>
       </div>
 
@@ -315,7 +338,7 @@ export default function CalendarView() {
                     <div key={room.num} className="flex" style={{ height: ROW_H, borderBottom: `1px solid ${T.hair}` }}>
                       <div style={{
                         width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 10, background: T.card,
-                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
+                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 6px',
                       }}>
                         <div className="f-num text-sm font-bold" style={{ color: T.ink }}>{room.num}</div>
                         <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
@@ -328,12 +351,22 @@ export default function CalendarView() {
                           <div style={{ position: 'absolute', left: todayIdx * CELL_W, top: 0, bottom: 0, width: CELL_W, background: T.brassPale, opacity: 0.35 }} />
                         )}
                         {roomStays.map(s => {
-                          const sIdx = diffDays(startDate, s.checkin);
-                          const eIdx = sIdx + s.nights;
-                          if (eIdx <= 0 || sIdx >= DAYS_COUNT) return null;
-                          const clipL = Math.max(0, sIdx);
-                          const clipR = Math.min(DAYS_COUNT, eIdx);
-                          const st = STATUS_STYLE[s.status];
+                          const status = computeStatus(s.checkin, s.checkout, startDate);
+                          const st = STATUS_STYLE[status];
+                          const sIdx = diffDays(rangeStart, s.checkin);
+                          const eIdx = diffDays(rangeStart, s.checkout);
+                          // Bars start/end at the MIDDLE of the check-in / check-out day
+                          // (not the day cell's left edge) so a same-room turnover on the
+                          // same day — one stay's checkout, the next stay's check-in —
+                          // draws as two half-day segments that meet exactly at midday
+                          // instead of the checkout leg vanishing and the check-in leg
+                          // starting from the far edge.
+                          const totalPx = DAYS_COUNT * CELL_W;
+                          const sPx = sIdx * CELL_W + CELL_W / 2;
+                          const ePx = eIdx * CELL_W + CELL_W / 2;
+                          if (ePx <= 0 || sPx >= totalPx) return null;
+                          const clipL = Math.max(0, sPx);
+                          const clipR = Math.min(totalPx, ePx);
                           return (
                             <button
                               key={s.resId + s.checkin}
@@ -341,7 +374,7 @@ export default function CalendarView() {
                               className="press focus-ring text-left"
                               style={{
                                 position: 'absolute', top: 5, bottom: 5,
-                                left: clipL * CELL_W + 3, width: (clipR - clipL) * CELL_W - 6,
+                                left: clipL + 3, width: (clipR - clipL) - 6,
                                 background: st.bg, borderLeft: `4px solid ${st.accent}`,
                                 borderTop: `1px solid ${st.accent}44`, borderRight: `1px solid ${st.accent}44`, borderBottom: `1px solid ${st.accent}44`,
                                 borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
@@ -383,8 +416,8 @@ export default function CalendarView() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
           <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.status].bg, color: STATUS_STYLE[detail.status].accent }}>
-                {t(STATUS_STYLE[detail.status].label)}
+              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].accent }}>
+                {t(STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].label)}
               </span>
               <p className="f-thai font-bold text-sm" style={{ color: T.ink }}>{t('cal_room_word')} {detail.roomNum}</p>
             </div>
