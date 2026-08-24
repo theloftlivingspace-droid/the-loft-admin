@@ -403,6 +403,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   sp_field_status:         { th: 'สถานะ', en: 'Status' },
   sp_modal_add_warranty:   { th: 'เพิ่มรายการรับประกัน', en: 'Add warranty record' },
   sp_field_category:       { th: 'หมวดหมู่', en: 'Category' },
+  sp_tab_equipment:        { th: 'อุปกรณ์ช่าง', en: 'Equipment' },
   sp_field_room:           { th: 'ห้อง', en: 'Room' },
   sp_placeholder_room:     { th: 'เช่น 205, OFFICE', en: 'e.g. 205, OFFICE' },
   sp_field_brand:          { th: 'แบรนด์', en: 'Brand' },

@@ -262,6 +262,147 @@ const EQUIPMENT_SEED: Omit<EquipmentItem, 'id'>[] = [
   { cat: 'อุปกรณ์งานประปา', name: 'เทปพันกลียว', qty: 2, unit: 'ชิ้น', note: '' },
   { cat: 'อุปกรณ์งานประปา', name: 'ข้อต่อยูเนี่ยน PVC หนา', qty: 6, unit: 'ชิ้น', note: '' },
 ];
+const EQUIP_NAME_EN: Record<string,string> = {
+  'เครื่องตัดเหล็กไฟเบอร์': 'Fiber metal cutter',
+  'เครื่องเชื่อมไฟฟ้า': 'Electric welding machine',
+  'หินเจียร์': 'Angle grinder',
+  'แท่นตัดกระเบื้อง': 'Tile cutting machine',
+  'ประแจคอม้าตัวยาว': 'Long pipe wrench',
+  'ประแจคอม้าตัวสั้น': 'Short pipe wrench',
+  'เลื่อยลันดา': 'Crosscut handsaw',
+  'เกียงฉาบ (เหล็ก)': 'Steel plastering trowel',
+  'เกียงผสมปูน (เหล็ก)': 'Steel mortar mixing trowel',
+  'เกียงฉาบ (ไม้)': 'Wood plastering trowel',
+  'สว่านแบตmarkita': 'Makita cordless drill',
+  'ชุดสว่าน WORX': 'WORX drill set',
+  'เลื่อยวงเดือน 7 นิ้ว': '7" circular saw',
+  'ใบหินเจียร์ตัดเหล็ก 7นิ้ว': '7" metal cutting disc',
+  'ใบหินเจียร์ ตัดไม้ 7นิ้ว': '7" wood cutting disc',
+  'เครื่องขัดกระดาษทรายไฟฟ้า': 'Electric sander',
+  'เลื่อยมือตัดเหล็ก': 'Hand hacksaw (metal)',
+  'เลื่อยมือตัดแผ่นยิปซั่ม': 'Hand saw for gypsum board',
+  'เพาใบพัดปั่นปูน': 'Mortar mixing paddle',
+  'กรรไกรพลาสติก': 'Plastic scissors',
+  'กรรไกรตัดท่อ PVC': 'PVC pipe cutter',
+  'ค้อนเหล็กด้ามไม้': 'Steel hammer, wooden handle',
+  'ค้อนเหล็กประดิษฐ์': 'Forged steel hammer',
+  'ปืนยิงกาว': 'Glue gun',
+  'แปรงขัดลวดเล็ก': 'Small wire brush',
+  'แปรงขัดลวดกลาง': 'Medium wire brush',
+  'จอบ': 'Hoe',
+  'ค้อนปอนด์': 'Sledgehammer',
+  'ฉะแลงขุด': 'Digging mattock',
+  'เชือก10เมตร': 'Rope, 10 m',
+  'เชือกเส้นใหญ่': 'Thick rope',
+  'หินลับ': 'Sharpening stone',
+  'ลูกกลิ้งรีดวอลเปเปอร์': 'Wallpaper seam roller',
+  'บันไดยาว': 'Long ladder',
+  'บันไดกลาง': 'Medium ladder',
+  'พลาสติกซีนม้วน': 'Plastic sheeting roll',
+  'กล่องสว่างไม่ได้ใช้': 'Spare light box (unused)',
+  'ประแจร์': 'Wrench',
+  'ประแจร์เลื่อน': 'Adjustable wrench',
+  'ลูกกลิ้งทาสี': 'Paint roller',
+  'ลูกกลิ้งทาสีเล็ก': 'Small paint roller',
+  'แปรงทาสีเล็ก': 'Small paint brush',
+  'พุกพลาสติก': 'Plastic wall anchors',
+  'ตะปู 3 นิ้ว': 'Nails, 3"',
+  'ชุดน็อตตัวผู้+น็อตตัวเมีย': 'Nut & bolt set',
+  'ตะปู ดำ': 'Black nails',
+  'ระดับน้ำ': 'Spirit level',
+  'เกรียง โป๊ว': 'Putty knife',
+  'คีมปากแหลม': 'Needle-nose pliers',
+  'คีมตัด': 'Cutting pliers',
+  'ไดโว่ MICAWA 50Hz': 'MICAWA submersible pump, 50Hz',
+  'ตลับเมตร (กลาง)': 'Measuring tape (medium)',
+  'ตลับเมตร (ใหญ่)': 'Measuring tape (large)',
+  'เลื่อยฉลุ': 'Coping saw',
+  'คราด': 'Rake',
+  'คีมล็อค': 'Locking pliers',
+  'กะบะผสมปูน': 'Mortar mixing tray',
+  'กล่องตะปู และ สกรู': 'Box of nails & screws',
+  'ดอกสว่าน': 'Drill bits',
+  'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (หนา)': 'Automac 4" metal cutting disc (thick)',
+  'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (บาง)': 'Automac 4" metal cutting disc (thin)',
+  'ไฟเบอร์ ตัดเหล็ก SOLIX 4นิ้ว (บาง)': 'SOLIX 4" metal cutting disc (thin)',
+  'กรรไกรเหล็ก': 'Tin snips',
+  'สิ่วไม้': 'Wood chisel',
+  'คีมถอนตะปู': 'Nail-puller pliers',
+  'คีมปากจิ้งจก': 'Long-nose pliers',
+  'เครื่องถอดลูกปืน': 'Bearing puller',
+  'คีมปากขยาย': 'Adjustable-jaw pliers',
+  'คีมปากตรง': 'Straight-nose pliers',
+  'คีมปากโค้ง': 'Curved-nose pliers',
+  'ปะแจร์  ปากตาย': 'Open-end wrench',
+  'ปะแจร์  ปากแหวน': 'Box-end wrench',
+  'หัวจับดอกสว่าน Drill Chucks SUNKEY 0.6 - 6 mm (1/4") รูแบบเกลียว 3/8': 'SUNKEY drill chuck 0.6–6mm (1/4"), 3/8" threaded bore',
+  'Dimmer Wide Series 600W ดิมเมอร์หรี่ไฟ รุ่น RKW-803': 'Dimmer switch, 600W Wide Series, RKW-803',
+  'สวิตไฟ (เล็ก)': 'Light switch (small)',
+  'สวิตไฟ (ใหญ่)': 'Light switch (large)',
+  'กรอบสวิตช์ไฟ  แบบ2ช่อง สั้น': 'Switch cover plate, 2-gang, short',
+  'กรอบสวิตช์ไฟ  แบบ1ช่อง สั้น': 'Switch cover plate, 1-gang, short',
+  'กรอบสวิตช์ไฟ  แบบ2ช่อง ยาว': 'Switch cover plate, 2-gang, long',
+  'กรอบสวิตช์ไฟ  แบบ1ช่อง ยาว': 'Switch cover plate, 1-gang, long',
+  'ตะปูคอนกรีตผิวเรียบ (Concrete Nails)    #12x1 นิ้ว': 'Smooth concrete nails #12 x 1"',
+  'กระดาษทราย': 'Sandpaper',
+  'ปืนยิงซิลิโคน': 'Silicone caulking gun',
+  'สายไฟใหญ่เส้นขาว': 'Large white electrical wire',
+  'ปูนสกรีมโค้ท': 'Skim coat cement',
+  'ซิลิโคน': 'Silicone',
+  'อาคลีลิค โป๊ว WALL PUTTY': 'Acrylic wall putty',
+  'เทบกาวกันซึม': 'Waterproof adhesive tape',
+  'เศษปูนยาแนวกระเบื้องที่เหลือใช้': 'Leftover tile grout',
+  'เศษปูนยิปซั่มเหลือใช้': 'Leftover gypsum plaster',
+  'กาวอีพ็อกซี่ ซีล  (ใช้ในงานเหล็ก)': 'Epoxy seal adhesive (for steel work)',
+  'น้ำยาเคลือบพื้นไฮบริต': 'Hybrid floor coating solution',
+  'น้ำยากันซึม ตราเสือ': 'Waterproofing solution, Tiger brand',
+  'น้ำยากันซึม ตรา J.U': 'Waterproofing solution, J.U brand',
+  'สีน้ำ สีเทาอ่อน Madison Grey 8256': 'Water paint, light grey, Madison Grey 8256',
+  'สีน้ำ เทาเข้ม สีรองพื้นหยุดสนิม RUST TECH': 'Water paint, dark grey, RUST TECH rust-stop primer',
+  'สีน้ำมัน สีดำด้าน(BoardBlack) GF888': 'Oil paint, matte black (BoardBlack) GF888',
+  'สีน้ำมัน น้ำตาลแดง(Coral Red) KG163': 'Oil paint, reddish brown (Coral Red) KG163',
+  'สีเคลือบเงา ตรา กระทิง สีขาว  KG111': 'Gloss enamel, Bison brand, white, KG111',
+  'สีน้ำทาภายในกึ่งเงา   สีครีม                              MAJESTIC PERFECT BEAUTYANDCARE A BASE': 'Semi-gloss interior water paint, cream, Majestic Perfect Beauty & Care A Base',
+  'กระเบื้อง': 'Tile',
+  'กระเบื้องปูห้องยาวลายไม้': 'Wood-look plank floor tile',
+  'แผ่นลามิเนตลายไม้': 'Wood-grain laminate sheet',
+  'แผ่นเหล็ก94cm×230cm.': 'Steel sheet, 94×230cm',
+  'แผ่นซีเมนต์บอร์ด': 'Cement board sheet',
+  'เศษสังกะสี': 'Leftover zinc sheet',
+  'แผ่นอะคิลิค': 'Acrylic sheet',
+  'กระจก': 'Glass',
+  'สีน้ำอะคิลิค  สีขาวด้าน ทาภายนอก  โฟร์ซีซันส์ แอดวานซ์  เบส 1/4 กล #000A (สีขาว) + A2004': 'Acrylic exterior paint, matte white, Four Seasons Advance, Base 1/4gal #000A + A2004',
+  'สีทาหลังคา TOA ROOFPAINT แดงเอราวัญ (RUSTIC RED)  R19': 'TOA Roofpaint, Rustic Red R19',
+  'สีเคลือบเงา SUPER COAT SHMRG395223': 'Super Coat gloss enamel, SHMRG395223',
+  'สีสเปรย์ ดำ FLAT BLACK 29': 'Spray paint, flat black 29',
+  'ซีเมนต์ขัดมันสำเร็จรูป  Decoration Cement (น้ำยาซีเมนต์ล็อฟ)': 'Ready-mix polished cement, Decoration Cement (loft finish)',
+  'น้ำยาขจัดปัญหาท่ออุดตัน': 'Drain unclogging solution',
+  'JOTUN  GARDEX PREMIUM E.G.BASE A': 'Jotun Gardex Premium E.G. Base A',
+  'สีน้ำด้าน ภายใน TOA รุ่น 4 Seasons Advance': 'TOA matte interior paint, 4 Seasons Advance',
+  '4 SEASONS EMULSION MATT INT BASE 2.5 GL #000B': '4 Seasons Emulsion Matt Interior Base 2.5gal #000B',
+  'ข้อต่อเกียวใน pvc': 'PVC female threaded connector',
+  'ข้อต่อเกลียวนอก PVC': 'PVC male threaded connector',
+  'ข้อต่อเกลียวชุด': 'Threaded connector set',
+  'ข้องอ เล็ก': 'Small elbow',
+  'ข้องอ PVC 2 นิ้วครึ่ง': 'PVC elbow, 2.5"',
+  'ข้อลด1 นิ้ว×6หุน': 'Reducer, 1"×3/4"',
+  'ฝาเกลียวปิดท่อประปา': 'Threaded pipe cap',
+  'ข้อแยกลด3ทาง PVC 2.5"×4หุน': 'PVC 3-way reducing tee, 2.5"×1/2"',
+  'เศษท่อ PVC': 'PVC pipe offcuts',
+  'คลิปจับท่อpvc 4หุน': 'PVC pipe clip, 1/2"',
+  'เทปพันกลียว': 'Thread seal tape',
+  'ข้อต่อยูเนี่ยน PVC หนา': 'PVC union connector, heavy-duty',
+};
+const EQUIP_NAME_TH: Record<string,string> = Object.fromEntries(
+  Object.entries(EQUIP_NAME_EN).map(([th, en]) => [en, th])
+);
+
+const EQUIP_CAT_EN: Record<string,string> = {
+  'อุปกรณ์ช่างทั่วไป': 'General Tools',
+  'อุปกรณ์ซ่อมแซมตกแต่ง': 'Repair & Decoration',
+  'อุปกรณ์งานประปา': 'Plumbing',
+};
+
 
 
 // ── Patrol types & helpers ────────────────────────────────────────────────
@@ -826,7 +967,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
         ? sectionNav([
             {key:'stock',      label:'Stock',        emoji:'📦'},
             {key:'warranty',   label:'Warranty',      emoji:'🛡️'},
-            {key:'equipment',  label:'อุปกรณ์ช่าง',    emoji:'🔧'},
+            {key:'equipment',  label:t('sp_tab_equipment'), emoji:'🔧'},
           ])
         : sectionNav([
             {key:'parking-in', label:'Car · In',      emoji:'🚗'},
@@ -929,7 +1070,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
-              <span className="truncate f-thai">อุปกรณ์ช่าง</span>
+              <span className="truncate f-thai">{t('sp_tab_equipment')}</span>
               <span className="f-thai ml-1 text-xs font-normal px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: T.sageTint, color: T.sage }}>{equipmentData.length} {t('sp_items_unit')}</span>
             </h2>
             <div className="flex gap-2">
@@ -946,7 +1087,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
               <button key={c} onClick={()=>setEqCat(c)}
                 className="press f-thai px-3 py-1.5 rounded-xl text-xs font-medium"
                 style={c===eqCat ? { background: T.brass, color: T.navyDeep, border: `1px solid ${T.brass}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
-                {c} <span style={{ opacity: 0.7 }}>({equipmentData.filter(r=>r.cat===c).length})</span>
+                {lang==='en' ? (EQUIP_CAT_EN[c]||c) : c} <span style={{ opacity: 0.7 }}>({equipmentData.filter(r=>r.cat===c).length})</span>
               </button>
             ))}
           </div>
@@ -969,7 +1110,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
                             <input
                               className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
                               style={{ color: T.ink, border: '1px solid transparent', minWidth: '80px' }}
-                              value={r.name}
+                              value={lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name)}
                               onChange={e=>updateEqName(r.id, e.target.value)}
                             />
                           </td>
@@ -986,7 +1127,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
                             <input
                               className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
                               style={{ color: T.inkSoft, border: '1px solid transparent' }}
-                              value={r.unit}
+                              value={lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}
                               onChange={e=>updateEqUnit(r.id, e.target.value)}
                             />
                           </td>
@@ -1012,7 +1153,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
             <Modal title={t('sp_modal_add_item')} onClose={()=>setShowEqModal(false)} onSave={addEquipment} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
               <Field label={t('sp_field_category')}>
                 <select className={inputCls} style={inputStyle} value={newEq.cat} onChange={e=>setNewEq(p=>({...p,cat:e.target.value as EquipCat}))}>
-                  {EQUIP_CATS.map(c=><option key={c}>{c}</option>)}
+                  {EQUIP_CATS.map(c=><option key={c} value={c}>{lang==='en' ? (EQUIP_CAT_EN[c]||c) : c}</option>)}
                 </select>
               </Field>
               <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newEq.name} onChange={e=>setNewEq(p=>({...p,name:e.target.value}))} /></Field>
