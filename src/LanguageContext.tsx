@@ -500,6 +500,27 @@ const DICT: Record<string, { th: string; en: string }> = {
   um_show:                 { th: 'แสดง', en: 'Show' },
   um_edit:                 { th: 'แก้ไข', en: 'Edit' },
   um_delete:               { th: 'ลบ', en: 'Delete' },
+
+  // ── RepairList.tsx ──
+  tab_repair:               { th: 'รายการซ่อมแซม', en: 'Repairs' },
+  repair_title:             { th: 'รายการซ่อมแซม', en: 'Repair List' },
+  repair_subtitle:          { th: 'ดึงจากรายการตรวจห้องตอนเช็คเอาท์', en: 'Pulled from checkout inspections' },
+  repair_no_access:         { th: 'หน้านี้สำหรับช่างซ่อมบำรุงและแอดมินเท่านั้น', en: 'This page is for maintenance staff and admins only' },
+  repair_filter_all:        { th: 'ทั้งหมด', en: 'All' },
+  repair_status_pending:    { th: 'รอดำเนินการ', en: 'Pending' },
+  repair_status_in_progress:{ th: 'กำลังซ่อม', en: 'In progress' },
+  repair_status_completed:  { th: 'ซ่อมเสร็จแล้ว', en: 'Completed' },
+  repair_empty:             { th: 'ไม่มีรายการซ่อมแซมในขณะนี้', en: 'No repair items right now' },
+  repair_field_repairs:     { th: 'รายการที่ต้องซ่อม', en: 'Repairs needed' },
+  repair_field_damages:     { th: 'ความเสียหาย', en: 'Damages' },
+  repair_reported_by:       { th: 'แจ้งโดย', en: 'Reported by' },
+  repair_reported_date:     { th: 'วันที่แจ้ง', en: 'Reported on' },
+  repair_assigned_to:       { th: 'ช่างผู้รับผิดชอบ', en: 'Assigned to' },
+  repair_assign_placeholder:{ th: 'ระบุชื่อช่าง', en: 'Assign a technician' },
+  repair_notes:             { th: 'หมายเหตุ', en: 'Notes' },
+  repair_notes_placeholder: { th: 'เพิ่มหมายเหตุ...', en: 'Add a note...' },
+  repair_mark_in_progress:  { th: 'เริ่มดำเนินการ', en: 'Start work' },
+  repair_mark_completed:    { th: 'ทำเครื่องหมายว่าซ่อมเสร็จ', en: 'Mark completed' },
 };
 
 type TranslationKey = keyof typeof DICT;
