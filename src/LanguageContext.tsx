@@ -511,6 +511,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   repair_status_in_progress:{ th: 'กำลังซ่อม', en: 'In progress' },
   repair_status_completed:  { th: 'ซ่อมเสร็จแล้ว', en: 'Completed' },
   repair_empty:             { th: 'ไม่มีรายการซ่อมแซมในขณะนี้', en: 'No repair items right now' },
+  repair_field_issues:      { th: 'รายการผิดปกติ', en: 'Flagged items' },
   repair_field_repairs:     { th: 'รายการที่ต้องซ่อม', en: 'Repairs needed' },
   repair_field_damages:     { th: 'ความเสียหาย', en: 'Damages' },
   repair_reported_by:       { th: 'แจ้งโดย', en: 'Reported by' },

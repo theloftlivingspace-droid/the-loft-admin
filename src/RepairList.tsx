@@ -75,6 +75,7 @@ export interface RepairItem {
   reportedBy: string;
   repairs: string[];
   damages: string[];
+  issues: string[];
   extraNote: string;
   photos: DriveLink[];
   status: RepairStatus;
@@ -141,7 +142,11 @@ export default function RepairList({ currentUser }: RepairListProps) {
       }
 
       const withWork = records.filter(
-        r => (r.repairs && r.repairs.length > 0) || (r.damages && r.damages.length > 0)
+        r =>
+          (r.repairs && r.repairs.length > 0) ||
+          (r.damages && r.damages.length > 0) ||
+          (r.issues && r.issues.length > 0) ||
+          (r.extraNote && r.extraNote.trim().length > 0)
       );
 
       const mapped: RepairItem[] = withWork.map(r => {
@@ -153,6 +158,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           reportedBy: r.inspector || '',
           repairs: r.repairs || [],
           damages: r.damages || [],
+          issues: r.issues || [],
           extraNote: r.extraNote || '',
           photos: r.driveLinks || [],
           status: st?.status || 'pending',
@@ -264,7 +270,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
                 {t('cal_room_word')} {item.room}
               </div>
               <div className="f-thai text-sm mt-0.5 line-clamp-2" style={{ color: T.inkSoft }}>
-                {[...item.repairs, ...item.damages].join(' · ') || item.extraNote}
+                {[...item.issues, ...item.repairs, ...item.damages].join(' · ') || item.extraNote}
               </div>
               {item.photos.length > 0 && (
                 <div className="flex items-center gap-1 mt-2 text-xs" style={{ color: T.inkSoft }}>
@@ -295,6 +301,12 @@ export default function RepairList({ currentUser }: RepairListProps) {
               <button onClick={() => setSelected(null)} style={{ color: T.inkSoft }}><X size={20} /></button>
             </div>
 
+            {selected.issues.length > 0 && (
+              <div className="mb-2">
+                <div className="text-xs f-thai font-semibold" style={{ color: T.navy }}>{t('repair_field_issues')}</div>
+                <p className="f-thai text-sm" style={{ color: T.ink }}>{selected.issues.join(', ')}</p>
+              </div>
+            )}
             {selected.repairs.length > 0 && (
               <div className="mb-2">
                 <div className="text-xs f-thai font-semibold" style={{ color: T.brassDeep }}>{t('repair_field_repairs')}</div>
