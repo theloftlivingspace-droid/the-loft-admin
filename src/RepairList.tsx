@@ -12,6 +12,33 @@ import { Wrench, Filter, X, Camera, Clock, CheckCircle2, AlertCircle, RefreshCw 
 // inspected/not-inspected check.
 const INSPECTION_GAS_URL = 'https://script.google.com/macros/s/AKfycbwrRJs6MtXHErSE0pqjXVNp60huNjtfwjCcKGNZH2Jm5cCeCxNhUoFHcJn-vzXoNto/exec';
 
+// The inspection form's general checklist (mainItems + bathItems in
+// checkout-checklist.html) covers 24 categories spanning BOTH housekeeping
+// (linens, towels, keycards, TV, fridge, trash, kitchen, smoke/durian smell...)
+// and building/technical items (walls, furniture, AC, plumbing, electrical...).
+// A flagged item's label is pushed into `issues[]` regardless of which domain
+// it's in, so for a technician-only queue we keep just the labels that are
+// actually building-maintenance work — exact strings copied from that file.
+const MAINTENANCE_ISSUE_LABELS = new Set([
+  'แอร์ทำงานปกติ',              // ac
+  'ผนัง / พื้น / ฝ้า',           // wall
+  'เฟอร์นิเจอร์ / บันได Loft',    // furniture
+  'ขั้นบันได Loft',              // loft_step
+  'ชักโครกไม่อุดตัน',            // toilet
+  'อ่างล้างหน้า / ฝักบัว',        // sink
+  'ไม่มีน้ำรั่ว / ซึม',           // leak
+  'ไม่มีกลิ่นท่อ',               // smell_drain
+  'ไม่มีเชื้อรา / คราบหินปูนหนัก', // mold
+  'ปลั๊ก / สวิตช์ / หลอดไฟ',      // plug
+]);
+function maintenanceIssuesOf(issues?: string[]): string[] {
+  return (issues || []).filter(i => MAINTENANCE_ISSUE_LABELS.has(i.trim()));
+}
+// `damages[]` (d_smoke/d_durian/d_linen/d_missing/d_guest/d_late/d_deep/
+// d_electric/d_damage/d_other) is a guest-charge reason tag set, not a work
+// order — shown for context in the detail view but never used to decide
+// whether a room needs a technician.
+
 // Overlay store for repair-task tracking (status / assigned tech / notes) —
 // the inspection log itself is an append-only record of what was found at
 // checkout, not a mutable task tracker, so status lives separately here,
@@ -142,11 +169,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
       }
 
       const withWork = records.filter(
-        r =>
-          (r.repairs && r.repairs.length > 0) ||
-          (r.damages && r.damages.length > 0) ||
-          (r.issues && r.issues.length > 0) ||
-          (r.extraNote && r.extraNote.trim().length > 0)
+        r => (r.repairs && r.repairs.length > 0) || maintenanceIssuesOf(r.issues).length > 0
       );
 
       const mapped: RepairItem[] = withWork.map(r => {
@@ -158,7 +181,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           reportedBy: r.inspector || '',
           repairs: r.repairs || [],
           damages: r.damages || [],
-          issues: r.issues || [],
+          issues: maintenanceIssuesOf(r.issues),
           extraNote: r.extraNote || '',
           photos: r.driveLinks || [],
           status: st?.status || 'pending',
