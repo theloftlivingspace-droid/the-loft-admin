@@ -121,6 +121,144 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
+// One-time seed: ช่างอาคาร (maintenance) equipment list, imported from Nathan's
+// อุปกรณ์ช่าง.xlsx (2026-08). Items are merged into stock_data by name on load
+// (see the sbLoad('stock_data') effect below) so existing quantities already
+// tracked in Supabase are never overwritten — this only fills in items that
+// aren't there yet.
+const MAINTENANCE_STOCK_SEED: { name: string; qty: number; unit: string; note: string }[] = [
+  { name: 'เครื่องตัดเหล็กไฟเบอร์', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เครื่องเชื่อมไฟฟ้า', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'หินเจียร์', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'แท่นตัดกระเบื้อง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ประแจคอม้าตัวยาว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ประแจคอม้าตัวสั้น', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เลื่อยลันดา', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เกียงฉาบ (เหล็ก)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เกียงผสมปูน (เหล็ก)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เกียงฉาบ (ไม้)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'สว่านแบตmarkita', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ชุดสว่าน WORX', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เลื่อยวงเดือน 7 นิ้ว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ใบหินเจียร์ตัดเหล็ก 7นิ้ว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ใบหินเจียร์ ตัดไม้ 7นิ้ว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เครื่องขัดกระดาษทรายไฟฟ้า', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เลื่อยมือตัดเหล็ก', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เลื่อยมือตัดแผ่นยิปซั่ม', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เพาใบพัดปั่นปูน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรรไกรพลาสติก', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรรไกรตัดท่อ PVC', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ค้อนเหล็กด้ามไม้', qty: 0, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ค้อนเหล็กประดิษฐ์', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ปืนยิงกาว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'แปรงขัดลวดเล็ก', qty: 0, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'แปรงขัดลวดกลาง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'จอบ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ค้อนปอนด์', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ฉะแลงขุด', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เชือก10เมตร', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เชือกเส้นใหญ่', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'หินลับ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ลูกกลิ้งรีดวอลเปเปอร์', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'บันไดยาว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'บันไดกลาง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'พลาสติกซีนม้วน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กล่องสว่างไม่ได้ใช้', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ประแจร์', qty: 5, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ประแจร์เลื่อน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ลูกกลิ้งทาสี', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ลูกกลิ้งทาสีเล็ก', qty: 0, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'แปรงทาสีเล็ก', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'พุกพลาสติก', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ตะปู 3 นิ้ว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ชุดน็อตตัวผู้+น็อตตัวเมีย', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ตะปู ดำ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ระดับน้ำ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เกรียง โป๊ว', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากแหลม', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมตัด', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ไดโว่ MICAWA 50Hz', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ตลับเมตร (กลาง)', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ตลับเมตร (ใหญ่)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เลื่อยฉลุ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คราด', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมล็อค', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กะบะผสมปูน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กล่องตะปู และ สกรู', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ดอกสว่าน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (หนา)', qty: 5, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ไฟเบอร์ ตัดเหล็ก Automac 4นิ้ว (บาง)', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ไฟเบอร์ ตัดเหล็ก SOLIX 4นิ้ว (บาง)', qty: 6, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรรไกรเหล็ก', qty: 6, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'สิ่วไม้', qty: 6, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมถอนตะปู', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากจิ้งจก', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'เครื่องถอดลูกปืน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากขยาย', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากตรง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากโค้ง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'คีมปากตรง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ปะแจร์  ปากตาย', qty: 11, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ปะแจร์  ปากแหวน', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'หัวจับดอกสว่าน Drill Chucks SUNKEY 0.6 - 6 mm (1/4") รูแบบเกลียว 3/8', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'Dimmer Wide Series 600W ดิมเมอร์หรี่ไฟ รุ่น RKW-803', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'สวิตไฟ (เล็ก)', qty: 14, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'สวิตไฟ (ใหญ่)', qty: 8, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรอบสวิตช์ไฟ  แบบ2ช่อง สั้น', qty: 8, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรอบสวิตช์ไฟ  แบบ1ช่อง สั้น', qty: 5, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรอบสวิตช์ไฟ  แบบ2ช่อง ยาว', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กรอบสวิตช์ไฟ  แบบ1ช่อง ยาว', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ตะปูคอนกรีตผิวเรียบ (Concrete Nails)    #12x1 นิ้ว', qty: 4, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'กระดาษทราย', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ปืนยิงซิลิโคน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'สายไฟใหญ่เส้นขาว', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ช่างทั่วไป' },
+  { name: 'ปูนสกรีมโค้ท', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'ซิลิโคน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'อาคลีลิค โป๊ว WALL PUTTY', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'เทบกาวกันซึม', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'เศษปูนยาแนวกระเบื้องที่เหลือใช้', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'เศษปูนยิปซั่มเหลือใช้', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'กาวอีพ็อกซี่ ซีล  (ใช้ในงานเหล็ก)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'น้ำยาเคลือบพื้นไฮบริต', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'น้ำยากันซึม ตราเสือ', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'น้ำยากันซึม ตรา J.U', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำ สีเทาอ่อน Madison Grey 8256', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำ เทาเข้ม สีรองพื้นหยุดสนิม RUST TECH', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำมัน สีดำด้าน(BoardBlack) GF888', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำมัน น้ำตาลแดง(Coral Red) KG163', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีเคลือบเงา ตรา กระทิง สีขาว  KG111', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำทาภายในกึ่งเงา   สีครีม                              MAJESTIC PERFECT BEAUTYANDCARE A BASE', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'กระเบื้อง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'กระเบื้องปูห้องยาวลายไม้', qty: 0, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'แผ่นลามิเนตลายไม้', qty: 4, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'แผ่นเหล็ก94cm×230cm.', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'แผ่นซีเมนต์บอร์ด', qty: 4, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'เศษสังกะสี', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'แผ่นอะคิลิค', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'กระจก', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำอะคิลิค  สีขาวด้าน ทาภายนอก  โฟร์ซีซันส์ แอดวานซ์  เบส 1/4 กล #000A (สีขาว) + A2004', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีทาหลังคา TOA ROOFPAINT แดงเอราวัญ (RUSTIC RED)  R19', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีเคลือบเงา SUPER COAT SHMRG395223', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีสเปรย์ ดำ FLAT BLACK 29', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'ซีเมนต์ขัดมันสำเร็จรูป  Decoration Cement (น้ำยาซีเมนต์ล็อฟ)', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'น้ำยาขจัดปัญหาท่ออุดตัน', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'JOTUN  GARDEX PREMIUM E.G.BASE A', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'สีน้ำด้าน ภายใน TOA รุ่น 4 Seasons Advance', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: '4 SEASONS EMULSION MATT INT BASE 2.5 GL #000B', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์ซ่อมแซมตกแต่ง' },
+  { name: 'ข้อต่อเกียวใน pvc', qty: 21, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้อต่อเกลียวนอก PVC', qty: 14, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้อต่อเกลียวชุด', qty: 50, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้องอ เล็ก', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้องอ PVC 2 นิ้วครึ่ง', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้อลด1 นิ้ว×6หุน', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ฝาเกลียวปิดท่อประปา', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้อแยกลด3ทาง PVC 2.5"×4หุน', qty: 4, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'เศษท่อ PVC', qty: 1, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'คลิปจับท่อpvc 4หุน', qty: 3, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'เทปพันกลียว', qty: 2, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+  { name: 'ข้อต่อยูเนี่ยน PVC หนา', qty: 6, unit: 'ชิ้น', note: 'อุปกรณ์งานประปา' },
+];
+
 
 // ── Patrol types & helpers ────────────────────────────────────────────────
 interface PatrolUnknown { id: string; plate: string; timestamp: string; photos: string[]; notes: string; spotNumber: string }
@@ -526,16 +664,27 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
 
   useEffect(() => {
     sbLoad('stock_data').then(d => {
-      if (!d) return;
-      // one-time migration: bump old minQty=1 to 2 for these items
-      const migrated = (d as StockItem[]).map(r =>
-        (r.id === 24 || r.id === 25) && r.minQty === 1 ? { ...r, minQty: 2 } : r
-      );
-      const fixed = dedupeIds(migrated);
+      // Base list: whatever's already saved in Supabase, or (first run) the
+      // hardcoded defaults above.
+      let base: StockItem[] = d ? dedupeIds(
+        // one-time migration: bump old minQty=1 to 2 for these items
+        (d as StockItem[]).map(r => (r.id === 24 || r.id === 25) && r.minQty === 1 ? { ...r, minQty: 2 } : r)
+      ) : stockData;
+      // One-time seed: add ช่างอาคาร equipment list items that aren't
+      // already tracked (matched by name), without touching existing rows.
+      const existingNames = new Set(base.map(r => r.name.trim()));
+      let nextId = base.length ? Math.max(...base.map(r => r.id)) + 1 : 1;
+      const toAdd: StockItem[] = [];
+      for (const seed of MAINTENANCE_STOCK_SEED) {
+        if (existingNames.has(seed.name)) continue;
+        toAdd.push({ id: nextId++, ...seed });
+        existingNames.add(seed.name);
+      }
+      const fixed = toAdd.length ? [...base, ...toAdd] : base;
       setStockData(fixed);
       stockSnapshotRef.current = fixed;
       if (fixed.length) setNextSId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
+      if (!d || JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
     });
     sbLoad('parking_in').then(d => {
       if (!d) return;
