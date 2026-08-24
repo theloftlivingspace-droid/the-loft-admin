@@ -92,7 +92,7 @@ interface RepairStatusRow {
   status: RepairStatus;
   assigned_to?: string;
   notes?: string;
-  completed_date?: string;
+  completed_date?: string | null;
 }
 
 export interface RepairItem {
@@ -108,7 +108,7 @@ export interface RepairItem {
   status: RepairStatus;
   assignedTo: string;
   notes: string;
-  completedDate?: string;
+  completedDate?: string | null;
 }
 
 interface CurrentUser {
@@ -222,7 +222,10 @@ export default function RepairList({ currentUser }: RepairListProps) {
       status: (patch.status as RepairStatus) ?? current.status,
       assignedTo: patch.assigned_to ?? current.assignedTo,
       notes: patch.notes ?? current.notes,
-      completedDate: patch.completed_date ?? current.completedDate,
+      // explicit key check (not `??`) so passing `completed_date: null` to
+      // reopen a completed item actually clears it, instead of `null`
+      // being treated as "not provided" and falling back to the old value.
+      completedDate: 'completed_date' in patch ? (patch.completed_date ?? undefined) : current.completedDate,
     };
     setItems(prev => prev.map(i => (i.uid === uid ? next : i)));
     setSelected(prev => (prev && prev.uid === uid ? next : prev));
@@ -389,6 +392,13 @@ export default function RepairList({ currentUser }: RepairListProps) {
                   className="press focus-ring flex-1 rounded-lg py-2 text-sm f-thai font-semibold"
                   style={{ background: T.sage, color: '#fff' }}>
                   {t('repair_mark_completed')}
+                </button>
+              )}
+              {selected.status === 'completed' && (
+                <button onClick={() => persist(selected.uid, { status: 'in_progress', completed_date: null })}
+                  className="press focus-ring flex-1 rounded-lg py-2 text-sm f-thai font-semibold"
+                  style={{ background: T.card, color: T.navy, border: `1px solid ${T.hair}` }}>
+                  {t('repair_reopen')}
                 </button>
               )}
             </div>
