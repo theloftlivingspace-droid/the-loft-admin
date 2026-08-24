@@ -522,6 +522,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   repair_notes_placeholder: { th: 'เพิ่มหมายเหตุ...', en: 'Add a note...' },
   repair_mark_in_progress:  { th: 'เริ่มดำเนินการ', en: 'Start work' },
   repair_mark_completed:    { th: 'ทำเครื่องหมายว่าซ่อมเสร็จ', en: 'Mark completed' },
+  repair_reopen:            { th: 'เปิดงานใหม่', en: 'Reopen' },
 };
 
 type TranslationKey = keyof typeof DICT;
