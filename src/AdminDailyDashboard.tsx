@@ -5,10 +5,11 @@ import StockParking from './StockParking';
 import UserManagement from './UserManagement';
 import RevenueDashboard from './RevenueDashboard';
 import CalendarView from './CalendarView';
+import RepairList from './RepairList';
 import { useLang } from './LanguageContext';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays, Flag } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -275,7 +276,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>('checkinout');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
@@ -306,7 +307,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>>(
     ['dashboard', 'checkinout', 'calendar', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -317,15 +318,15 @@ export default function AdminDailyDashboard() {
   {
     const isAdminNow = currentUser?.role === 'admin';
     const isMaintenanceNow = currentUser?.role === 'maintenance';
-    // Maintenance (ช่างอาคาร) accounts only ever see Stock/Warranty — every
-    // other tab (check-in/out, calendar, parking, and the admin-only "etc"
-    // pages) is closed off to them.
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = isMaintenanceNow
-      ? ['calendar', 'stock', 'parking']
+    // Maintenance (ช่างอาคาร) accounts see Stock/Warranty, Calendar, Parking,
+    // and now Repairs (via Etc) — every other tab (check-in/out, and the
+    // admin-only "etc" pages) is closed off to them.
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'> = isMaintenanceNow
+      ? ['calendar', 'stock', 'parking', 'repair']
       : ['dashboard'];
     if (!isMaintenanceNow) {
       if (isAdminNow) order.push('todo', 'revenue');
-      order.push('checkinout', 'calendar', 'stock', 'parking');
+      order.push('checkinout', 'calendar', 'stock', 'parking', 'repair');
       if (isAdminNow) order.push('users');
     }
     mobileTabOrderRef.current = order;
@@ -785,9 +786,10 @@ export default function AdminDailyDashboard() {
               header/controls clusters on narrower laptop widths. */}
           <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
             {(isMaintenance ? [
-              { key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') },
-              { key: 'stock' as const,    Icon: Package,      label: t('tab_stock') },
-              { key: 'parking' as const,  Icon: Car,          label: t('tab_parking') },
+              { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+              { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+              { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+              { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
             ] : [
               { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
               { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
@@ -796,7 +798,7 @@ export default function AdminDailyDashboard() {
               { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
             ]).map(m => (
               <button key={m.key} aria-label={m.label} title={m.label}
-                onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+                onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
                 className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
                 style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
                 <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
@@ -1086,9 +1088,10 @@ export default function AdminDailyDashboard() {
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           }}>
           {(isMaintenance ? [
-            { key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') },
-            { key: 'stock' as const,    Icon: Package,      label: t('tab_stock') },
-            { key: 'parking' as const,  Icon: Car,          label: t('tab_parking') },
+            { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+            { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+            { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+            { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
           ] : [
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
             { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
@@ -1097,7 +1100,7 @@ export default function AdminDailyDashboard() {
             { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
               className="press focus-ring flex flex-col md:flex-row items-center justify-center py-2.5 md:py-3 md:px-5 gap-1 md:gap-2 min-w-0 flex-1 md:flex-none relative">
               <div className="flex items-center justify-center rounded-full transition-all"
                 style={{ width: 40, height: 30, background: mainSection === m.key ? T.navyTint : 'transparent' }}>
@@ -1113,9 +1116,10 @@ export default function AdminDailyDashboard() {
         {mainSection === 'etc' && (
           <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto mt-16 md:mt-0" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
             {([
-              { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
+              ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
+              ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
               <button key={s.key} onClick={() => { setAdminTab(s.key); scrollToTop(); }}
@@ -1249,6 +1253,9 @@ export default function AdminDailyDashboard() {
         )}
         {adminTab === 'calendar' && (
           <CalendarView viewDate={reportDate} onViewDateChange={setReportDate} />
+        )}
+        {(isAdmin || isMaintenance) && adminTab === 'repair' && (
+          <RepairList currentUser={currentUser} />
         )}
 
         {/* Dashboard Tab */}
