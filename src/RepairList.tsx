@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
-import { Wrench, Filter, X, Camera, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Wrench, Filter, X, Camera, Clock, CheckCircle2, AlertCircle, RefreshCw, UserCog } from 'lucide-react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Same Apps Script Web App the checkout-inspection form (checkout-checklist.html,
@@ -307,6 +307,11 @@ export default function RepairList({ currentUser }: RepairListProps) {
                 style={{ background: ss.bg, color: ss.fg, border: `1px solid ${ss.border}` }}>
                 <StatusIcon status={item.status} /> {t(`repair_status_${item.status}`)}
               </div>
+              {item.assignedTo && (
+                <div className="flex items-center gap-1 mt-1.5 text-xs f-thai font-medium" style={{ color: T.navy }}>
+                  <UserCog size={12} /> {item.assignedTo}
+                </div>
+              )}
               <div className="text-xs f-thai mt-1" style={{ color: T.inkSoft }}>
                 {item.reportedDate} · {item.reportedBy}
               </div>
