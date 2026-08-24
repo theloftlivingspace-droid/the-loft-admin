@@ -48,12 +48,15 @@ function channelColor(channel: string): string {
 // ─── Status colors — same darker tints used on the Check-in/out page
 // (ROOM_GRID_CONFIG / stay-card cardStyle in CheckInOut.tsx) so a booking's
 // color means the same thing on both screens ────────────────────────────────
-type CalStatus = 'checked-in' | 'arriving-today' | 'arriving-soon' | 'checking-out-today';
+type CalStatus = 'checked-in' | 'arriving-today' | 'arriving-soon' | 'checking-out-today' | 'cancelled';
 const STATUS_STYLE: Record<CalStatus, { bg: string; accent: string; label: string }> = {
   'checked-in':         { bg: '#C2DACA', accent: T.sage,      label: 'cal_status_checked_in' },
   'arriving-today':     { bg: '#EEDCB2', accent: T.brassDeep, label: 'cal_status_arriving_today' },
   'arriving-soon':      { bg: '#BAC4D6', accent: T.navy,      label: 'cal_status_arriving_soon' },
   'checking-out-today': { bg: '#E4BDC3', accent: T.wine,      label: 'cal_status_checking_out' },
+  // เทาจาง — บุ๊คกิ้งที่ยกเลิกแล้ว ยังโชว์ตำแหน่งเดิมบนปฏิทินไว้ดูประวัติได้
+  // (ไม่ได้อยู่ใน 4 สถานะปกติด้านบนที่ legend เดิมโชว์ ต้องเพิ่ม legend เอง)
+  'cancelled':          { bg: '#E4E4E7', accent: '#71717A',   label: 'cal_status_cancelled' },
 };
 // Same date-based classification as stayFromRawRow() in CheckInOut.tsx, so a
 // stay's color always matches what Check-in/out would show for it today.
@@ -78,6 +81,7 @@ interface RawStay {
 interface CalStay {
   roomNum: string; guest: string; checkin: string; checkout: string;
   channel: string; resId: string; nights: number; note: string;
+  isCancelled: boolean;
 }
 
 function toLocalDate(d: Date): string {
@@ -126,15 +130,16 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
 
       const list: CalStay[] = [];
       for (const row of json.stays) {
-        // Cancelled rows arrive as a raw room string like "203 ยกเลิก" rather
-        // than being filtered server-side — skip them here (same pattern as
-        // CheckInOut.tsx) so cancelled bookings never draw a bar.
-        if (/ยกเลิก|cancel/i.test(row.room || '')) continue;
+        // Cancelled rows arrive as a raw room string like "203 ยกเลิก" — used
+        // to be skipped entirely here (same pattern as CheckInOut.tsx), but
+        // the calendar now keeps them and draws a faded grey bar at their
+        // real stay dates instead of making them disappear.
+        const isCancelled = /ยกเลิก|cancel/i.test(row.room || '');
         const ci = (row.checkin || '').substring(0, 10);
         const co = (row.checkout || '').substring(0, 10);
         if (!ci || !co) continue;
         const nights = diffDays(ci, co);
-        if (nights <= 0) continue;
+        if (nights <= 0) continue; // ยกเลิกล่วงหน้าก่อนถึงวันเช็คอิน (0 คืน) — ไม่มีช่วงให้วาดจริงๆ
         list.push({
           roomNum: roomNum(row.room || ''),
           guest: row.guest || '',
@@ -144,6 +149,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           resId: row.resId || '',
           note: row.note || '',
           nights,
+          isCancelled,
         });
       }
       setStays(list);
@@ -360,7 +366,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                           <div style={{ position: 'absolute', left: todayIdx * CELL_W, top: 0, bottom: 0, width: CELL_W, background: T.brassPale, opacity: 0.35 }} />
                         )}
                         {roomStays.map(s => {
-                          const status = computeStatus(s.checkin, s.checkout, startDate);
+                          const status = s.isCancelled ? 'cancelled' : computeStatus(s.checkin, s.checkout, startDate);
                           const st = STATUS_STYLE[status];
                           const sIdx = diffDays(rangeStart, s.checkin);
                           const eIdx = diffDays(rangeStart, s.checkout);
@@ -384,15 +390,22 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                               style={{
                                 position: 'absolute', top: 5, bottom: 5,
                                 left: clipL + 3, width: (clipR - clipL) - 6,
-                                background: st.bg, borderLeft: `4px solid ${st.accent}`,
-                                borderTop: `1px solid ${st.accent}44`, borderRight: `1px solid ${st.accent}44`, borderBottom: `1px solid ${st.accent}44`,
+                                background: st.bg,
+                                borderLeft: `4px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}`,
+                                borderTop: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
+                                borderRight: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
+                                borderBottom: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
                                 borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
+                                opacity: s.isCancelled ? 0.7 : 1,
                               }}
                             >
-                              <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink }}>
+                              <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink, textDecoration: s.isCancelled ? 'line-through' : 'none' }}>
                                 {s.guest || t('cal_no_name')}
                               </div>
                               <div className="f-thai text-[10px] whitespace-nowrap overflow-hidden text-ellipsis">
+                                {s.isCancelled && (
+                                  <span className="font-semibold" style={{ color: st.accent }}>🚫 {t('cal_status_cancelled')} · </span>
+                                )}
                                 <span className="font-semibold" style={{ color: channelColor(s.channel) }}>{channelLabel(s.channel)}</span>
                                 <span className="f-num" style={{ color: T.inkSoft }}> · 🌙{s.nights}</span>
                                 {s.note && (
@@ -425,8 +438,8 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
           <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].accent }}>
-                {t(STATUS_STYLE[computeStatus(detail.checkin, detail.checkout, startDate)].label)}
+              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].accent }}>
+                {t(STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].label)}
               </span>
               <p className="f-thai font-bold text-sm" style={{ color: T.ink }}>{t('cal_room_word')} {detail.roomNum}</p>
             </div>

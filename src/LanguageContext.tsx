@@ -47,6 +47,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   cal_status_arriving_today:{ th: 'เช็คอินวันนี้', en: 'Arriving today' },
   cal_status_arriving_soon: { th: 'จะมาถึงเร็วๆนี้', en: 'Arriving soon' },
   cal_status_checking_out:  { th: 'เช็คเอาท์', en: 'Checking out' },
+  cal_status_cancelled:     { th: 'ยกเลิก', en: 'Cancelled' },
 
   // ── RevenueDashboard.tsx ──
   rev_title:            { th: '📊 สรุปยอดรายรับ', en: '📊 Revenue Summary' },
