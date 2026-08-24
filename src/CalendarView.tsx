@@ -184,12 +184,21 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   // วันนี้อยู่ตรงกลางพื้นที่มองเห็นจริง ๆ (ไม่ใช่แค่กลางช่วง 21 วัน) ทุกครั้งที่
   // เปลี่ยนวันที่ (ปุ่ม วันนี้ / ◀ ▶ / date picker) หรือโหลดข้อมูลเสร็จ (ตอน
   // โหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
+  //
+  // ใช้ requestAnimationFrame หน่วงจนกว่า layout จะนิ่งก่อนค่อยสั่งเลื่อน —
+  // ถ้าสั่ง scrollLeft ตรง ๆ กลางเฟรมที่ position:sticky (ทั้งหัวตารางแนวนอน
+  // และคอลัมน์เลขห้องแนวตั้ง) ยังไม่จัด layout เสร็จ บาง browser (เจอบน iOS
+  // Safari) จะ paint หัวตารางซ้อนกัน 2 ชุด (บั๊ก "วันที่ซ้อน" ที่เจอ)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (todayIdx < 0 || todayIdx >= DAYS_COUNT) return; // วันนี้ไม่อยู่ในช่วงที่แสดง — ไม่ต้องเลื่อน
     const todayColCenter = LABEL_W + todayIdx * CELL_W + CELL_W / 2;
-    el.scrollLeft = Math.max(0, todayColCenter - el.clientWidth / 2);
+    const target = Math.max(0, todayColCenter - el.clientWidth / 2);
+    const raf = requestAnimationFrame(() => {
+      el.scrollTo({ left: target, behavior: 'auto' });
+    });
+    return () => cancelAnimationFrame(raf);
   }, [rangeStart, loading, todayIdx]);
 
 
