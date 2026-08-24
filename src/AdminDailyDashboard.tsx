@@ -915,9 +915,7 @@ export default function AdminDailyDashboard() {
               backdropFilter: 'saturate(180%) blur(20px)',
               WebkitBackdropFilter: 'saturate(180%) blur(20px)',
             }}>
-            <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 34, height: 34, border: `1px solid ${T.brass}55` }}>
-              <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
+            <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           {/* Pill 2 — date, and Pill 3 — menu button, each floating on their
