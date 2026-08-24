@@ -58,7 +58,7 @@ interface User {
   full_name: string;
   username: string;
   password: string;
-  role: 'admin' | 'employee';
+  role: 'admin' | 'employee' | 'maintenance';
 }
 
 interface Report {
@@ -316,10 +316,18 @@ export default function AdminDailyDashboard() {
   // derive without depending on the later `isAdmin` const.
   {
     const isAdminNow = currentUser?.role === 'admin';
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = ['dashboard'];
-    if (isAdminNow) order.push('todo', 'revenue');
-    order.push('checkinout', 'calendar', 'stock', 'parking');
-    if (isAdminNow) order.push('users');
+    const isMaintenanceNow = currentUser?.role === 'maintenance';
+    // Maintenance (ช่างอาคาร) accounts only ever see Stock/Warranty — every
+    // other tab (check-in/out, calendar, parking, and the admin-only "etc"
+    // pages) is closed off to them.
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = isMaintenanceNow
+      ? ['calendar', 'stock', 'parking']
+      : ['dashboard'];
+    if (!isMaintenanceNow) {
+      if (isAdminNow) order.push('todo', 'revenue');
+      order.push('checkinout', 'calendar', 'stock', 'parking');
+      if (isAdminNow) order.push('users');
+    }
     mobileTabOrderRef.current = order;
   }
 
@@ -624,12 +632,16 @@ export default function AdminDailyDashboard() {
       alert(t('adm_alert_wrong_credentials')); return;
     }
     const matched: User = results[0];
-    if (matched.role === 'employee' && !isOfficeNow && !isExempt) {
+    if ((matched.role === 'employee' || matched.role === 'maintenance') && !isOfficeNow && !isExempt) {
       sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: false, reason: 'ip_denied', ip: currentIP });
       alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
     }
     sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: true, ip: currentIP });
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
+    // Maintenance accounts land on Stock/Warranty by default — they can
+    // also switch to Calendar and Parking, but not Check-in/out or the
+    // admin-only "etc" pages.
+    if (matched.role === 'maintenance') { setAdminTab('stock'); setStockInitialTab('stock'); }
   };
 
   const handleLogout = () => {
@@ -742,6 +754,9 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
+  // ช่างอาคาร (building maintenance) — sees Calendar, Stock/Warranty, and
+  // Parking only; Check-in/out and the admin-only "etc" pages stay closed.
+  const isMaintenance = currentUser?.role === 'maintenance';
 
   return (
     <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
@@ -760,7 +775,7 @@ export default function AdminDailyDashboard() {
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <h1 className="f-display whitespace-nowrap hidden lg:block" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
-              {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
+              {isAdmin ? t('admin_mgmt_title') : isMaintenance ? t('maintenance_title') : t('daily_admin_title')}
             </h1>
           </div>
 
@@ -769,7 +784,11 @@ export default function AdminDailyDashboard() {
               to one top row. Label hides below xl to leave room for the
               header/controls clusters on narrower laptop widths. */}
           <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
-            {([
+            {(isMaintenance ? [
+              { key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') },
+              { key: 'stock' as const,    Icon: Package,      label: t('tab_stock') },
+              { key: 'parking' as const,  Icon: Car,          label: t('tab_parking') },
+            ] : [
               { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
               { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
               { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
@@ -1066,7 +1085,11 @@ export default function AdminDailyDashboard() {
             backdropFilter: 'saturate(180%) blur(20px)',
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           }}>
-          {([
+          {(isMaintenance ? [
+            { key: 'calendar' as const, Icon: CalendarDays, label: t('tab_calendar') },
+            { key: 'stock' as const,    Icon: Package,      label: t('tab_stock') },
+            { key: 'parking' as const,  Icon: Car,          label: t('tab_parking') },
+          ] : [
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
             { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
             { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
@@ -1211,7 +1234,7 @@ export default function AdminDailyDashboard() {
         {isAdmin && adminTab === 'todo' && (
           <BookingInvoiceTodo ref={bookingTodoRef} key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
-        {adminTab === 'checkinout' && (
+        {adminTab === 'checkinout' && !isMaintenance && (
           <CheckInOut ref={checkInOutRef} viewDate={reportDate} onViewDateChange={setReportDate} />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
@@ -1229,7 +1252,7 @@ export default function AdminDailyDashboard() {
         )}
 
         {/* Dashboard Tab */}
-        {adminTab === 'dashboard' && <div>
+        {adminTab === 'dashboard' && !isMaintenance && <div>
 
         {/* Quick Links — shortcut buttons */}
         <div className="grid grid-cols-3 gap-3 mb-5">

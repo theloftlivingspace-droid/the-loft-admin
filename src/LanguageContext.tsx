@@ -9,6 +9,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   // ── Header / nav (AdminDailyDashboard) ──
   admin_mgmt_title:     { th: 'Admin Management Dashboard', en: 'Admin Management Dashboard' },
   daily_admin_title:    { th: 'Daily Admin Dashboard',      en: 'Daily Admin Dashboard' },
+  maintenance_title:    { th: 'สต๊อก & ประกันอุปกรณ์ (ช่างอาคาร)', en: 'Stock & Equipment Warranty (Maintenance)' },
   admin_subtitle:       { th: 'บัญชีผู้ดูแลระบบ — ตรวจสอบรายงานของพนักงานทั้งหมดได้', en: 'Admin account — review all staff reports' },
   daily_subtitle:       { th: 'ระบบเช็คงานและสรุปรายงานประจำวันพนักงานธุรการ',       en: 'Daily task checklist and report summary for admin staff' },
   office_badge:         { th: '🏢 ออฟฟิศ', en: '🏢 Office' },
