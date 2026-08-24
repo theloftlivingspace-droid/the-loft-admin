@@ -836,7 +836,7 @@ export default function AdminDailyDashboard() {
             {(mainSection === 'checkinout' || mainSection === 'calendar') && (
               <div className="flex items-center gap-1.5">
                 {!isPreviewDate && (
-                  <span className="f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                  <span className="hidden lg:inline-block f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
                     {t('cal_today')}
                   </span>
                 )}
