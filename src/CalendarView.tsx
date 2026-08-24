@@ -13,6 +13,7 @@ const CELL_W = 68;   // px per day column
 const LABEL_W = 104; // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
 const DAYS_COUNT = 21;
+const CENTER_OFFSET = Math.floor(DAYS_COUNT / 2); // 10 — puts "today" at the middle day column
 
 // ─── Physical room list (all 10 units), grouped exactly like the property
 // sections shown in Little Hotelier's own calendar ───────────────────────────
@@ -104,7 +105,9 @@ export default function CalendarView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefresh, setLastRefresh] = useState('');
-  const [startDate, setStartDate] = useState(today());
+  // เริ่มต้นให้ "วันนี้" อยู่กลางช่วง 21 วัน (ไม่ใช่ซ้ายสุด) จะได้ scroll ให้อยู่
+  // กลางจอได้จริง — ดู CENTER_OFFSET ด้านล่าง
+  const [startDate, setStartDate] = useState(addDays(today(), -CENTER_OFFSET));
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -169,6 +172,18 @@ export default function CalendarView() {
   const totalW = LABEL_W + DAYS_COUNT * CELL_W;
   const todayIdx = diffDays(startDate, today());
 
+  // แถบสีเหลือง "วันนี้" ให้อยู่กลางจอเสมอ — เลื่อน scroll ของกริดให้คอลัมน์
+  // วันนี้อยู่ตรงกลางพื้นที่มองเห็นจริง ๆ (ไม่ใช่แค่กลางช่วง 21 วัน) ทุกครั้งที่
+  // เปลี่ยนช่วงวันที่ (ปุ่ม วันนี้ / ◀ ▶ / date picker) หรือโหลดข้อมูลเสร็จ
+  // (ตอนโหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (todayIdx < 0 || todayIdx >= DAYS_COUNT) return; // วันนี้ไม่อยู่ในช่วงที่แสดง — ไม่ต้องเลื่อน
+    const todayColCenter = LABEL_W + todayIdx * CELL_W + CELL_W / 2;
+    el.scrollLeft = Math.max(0, todayColCenter - el.clientWidth / 2);
+  }, [startDate, loading, todayIdx]);
+
   // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
   // The grid can be wider than the screen; besides native touch/trackpad
   // scrolling, desktop mouse users can click-drag the grid itself to pan
@@ -217,7 +232,7 @@ export default function CalendarView() {
           className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
           <ChevronLeft size={16} color={T.navy} />
         </button>
-        <button onClick={() => setStartDate(today())}
+        <button onClick={() => setStartDate(addDays(today(), -CENTER_OFFSET))}
           className="press focus-ring f-thai px-3 py-1.5 rounded-lg text-xs font-semibold"
           style={{ background: T.navyTint, color: T.navy }}>
           {t('cal_today')}
