@@ -5,13 +5,24 @@ import StockParking from './StockParking';
 import UserManagement from './UserManagement';
 import RevenueDashboard from './RevenueDashboard';
 import CalendarView from './CalendarView';
+import RepairList from './RepairList';
 import { useLang } from './LanguageContext';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Local (device-timezone) date as YYYY-MM-DD — NOT new Date().toISOString(),
+// which returns the UTC date and rolls over to "tomorrow" a full 7 hours
+// early in Bangkok (UTC+7): e.g. at 03:44 local on Aug 24 it still reads
+// Aug 23 in UTC. CheckInOut.tsx / CalendarView.tsx already use this same
+// local-component approach (toLocalDate/today()) — this keeps reportDate's
+// "is this actually today" check consistent with theirs.
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 // IP prefix โหลดจาก Supabase settings table
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -48,7 +59,7 @@ interface User {
   full_name: string;
   username: string;
   password: string;
-  role: 'admin' | 'employee';
+  role: 'admin' | 'employee' | 'maintenance';
 }
 
 interface Report {
@@ -265,7 +276,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>('checkinout');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
@@ -296,7 +307,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>>(
     ['dashboard', 'checkinout', 'calendar', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -306,10 +317,18 @@ export default function AdminDailyDashboard() {
   // derive without depending on the later `isAdmin` const.
   {
     const isAdminNow = currentUser?.role === 'admin';
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar'> = ['dashboard'];
-    if (isAdminNow) order.push('todo', 'revenue');
-    order.push('checkinout', 'calendar', 'stock', 'parking');
-    if (isAdminNow) order.push('users');
+    const isMaintenanceNow = currentUser?.role === 'maintenance';
+    // Maintenance (ช่างอาคาร) accounts see Stock/Warranty, Calendar, Parking,
+    // and now Repairs (via Etc) — every other tab (check-in/out, and the
+    // admin-only "etc" pages) is closed off to them.
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'> = isMaintenanceNow
+      ? ['calendar', 'stock', 'parking', 'repair']
+      : ['dashboard'];
+    if (!isMaintenanceNow) {
+      if (isAdminNow) order.push('todo', 'revenue');
+      order.push('checkinout', 'calendar', 'stock', 'parking', 'repair');
+      if (isAdminNow) order.push('users');
+    }
     mobileTabOrderRef.current = order;
   }
 
@@ -486,7 +505,11 @@ export default function AdminDailyDashboard() {
   const [checkInTime] = useState(
     new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   );
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportDate, setReportDate] = useState(localToday());
+  // Flags the shared date pill (mobile + desktop) whenever it's not pointed
+  // at the real today, so preview mode is visible right on the control
+  // itself — not just in the banner further down the page.
+  const isPreviewDate = reportDate !== localToday();
   // Mobile header floating menu (TH/EN, date, notifications, logout) — kept
   // out of the always-visible header row so the header stays one line and
   // never eats into content space. Opens as a floating card over the
@@ -610,12 +633,16 @@ export default function AdminDailyDashboard() {
       alert(t('adm_alert_wrong_credentials')); return;
     }
     const matched: User = results[0];
-    if (matched.role === 'employee' && !isOfficeNow && !isExempt) {
+    if ((matched.role === 'employee' || matched.role === 'maintenance') && !isOfficeNow && !isExempt) {
       sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: false, reason: 'ip_denied', ip: currentIP });
       alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
     }
     sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: true, ip: currentIP });
     setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
+    // Maintenance accounts land on Stock/Warranty by default — they can
+    // also switch to Calendar and Parking, but not Check-in/out or the
+    // admin-only "etc" pages.
+    if (matched.role === 'maintenance') { setAdminTab('stock'); setStockInitialTab('stock'); }
   };
 
   const handleLogout = () => {
@@ -728,108 +755,165 @@ export default function AdminDailyDashboard() {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const isAdmin = currentUser?.role === 'admin';
+  // ช่างอาคาร (building maintenance) — sees Calendar, Stock/Warranty, and
+  // Parking only; Check-in/out and the admin-only "etc" pages stay closed.
+  const isMaintenance = currentUser?.role === 'maintenance';
 
   return (
-    <div className="h-screen overflow-hidden p-0 md:p-6" style={{ background: T.bone }}>
+    <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
       <style>{fontImports}</style>
-      <div className="max-w-6xl mx-auto h-full flex flex-col overflow-hidden md:rounded-[32px]" style={{ background: T.paper, boxShadow: '0 20px 50px rgba(11,30,66,0.18)', border: `1px solid ${T.hairGold}` }}>
+      <div className="h-full flex flex-col overflow-hidden" style={{ background: T.paper }}>
 
-        {/* Header — desktop stays in normal flow (unchanged); mobile is a
-            separate fixed floating island, same treatment as the bottom
-            tab bar below, so it visually floats like a Claude-app header
-            instead of sitting flush against the top edge. */}
-        <div className="flex-shrink-0 px-4 md:px-6 pt-2 md:pt-3 pb-0 hidden md:block">
-          <div
-            className="rounded-[26px] px-5 pt-2.5 pb-2.5"
-            style={{ background: T.navyDeep, boxShadow: '0 10px 28px rgba(11,30,66,0.45)' }}
-          >
-            {/* Desktop header — full */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 50, height: 50, border: `1px solid ${T.brass}55` }}>
-                  <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div>
-                  <p className="f-thai" style={{ fontSize: 11, fontWeight: 700, color: T.brass, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
-                    The Loft Living Space
-                  </p>
-                  <h1 className="f-display" style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.25, marginTop: 4 }}>
-                    {isAdmin ? t('admin_mgmt_title') : t('daily_admin_title')}
-                  </h1>
-                  <p className="f-thai" style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-                    {isAdmin ? t('admin_subtitle') : t('daily_subtitle')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
-                    <button
-                      onClick={() => setLang('th')}
-                      className="press focus-ring rounded-full"
-                      style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
-                      TH
-                    </button>
-                    <button
-                      onClick={() => setLang('en')}
-                      className="press focus-ring rounded-full"
-                      style={{ padding: '6px 14px', fontSize: 12.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
-                      EN
-                    </button>
-                  </div>
-                  <div
-                    className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-medium f-thai"
-                    style={{
-                      background: isOfficeNetwork ? 'rgba(63,130,86,0.18)' : 'rgba(217,178,92,0.18)',
-                      color: isOfficeNetwork ? '#8FD4A5' : T.brass,
-                      border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.3)' : 'rgba(217,178,92,0.35)'}`,
-                    }}>
-                    <span className="w-2 h-2 rounded-full" style={{ background: isOfficeNetwork ? '#8FD4A5' : T.brass }} />
-                    {isOfficeNetwork ? t('office_badge') : t('online_badge')}
-                    <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>({clientIP})</span>
-                  </div>
-                </div>
-                <div className="flex items-end gap-2.5">
-                  <div>
-                    <p className="f-thai text-right" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>{t('report_date_label')}</p>
-                    <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="rounded-xl px-3 py-2 text-sm focus-ring" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#FFFFFF' }} />
-                  </div>
-                  <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'} className="press focus-ring flex items-center gap-2 px-3 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
-                    {pushPerm === 'granted' ? <BellRing size={16} /> : <Bell size={16} />}
-                  </button>
-                  <button onClick={handleLogout} className="press focus-ring flex items-center gap-2 px-4 py-2 rounded-2xl text-sm f-thai" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                    {t('logout_btn')}
-                  </button>
-                </div>
-              </div>
+        {/* Header — desktop uses the same "no shared bar" language as
+            mobile: each cluster (brand card, TH/EN, badge, date, bell,
+            logout) is its own separate floating pill with its own navy
+            background and shadow, with visible gaps between them, instead
+            of one connected strip. Kept to a single row and small sizes so
+            it doesn't eat up vertical space on shorter laptop screens. */}
+        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3" style={{ top: 12 }}>
+          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
+            <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
+              <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
-            {/* Desktop notification row */}
-            {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
-                  <button
-                    onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
-                    className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                    style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
-                    {notifBooking > 0 && <span className="flex items-center gap-1"><ClipboardList size={13} /> {notifBooking} booking</span>}
-                    {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
-                    {notifInvoice > 0 && <span className="flex items-center gap-1"><Receipt size={13} /> {notifInvoice} invoice</span>}
-                    <span>→</span>
-                  </button>
+            <h1 className="f-display whitespace-nowrap hidden lg:block" style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF' }}>
+              {isAdmin ? t('admin_mgmt_title') : isMaintenance ? t('maintenance_title') : t('daily_admin_title')}
+            </h1>
+          </div>
+
+          {/* Main tab nav — merged into the same fixed row as the header
+              (was a separate fixed row below it) so desktop stays down
+              to one top row. Label hides below xl to leave room for the
+              header/controls clusters on narrower laptop widths. */}
+          <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
+            {(isMaintenance ? [
+              { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+              { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+              { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+              { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
+            ] : [
+              { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+              { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+              { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+              { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+              { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+            ]).map(m => (
+              <button key={m.key} aria-label={m.label} title={m.label}
+                onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+                className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
+                style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
+                <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+                <span className="hidden md:inline">{m.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
+              <button
+                onClick={() => setLang('th')}
+                className="press focus-ring rounded-full"
+                style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                TH
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className="press focus-ring rounded-full"
+                style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                EN
+              </button>
+            </div>
+            <div
+              className="hidden lg:flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium f-thai whitespace-nowrap"
+              style={{
+                background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : T.navyDeep,
+                color: isOfficeNetwork ? '#EAF7EE' : T.brass,
+                border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.5)' : T.hairGold}`,
+                boxShadow: '0 8px 20px rgba(11,30,66,0.25)',
+              }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
+              {isOfficeNetwork ? t('office_badge') : t('online_badge')}
+            </div>
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
+              <div className="flex items-center gap-1.5">
+                {!isPreviewDate && (
+                  <span className="hidden lg:inline-block f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                    {t('cal_today')}
+                  </span>
                 )}
-                {notifLowStock > 0 && (
-                  <button
-                    onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
-                    className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                    style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
-                    <AlertCircle size={13} /> {notifLowStock} {t('notif_low_stock')}
-                    <span>→</span>
-                  </button>
-                )}
+                <div className="relative">
+                  <div
+                    className="flex items-center rounded-full px-2 py-1"
+                    style={{
+                      background: T.navyDeep,
+                      border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
+                      boxShadow: isPreviewDate ? `0 8px 20px rgba(11,30,66,0.25), 0 0 0 2px ${T.brass}55` : '0 8px 20px rgba(11,30,66,0.25)',
+                    }}>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={e => setReportDate(e.target.value)}
+                      title={t('report_date_label')}
+                      className="text-[10px] focus-ring"
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                    />
+                  </div>
+                  {isPreviewDate && (
+                    <span
+                      className="absolute flex items-center justify-center rounded-full"
+                      title={t('ci_preview_readonly')}
+                      style={{ top: -5, right: -5, width: 15, height: 15, background: T.brass, border: `1.5px solid ${T.navyDeep}`, color: T.navyDeep }}>
+                      <Flag size={9} strokeWidth={2.5} fill={T.navyDeep} />
+                    </span>
+                  )}
+                </div>
               </div>
             )}
+            <button
+              onClick={handleEnableNotifications}
+              title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
+              className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+              style={{ width: 26, height: 26, background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+              {pushPerm === 'granted' ? <BellRing size={12} /> : <Bell size={12} />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="press focus-ring flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] f-thai whitespace-nowrap"
+              style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
+              {t('logout_btn')}
+            </button>
           </div>
         </div>
+        {/* Spacer — reserves room for the now-fixed desktop header (which
+            now also holds the main nav) so content below doesn't render
+            underneath it */}
+        <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
+
+        {/* Desktop notification row — own separate pills, floating below the two header clusters */}
+        {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
+          <div className="hidden md:flex flex-wrap items-center gap-2 px-6 mt-2.5">
+            {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
+              <button
+                onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
+                className="press focus-ring flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold"
+                style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.14)', color: T.brassDeep }}>
+                {notifBooking > 0 && <span className="flex items-center gap-1"><ClipboardList size={13} /> {notifBooking} booking</span>}
+                {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
+                {notifInvoice > 0 && <span className="flex items-center gap-1"><Receipt size={13} /> {notifInvoice} invoice</span>}
+                <span>→</span>
+              </button>
+            )}
+            {notifLowStock > 0 && (
+              <button
+                onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
+                className="press focus-ring flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold"
+                style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, boxShadow: '0 8px 20px rgba(11,30,66,0.14)', color: T.wine }}>
+                <AlertCircle size={13} /> {notifLowStock} {t('notif_low_stock')}
+                <span>→</span>
+              </button>
+            )}
+          </div>
+        )}
+
 
         {/* Mobile header — NO shared bar/background. The outer row is purely
             for layout (transparent, no border/shadow); the logo, the date
@@ -852,32 +936,53 @@ export default function AdminDailyDashboard() {
               backdropFilter: 'saturate(180%) blur(20px)',
               WebkitBackdropFilter: 'saturate(180%) blur(20px)',
             }}>
-            <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 34, height: 34, border: `1px solid ${T.brass}55` }}>
-              <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
+            <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           {/* Pill 2 — date, and Pill 3 — menu button, each floating on their
               own; this wrapper is layout-only (no bg/border/shadow of its own) */}
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Pill 2 — date */}
-            <div
-              className="flex items-center rounded-full px-3.5 py-2.5"
-              style={{
-                background: T.navyDeep,
-                border: `1px solid ${T.hairGold}`,
-                boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
-                backdropFilter: 'saturate(180%) blur(20px)',
-                WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-              }}>
-              <input
-                type="date"
-                value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
-                className="text-xs font-medium f-thai focus-ring"
-                style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
-              />
-            </div>
+            {/* Pill 2 — shared date picker, used by both Check-in/out (report /
+                room-status date) and Calendar (which day range to view) — one
+                control instead of two so they never look duplicated. */}
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
+              <div className="flex items-center gap-1.5">
+                {!isPreviewDate && (
+                  <span className="f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                    {t('cal_today')}
+                  </span>
+                )}
+                <div className="relative">
+                  <div
+                    className="flex items-center rounded-full px-3.5 py-2.5"
+                    style={{
+                      background: T.navyDeep,
+                      border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
+                      boxShadow: isPreviewDate
+                        ? `0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18), 0 0 0 2px ${T.brass}55`
+                        : '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
+                      backdropFilter: 'saturate(180%) blur(20px)',
+                      WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+                    }}>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={e => setReportDate(e.target.value)}
+                      className="text-xs font-medium f-thai focus-ring"
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                    />
+                  </div>
+                  {isPreviewDate && (
+                    <span
+                      className="absolute flex items-center justify-center rounded-full"
+                      title={t('ci_preview_readonly')}
+                      style={{ top: -5, right: -5, width: 17, height: 17, background: T.brass, border: `1.5px solid ${T.navyDeep}`, color: T.navyDeep, boxShadow: '0 2px 6px rgba(11,30,66,0.4)' }}>
+                      <Flag size={10} strokeWidth={2.5} fill={T.navyDeep} />
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Pill 3 — menu button (+ notif badge + dropdown anchored to it) */}
             <div className="relative">
@@ -968,37 +1073,26 @@ export default function AdminDailyDashboard() {
         {/* Tab Switcher — desktop: border-b tabs, mobile: bottom bar */}
 
 
-        {/* Desktop main nav (md and up) — 4 icon-only entries */}
-        <div className="flex-shrink-0 hidden md:flex px-6 md:px-8" style={{ borderBottom: `1px solid ${T.hair}` }}>
-          {([
-            { key: 'checkinout' as const, Icon: Building2,       label: t('tab_checkinout') },
-            { key: 'calendar' as const,   Icon: CalendarDays,    label: t('tab_calendar') },
-            { key: 'stock' as const,      Icon: Package,         label: t('tab_stock') },
-            { key: 'parking' as const,    Icon: Car,             label: t('tab_parking') },
-            { key: 'etc' as const,        Icon: MoreHorizontal,  label: t('tab_etc') },
-          ]).map(m => (
-            <button key={m.key} title={m.label} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex-1 py-4 flex items-center justify-center gap-2"
-              style={{ borderBottom: `2.5px solid ${mainSection === m.key ? T.brass : 'transparent'}` }}>
-              <m.Icon size={26} color={mainSection === m.key ? T.navy : T.inkSoft} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-              <span className="f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Mobile bottom tab bar (below md) — floating island, detached from screen edges */}
+        {/* Mobile main nav — floating bottom pill (thumb-reach friendly).
+            Desktop uses the fixed top tab row above instead (see the
+            "Desktop top nav" block); this whole bar is hidden on desktop
+            now rather than double-rendering the same tabs twice. */}
         <div
-          className="fixed left-4 right-4 z-50 md:hidden flex items-center justify-around rounded-[26px]"
+          className="md:hidden fixed left-4 right-4 z-50 flex items-center justify-around rounded-[26px]"
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
             background: T.card,
             border: `1px solid ${T.hair}`,
             boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
             backdropFilter: 'saturate(180%) blur(20px)',
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           }}>
-          {([
+          {(isMaintenance ? [
+            { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+            { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+            { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+            { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
+          ] : [
             { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
             { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
             { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
@@ -1006,13 +1100,14 @@ export default function AdminDailyDashboard() {
             { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab('dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-w-0 relative">
+              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+              className="press focus-ring flex flex-col md:flex-row items-center justify-center py-2.5 md:py-3 md:px-5 gap-1 md:gap-2 min-w-0 flex-1 md:flex-none relative">
               <div className="flex items-center justify-center rounded-full transition-all"
                 style={{ width: 40, height: 30, background: mainSection === m.key ? T.navyTint : 'transparent' }}>
                 <m.Icon size={21} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
               </div>
-              <span style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
+              <span className="hidden md:inline f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
+              <span className="md:hidden" style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
@@ -1021,9 +1116,10 @@ export default function AdminDailyDashboard() {
         {mainSection === 'etc' && (
           <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto mt-16 md:mt-0" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
             {([
-              { key: 'dashboard' as const, Icon: LayoutGrid,    label: t('tab_dashboard') },
+              ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
+              ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
               <button key={s.key} onClick={() => { setAdminTab(s.key); scrollToTop(); }}
@@ -1142,7 +1238,7 @@ export default function AdminDailyDashboard() {
         {isAdmin && adminTab === 'todo' && (
           <BookingInvoiceTodo ref={bookingTodoRef} key={todoInitialTab} initialTab={todoInitialTab} onCountChange={(b: number, i: number) => { setNotifBooking(b); setNotifInvoice(i); }} />
         )}
-        {adminTab === 'checkinout' && (
+        {adminTab === 'checkinout' && !isMaintenance && (
           <CheckInOut ref={checkInOutRef} viewDate={reportDate} onViewDateChange={setReportDate} />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
@@ -1156,11 +1252,14 @@ export default function AdminDailyDashboard() {
           <RevenueDashboard />
         )}
         {adminTab === 'calendar' && (
-          <CalendarView />
+          <CalendarView viewDate={reportDate} onViewDateChange={setReportDate} />
+        )}
+        {(isAdmin || isMaintenance) && adminTab === 'repair' && (
+          <RepairList currentUser={currentUser} />
         )}
 
         {/* Dashboard Tab */}
-        {adminTab === 'dashboard' && <div>
+        {adminTab === 'dashboard' && !isMaintenance && <div>
 
         {/* Quick Links — shortcut buttons */}
         <div className="grid grid-cols-3 gap-3 mb-5">

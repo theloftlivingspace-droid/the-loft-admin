@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
-import { Shield, Users2 } from 'lucide-react';
+import { Shield, Users2, Wrench } from 'lucide-react';
 
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
@@ -42,7 +42,7 @@ interface User {
   full_name: string;
   username: string;
   password: string;
-  role: 'admin' | 'employee';
+  role: 'admin' | 'employee' | 'maintenance';
 }
 
 export default function UserManagement() {
@@ -53,7 +53,7 @@ export default function UserManagement() {
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editDraft, setEditDraft]   = useState<Partial<User>>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newUser, setNewUser]       = useState({ full_name: '', username: '', password: '', role: 'employee' as 'admin' | 'employee' });
+  const [newUser, setNewUser]       = useState({ full_name: '', username: '', password: '', role: 'employee' as 'admin' | 'employee' | 'maintenance' });
   const [busy, setBusy]             = useState(false);
 
   async function loadUsers() {
@@ -146,9 +146,10 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="f-thai block text-xs font-medium mb-1" style={{ color: T.inkSoft }}>Role</label>
-              <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'employee' })}
+              <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'employee' | 'maintenance' })}
                 className="focus-ring w-full rounded-xl px-3 py-2 text-sm" style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }}>
                 <option value="employee">employee</option>
+                <option value="maintenance">maintenance</option>
                 <option value="admin">admin</option>
               </select>
             </div>
@@ -178,9 +179,10 @@ export default function UserManagement() {
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="username" />
                     <input value={editDraft.password ?? ''} onChange={e => setEditDraft({ ...editDraft, password: e.target.value })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="password" />
-                    <select value={editDraft.role ?? 'employee'} onChange={e => setEditDraft({ ...editDraft, role: e.target.value as 'admin' | 'employee' })}
+                    <select value={editDraft.role ?? 'employee'} onChange={e => setEditDraft({ ...editDraft, role: e.target.value as 'admin' | 'employee' | 'maintenance' })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}>
                       <option value="employee">employee</option>
+                      <option value="maintenance">maintenance</option>
                       <option value="admin">admin</option>
                     </select>
                   </div>
@@ -201,13 +203,13 @@ export default function UserManagement() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex items-center justify-center rounded-full shrink-0" style={{ width: 34, height: 34, background: T.navyTint }}>
-                      {u.role === 'admin' ? <Shield size={15} color={T.navy} /> : <Users2 size={15} color={T.navy} />}
+                      {u.role === 'admin' ? <Shield size={15} color={T.navy} /> : u.role === 'maintenance' ? <Wrench size={15} color={T.navy} /> : <Users2 size={15} color={T.navy} />}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="f-thai font-semibold" style={{ color: T.ink }}>{u.full_name}</span>
                         <span className="f-thai text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                          style={u.role === 'admin' ? { background: T.brassPale, color: T.brassDeep } : { background: T.navyTint, color: T.inkSoft }}>
+                          style={u.role === 'admin' ? { background: T.brassPale, color: T.brassDeep } : u.role === 'maintenance' ? { background: T.sageTint, color: T.sage } : { background: T.navyTint, color: T.inkSoft }}>
                           {u.role}
                         </span>
                       </div>

@@ -5,6 +5,7 @@
 @layer base {
   html, body {
     font-family: 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
+    background: #F7F9FB;
   }
 }
 
