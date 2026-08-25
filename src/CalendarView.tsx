@@ -114,26 +114,32 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   const setStartDate = onViewDateChange;
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const outerRef = useRef<HTMLDivElement>(null);
+  const [outerEl, setOuterEl] = useState<HTMLDivElement | null>(null);
   const [cellW, setCellW] = useState(MIN_CELL_W);
 
   // Stretch the day columns to fill whatever page width is available
   // (desktop) instead of leaving empty space to the right of a fixed-width
   // grid; on narrow screens it falls back to MIN_CELL_W and the wrapper
   // scrolls horizontally as before.
+  //
+  // outerEl comes from a STATE-backed ref callback (not a plain useRef) —
+  // the grid element only exists once loading finishes (before that a
+  // spinner renders in its place), so a plain useRef([]) effect would run
+  // at mount while the ref is still null and never re-fire once the real
+  // element appears. Depending on outerEl guarantees this reruns exactly
+  // when the node mounts.
   useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
+    if (!outerEl) return;
     const measure = () => {
-      const available = el.clientWidth - LABEL_W;
+      const available = outerEl.clientWidth - LABEL_W;
       const fitted = Math.floor(available / DAYS_COUNT);
       setCellW(Math.max(MIN_CELL_W, fitted));
     };
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    ro.observe(outerEl);
     return () => ro.disconnect();
-  }, []);
+  }, [outerEl]);
 
   async function load() {
     setLoading(true);
@@ -325,7 +331,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         </div>
       ) : (
         <div
-          ref={el => { scrollRef.current = el; outerRef.current = el; }}
+          ref={el => { scrollRef.current = el; setOuterEl(el); }}
           className="rounded-2xl cal-hscroll"
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
