@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react
 // so the calendar reuses it rather than requiring a separate data source.
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
-const CELL_W = 68;   // px per day column
+const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
 const LABEL_W = 104; // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
 const DAYS_COUNT = 21;
@@ -74,6 +74,26 @@ export default function CalendarView() {
   const [startDate, setStartDate] = useState(today());
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [cellW, setCellW] = useState(MIN_CELL_W);
+
+  // Stretch the day columns to fill whatever page width is available
+  // (desktop) instead of leaving empty space to the right of a fixed-width
+  // grid; on narrow screens it falls back to MIN_CELL_W and the wrapper
+  // scrolls horizontally as before.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const available = el.clientWidth - LABEL_W;
+      const fitted = Math.floor(available / DAYS_COUNT);
+      setCellW(Math.max(MIN_CELL_W, fitted));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -131,7 +151,7 @@ export default function CalendarView() {
     return map;
   }, [stays]);
 
-  const totalW = LABEL_W + DAYS_COUNT * CELL_W;
+  const totalW = LABEL_W + DAYS_COUNT * cellW;
   const todayIdx = diffDays(startDate, today());
 
   // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
@@ -224,7 +244,7 @@ export default function CalendarView() {
         </div>
       ) : (
         <div
-          ref={scrollRef}
+          ref={el => { scrollRef.current = el; outerRef.current = el; }}
           className="rounded-2xl cal-hscroll"
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
@@ -242,7 +262,7 @@ export default function CalendarView() {
                 const wd = lang === 'th' ? WD_TH[dt.getDay()] : WD_EN[dt.getDay()];
                 return (
                   <div key={d} style={{
-                    width: CELL_W, minWidth: CELL_W, textAlign: 'center', padding: '6px 0',
+                    width: cellW, minWidth: cellW, textAlign: 'center', padding: '6px 0',
                     borderBottom: `1px solid ${T.hair}`, borderRight: i === days.length - 1 ? 'none' : `1px solid ${T.hair}`,
                     background: isToday ? T.brassPale : T.card,
                   }}>
@@ -271,11 +291,11 @@ export default function CalendarView() {
                         <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
                       </div>
                       <div style={{
-                        width: DAYS_COUNT * CELL_W, minWidth: DAYS_COUNT * CELL_W, position: 'relative',
-                        backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${CELL_W - 1}px, ${T.hair} ${CELL_W - 1}px, ${T.hair} ${CELL_W}px)`,
+                        width: DAYS_COUNT * cellW, minWidth: DAYS_COUNT * cellW, position: 'relative',
+                        backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${cellW - 1}px, ${T.hair} ${cellW - 1}px, ${T.hair} ${cellW}px)`,
                       }}>
                         {todayIdx >= 0 && todayIdx < DAYS_COUNT && (
-                          <div style={{ position: 'absolute', left: todayIdx * CELL_W, top: 0, bottom: 0, width: CELL_W, background: T.brassPale, opacity: 0.35 }} />
+                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: T.brassPale, opacity: 0.35 }} />
                         )}
                         {roomStays.map(s => {
                           const sIdx = diffDays(startDate, s.checkin);
@@ -291,7 +311,7 @@ export default function CalendarView() {
                               className="press focus-ring text-left"
                               style={{
                                 position: 'absolute', top: 5, bottom: 5,
-                                left: clipL * CELL_W + 3, width: (clipR - clipL) * CELL_W - 6,
+                                left: clipL * cellW + 3, width: (clipR - clipL) * cellW - 6,
                                 background: c.tint, borderLeft: `4px solid ${c.accent}`,
                                 borderTop: `1px solid ${c.accent}44`, borderRight: `1px solid ${c.accent}44`, borderBottom: `1px solid ${c.accent}44`,
                                 borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
