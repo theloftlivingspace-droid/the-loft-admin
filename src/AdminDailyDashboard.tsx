@@ -770,7 +770,9 @@ export default function AdminDailyDashboard() {
             background and shadow, with visible gaps between them, instead
             of one connected strip. Kept to a single row and small sizes so
             it doesn't eat up vertical space on shorter laptop screens. */}
-        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3" style={{ top: 12 }}>
+        <div
+          className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3"
+          style={{ top: 12 }}>
           <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -807,7 +809,7 @@ export default function AdminDailyDashboard() {
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="hidden xl:flex items-center gap-1.5 flex-shrink-0">
             <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
               <button
                 onClick={() => setLang('th')}
@@ -823,7 +825,7 @@ export default function AdminDailyDashboard() {
               </button>
             </div>
             <div
-              className="hidden lg:flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium f-thai whitespace-nowrap"
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium f-thai whitespace-nowrap"
               style={{
                 background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : T.navyDeep,
                 color: isOfficeNetwork ? '#EAF7EE' : T.brass,
@@ -836,7 +838,7 @@ export default function AdminDailyDashboard() {
             {(mainSection === 'checkinout' || mainSection === 'calendar') && (
               <div className="flex items-center gap-1.5">
                 {!isPreviewDate && (
-                  <span className="hidden lg:inline-block f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
+                  <span className="inline-block f-thai text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>
                     {t('cal_today')}
                   </span>
                 )}
@@ -881,6 +883,138 @@ export default function AdminDailyDashboard() {
               style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
               {t('logout_btn')}
             </button>
+          </div>
+
+          {/* Compact tablet variant (md–xl, e.g. iPad landscape) — the full
+              cluster above doesn't reliably fit in this range once every
+              lg: badge reappears, so instead of letting it overflow or
+              scroll, collapse everything except the date into a single
+              "more" button + dropdown, same idea as the mobile header. */}
+          <div className="flex xl:hidden items-center gap-1.5 flex-shrink-0">
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
+              <div className="relative">
+                <div
+                  className="flex items-center rounded-full px-2 py-1"
+                  style={{
+                    background: T.navyDeep,
+                    border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
+                    boxShadow: isPreviewDate ? `0 8px 20px rgba(11,30,66,0.25), 0 0 0 2px ${T.brass}55` : '0 8px 20px rgba(11,30,66,0.25)',
+                  }}>
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={e => setReportDate(e.target.value)}
+                    title={t('report_date_label')}
+                    className="text-[10px] focus-ring"
+                    style={{ background: 'transparent', border: 'none', color: '#FFFFFF' }}
+                  />
+                </div>
+                {isPreviewDate && (
+                  <span
+                    className="absolute flex items-center justify-center rounded-full"
+                    title={t('ci_preview_readonly')}
+                    style={{ top: -5, right: -5, width: 15, height: 15, background: T.brass, border: `1.5px solid ${T.navyDeep}`, color: T.navyDeep }}>
+                    <Flag size={9} strokeWidth={2.5} fill={T.navyDeep} />
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="relative">
+              <button
+                onClick={() => setHeaderMenuOpen(v => !v)}
+                className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+                style={{
+                  width: 30, height: 30,
+                  background: headerMenuOpen ? T.brass : T.navyDeep,
+                  border: `1px solid ${headerMenuOpen ? T.brass : T.hairGold}`,
+                  boxShadow: '0 8px 20px rgba(11,30,66,0.25)',
+                  color: headerMenuOpen ? T.navyDeep : 'rgba(255,255,255,0.85)',
+                }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
+                <span
+                  className="absolute rounded-full"
+                  style={{ top: -1, right: -1, width: 9, height: 9, background: T.wine, border: `2px solid ${T.navyDeep}` }}
+                />
+              )}
+
+              {headerMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-2.5 z-50 w-48 rounded-2xl p-1.5 flex flex-col gap-1"
+                    style={{ background: T.navyDeep, border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
+                    <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                      <button
+                        onClick={() => setLang('th')}
+                        className="press focus-ring flex-1 rounded-full"
+                        style={{ padding: '6px 0', fontSize: 11.5, fontWeight: 700, color: lang === 'th' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'th' ? T.brass : 'transparent' }}>
+                        TH
+                      </button>
+                      <button
+                        onClick={() => setLang('en')}
+                        className="press focus-ring flex-1 rounded-full"
+                        style={{ padding: '6px 0', fontSize: 11.5, fontWeight: 700, color: lang === 'en' ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === 'en' ? T.brass : 'transparent' }}>
+                        EN
+                      </button>
+                    </div>
+
+                    <div
+                      className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[11px] font-medium f-thai"
+                      style={{
+                        background: isOfficeNetwork ? 'rgba(63,130,86,0.94)' : 'rgba(255,255,255,0.08)',
+                        color: isOfficeNetwork ? '#EAF7EE' : T.brass,
+                        border: `1px solid ${isOfficeNetwork ? 'rgba(143,212,165,0.5)' : 'rgba(255,255,255,0.14)'}`,
+                      }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
+                      {isOfficeNetwork ? t('office_badge') : t('online_badge')}
+                    </div>
+
+                    {(mainSection === 'checkinout' || mainSection === 'calendar') && !isPreviewDate && (
+                      <div className="flex items-center justify-center px-2 py-2 rounded-xl text-[11px] font-bold f-thai" style={{ background: T.brass, color: T.navyDeep }}>
+                        {t('cal_today')}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleEnableNotifications}
+                      className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs f-thai text-center"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+                      {pushPerm === 'granted' ? <BellRing size={14} className="shrink-0" /> : <Bell size={14} className="shrink-0" />}
+                      <span>{pushPerm === 'granted' ? t('notif_on') : t('notif_enable')}</span>
+                    </button>
+
+                    {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
+                      <button
+                        onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); setHeaderMenuOpen(false); }}
+                        className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold text-center"
+                        style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
+                        {notifBooking > 0 && <span>📋 {notifBooking} {t('notif_booking_invoice')}</span>}
+                        {notifBooking > 0 && notifInvoice > 0 && <span style={{ opacity: 0.5 }}>·</span>}
+                        {notifInvoice > 0 && <span>🧾 {notifInvoice} {t('notif_invoice_pending')}</span>}
+                      </button>
+                    )}
+                    {notifLowStock > 0 && (
+                      <button
+                        onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); setHeaderMenuOpen(false); }}
+                        className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold text-center"
+                        style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
+                        🔴 {notifLowStock} {t('notif_low_stock')}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleLogout}
+                      className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs f-thai text-center"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
+                      <span className="shrink-0">🚪</span>
+                      <span>{t('logout_btn')}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
         {/* Spacer — reserves room for the now-fixed desktop header (which

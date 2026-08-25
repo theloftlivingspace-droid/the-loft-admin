@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react
 // so the calendar reuses it rather than requiring a separate data source.
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
-const CELL_W = 68;   // px per day column
+const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
 const LABEL_W = 76;  // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
 const DAYS_COUNT = 21;
@@ -118,6 +118,32 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   const setStartDate = onViewDateChange;
   const [detail, setDetail] = useState<CalStay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [outerEl, setOuterEl] = useState<HTMLDivElement | null>(null);
+  const [cellW, setCellW] = useState(MIN_CELL_W);
+
+  // Stretch the day columns to fill whatever page width is available
+  // (desktop) instead of leaving empty space to the right of a fixed-width
+  // grid; on narrow screens it falls back to MIN_CELL_W and the wrapper
+  // scrolls horizontally as before.
+  //
+  // outerEl comes from a STATE-backed ref callback (not a plain useRef) —
+  // the grid element only exists once loading finishes (before that a
+  // spinner renders in its place), so a plain useRef([]) effect would run
+  // at mount while the ref is still null and never re-fire once the real
+  // element appears. Depending on outerEl guarantees this reruns exactly
+  // when the node mounts.
+  useEffect(() => {
+    if (!outerEl) return;
+    const measure = () => {
+      const available = outerEl.clientWidth - LABEL_W;
+      const fitted = Math.floor(available / DAYS_COUNT);
+      setCellW(Math.max(MIN_CELL_W, fitted));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(outerEl);
+    return () => ro.disconnect();
+  }, [outerEl]);
 
   async function load() {
     setLoading(true);
@@ -183,7 +209,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     return map;
   }, [stays]);
 
-  const totalW = LABEL_W + DAYS_COUNT * CELL_W;
+  const totalW = LABEL_W + DAYS_COUNT * cellW;
   const todayIdx = diffDays(rangeStart, today());
 
   // แถบสีเหลือง "วันนี้" ให้อยู่กลางจอเสมอ — เลื่อน scroll ของกริดให้คอลัมน์
@@ -199,14 +225,13 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     const el = scrollRef.current;
     if (!el) return;
     if (todayIdx < 0 || todayIdx >= DAYS_COUNT) return; // วันนี้ไม่อยู่ในช่วงที่แสดง — ไม่ต้องเลื่อน
-    const todayColCenter = LABEL_W + todayIdx * CELL_W + CELL_W / 2;
+    const todayColCenter = LABEL_W + todayIdx * cellW + cellW / 2;
     const target = Math.max(0, todayColCenter - el.clientWidth / 2);
     const raf = requestAnimationFrame(() => {
       el.scrollTo({ left: target, behavior: 'auto' });
     });
     return () => cancelAnimationFrame(raf);
-  }, [rangeStart, loading, todayIdx]);
-
+  }, [rangeStart, loading, todayIdx, cellW]);
 
   // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
   // The grid can be wider than the screen; besides native touch/trackpad
@@ -312,7 +337,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         </div>
       ) : (
         <div
-          ref={scrollRef}
+          ref={el => { scrollRef.current = el; setOuterEl(el); }}
           className="rounded-2xl cal-hscroll"
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
@@ -330,7 +355,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                 const wd = lang === 'th' ? WD_TH[dt.getDay()] : WD_EN[dt.getDay()];
                 return (
                   <div key={d} style={{
-                    width: CELL_W, minWidth: CELL_W, textAlign: 'center', padding: '6px 0',
+                    width: cellW, minWidth: cellW, textAlign: 'center', padding: '6px 0',
                     borderBottom: `1px solid ${T.hair}`, borderRight: i === days.length - 1 ? 'none' : `1px solid ${T.hair}`,
                     background: isToday ? T.brassPale : T.card,
                   }}>
@@ -359,11 +384,11 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                         <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
                       </div>
                       <div style={{
-                        width: DAYS_COUNT * CELL_W, minWidth: DAYS_COUNT * CELL_W, position: 'relative',
-                        backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${CELL_W - 1}px, ${T.hair} ${CELL_W - 1}px, ${T.hair} ${CELL_W}px)`,
+                        width: DAYS_COUNT * cellW, minWidth: DAYS_COUNT * cellW, position: 'relative',
+                        backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${cellW - 1}px, ${T.hair} ${cellW - 1}px, ${T.hair} ${cellW}px)`,
                       }}>
                         {todayIdx >= 0 && todayIdx < DAYS_COUNT && (
-                          <div style={{ position: 'absolute', left: todayIdx * CELL_W, top: 0, bottom: 0, width: CELL_W, background: T.brassPale, opacity: 0.35 }} />
+                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: T.brassPale, opacity: 0.35 }} />
                         )}
                         {roomStays.map(s => {
                           const status = s.isCancelled ? 'cancelled' : computeStatus(s.checkin, s.checkout, startDate);
@@ -376,9 +401,9 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                           // draws as two half-day segments that meet exactly at midday
                           // instead of the checkout leg vanishing and the check-in leg
                           // starting from the far edge.
-                          const totalPx = DAYS_COUNT * CELL_W;
-                          const sPx = sIdx * CELL_W + CELL_W / 2;
-                          const ePx = eIdx * CELL_W + CELL_W / 2;
+                          const totalPx = DAYS_COUNT * cellW;
+                          const sPx = sIdx * cellW + cellW / 2;
+                          const ePx = eIdx * cellW + cellW / 2;
                           if (ePx <= 0 || sPx >= totalPx) return null;
                           const clipL = Math.max(0, sPx);
                           const clipR = Math.min(totalPx, ePx);
