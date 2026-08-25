@@ -770,7 +770,9 @@ export default function AdminDailyDashboard() {
             background and shadow, with visible gaps between them, instead
             of one connected strip. Kept to a single row and small sizes so
             it doesn't eat up vertical space on shorter laptop screens. */}
-        <div className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3" style={{ top: 12 }}>
+        <div
+          className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3 cal-hscroll"
+          style={{ top: 12, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 2 }}>
           <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -886,7 +888,7 @@ export default function AdminDailyDashboard() {
         {/* Spacer — reserves room for the now-fixed desktop header (which
             now also holds the main nav) so content below doesn't render
             underneath it */}
-        <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
+        <div className="hidden md:block flex-shrink-0" style={{ height: 72 }} />
 
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
