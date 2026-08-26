@@ -64,8 +64,29 @@ async function sbUpsert(table: string, body: object) {
 }
 // NOTE: requires a `repair_status` table in Supabase — create once:
 //   uid text primary key, status text default 'pending', assigned_to text,
-//   notes text, completed_date timestamptz
+//   notes text, completed_date timestamptz, after_photos text[] default '{}'
 // (RLS: same policy as the existing `users`/`login_log` tables.)
+
+// Technician "after repair" photos are the only thing this component writes
+// binary data for — everything else is JSON. Uses the Storage REST API
+// directly (same anon-key pattern as sbGet/sbUpsert above) rather than the
+// supabase-js SDK, to stay consistent with the rest of this file.
+// Bucket `repair-photos` (public) must exist with anon insert/select policies.
+async function sbUploadPhoto(uid: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${uid}-${Date.now()}.${ext}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/repair-photos/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  return `${SUPABASE_URL}/storage/v1/object/public/repair-photos/${path}`;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RepairStatus = 'pending' | 'in_progress' | 'completed';
@@ -93,6 +114,7 @@ interface RepairStatusRow {
   assigned_to?: string;
   notes?: string;
   completed_date?: string | null;
+  after_photos?: string[];
 }
 
 export interface RepairItem {
@@ -109,6 +131,7 @@ export interface RepairItem {
   assignedTo: string;
   notes: string;
   completedDate?: string | null;
+  afterPhotos: string[];
 }
 
 interface CurrentUser {
@@ -188,6 +211,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           assignedTo: st?.assigned_to || '',
           notes: st?.notes || '',
           completedDate: st?.completed_date,
+          afterPhotos: st?.after_photos || [],
         };
       });
 
@@ -226,6 +250,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
       // reopen a completed item actually clears it, instead of `null`
       // being treated as "not provided" and falling back to the old value.
       completedDate: 'completed_date' in patch ? (patch.completed_date ?? undefined) : current.completedDate,
+      afterPhotos: patch.after_photos ?? current.afterPhotos,
     };
     setItems(prev => prev.map(i => (i.uid === uid ? next : i)));
     setSelected(prev => (prev && prev.uid === uid ? next : prev));
@@ -235,7 +260,25 @@ export default function RepairList({ currentUser }: RepairListProps) {
       assigned_to: next.assignedTo,
       notes: next.notes,
       completed_date: next.completedDate || null,
+      after_photos: next.afterPhotos,
     });
+  }
+
+  const [uploadingUid, setUploadingUid] = useState<string | null>(null);
+
+  async function addAfterPhoto(uid: string, file: File) {
+    setUploadingUid(uid);
+    try {
+      const url = await sbUploadPhoto(uid, file);
+      const current = items.find(i => i.uid === uid);
+      const nextPhotos = [...(current?.afterPhotos || []), url];
+      await persist(uid, { after_photos: nextPhotos });
+    } catch (e) {
+      alert(t('repair_upload_failed'));
+      console.error(e);
+    } finally {
+      setUploadingUid(null);
+    }
   }
 
   if (!hasAccess) {
@@ -298,9 +341,16 @@ export default function RepairList({ currentUser }: RepairListProps) {
               <div className="f-thai text-sm mt-0.5 line-clamp-2" style={{ color: T.inkSoft }}>
                 {[...item.issues, ...item.repairs, ...item.damages].join(' · ') || item.extraNote}
               </div>
-              {item.photos.length > 0 && (
-                <div className="flex items-center gap-1 mt-2 text-xs" style={{ color: T.inkSoft }}>
-                  <Camera size={12} /> {item.photos.length}
+              {(item.photos.length > 0 || item.afterPhotos.length > 0) && (
+                <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: T.inkSoft }}>
+                  {item.photos.length > 0 && (
+                    <span className="flex items-center gap-1"><Camera size={12} /> {item.photos.length}</span>
+                  )}
+                  {item.afterPhotos.length > 0 && (
+                    <span className="flex items-center gap-1" style={{ color: T.sage }}>
+                      <CheckCircle2 size={12} /> {item.afterPhotos.length}
+                    </span>
+                  )}
                 </div>
               )}
               <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs f-thai font-semibold"
@@ -355,14 +405,57 @@ export default function RepairList({ currentUser }: RepairListProps) {
             )}
 
             {selected.photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 my-3">
-                {selected.photos.map((p, i) => (
-                  <a key={i} href={p.url} target="_blank" rel="noreferrer">
-                    <img src={driveThumb(p.url)} alt={p.label} className="rounded-lg object-cover aspect-square w-full" />
-                  </a>
-                ))}
+              <div className="mb-3">
+                <div className="text-xs f-thai font-semibold mb-1" style={{ color: T.inkSoft }}>
+                  {t('repair_photo_before')}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {selected.photos.map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noreferrer">
+                      <img src={driveThumb(p.url)} alt={p.label} className="rounded-lg object-cover aspect-square w-full" />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
+
+            <div className="mb-3">
+              <div className="text-xs f-thai font-semibold mb-1" style={{ color: T.sage }}>
+                {t('repair_photo_after')}
+              </div>
+              {selected.afterPhotos.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {selected.afterPhotos.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt={`after-${i}`} className="rounded-lg object-cover aspect-square w-full" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <label
+                className="press focus-ring inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs f-thai font-semibold cursor-pointer"
+                style={{ background: T.card, border: `1px solid ${T.hair}`, color: T.inkSoft }}
+              >
+                {uploadingUid === selected.uid ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Camera size={13} />
+                )}
+                {uploadingUid === selected.uid ? t('repair_uploading') : t('repair_upload_after')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  disabled={uploadingUid === selected.uid}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) addAfterPhoto(selected.uid, file);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
 
             <div className="text-sm f-thai space-y-1 my-3" style={{ color: T.inkSoft }}>
               <div>{t('repair_reported_by')}: {selected.reportedBy}</div>
