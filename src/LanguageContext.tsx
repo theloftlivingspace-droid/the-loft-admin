@@ -525,6 +525,11 @@ const DICT: Record<string, { th: string; en: string }> = {
   repair_mark_in_progress:  { th: 'เริ่มดำเนินการ', en: 'Start work' },
   repair_mark_completed:    { th: 'ทำเครื่องหมายว่าซ่อมเสร็จ', en: 'Mark completed' },
   repair_reopen:            { th: 'เปิดงานใหม่', en: 'Reopen' },
+  repair_photo_before:      { th: 'รูปก่อนซ่อม', en: 'Before' },
+  repair_photo_after:       { th: 'รูปหลังซ่อม', en: 'After' },
+  repair_upload_after:      { th: 'ถ่าย/อัปโหลดรูปหลังซ่อม', en: 'Add after photo' },
+  repair_uploading:         { th: 'กำลังอัปโหลด...', en: 'Uploading...' },
+  repair_upload_failed:     { th: 'อัปโหลดรูปไม่สำเร็จ ลองใหม่อีกครั้ง', en: 'Upload failed, please try again' },
 };
 
 type TranslationKey = keyof typeof DICT;
