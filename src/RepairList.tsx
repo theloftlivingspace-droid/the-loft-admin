@@ -445,7 +445,6 @@ export default function RepairList({ currentUser }: RepairListProps) {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   disabled={uploadingUid === selected.uid}
                   onChange={e => {
