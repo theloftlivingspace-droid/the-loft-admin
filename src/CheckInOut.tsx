@@ -188,13 +188,61 @@ function tStatic(th: string, en: string): string {
   try { return localStorage.getItem('loft_admin_lang') === 'en' ? en : th; } catch { return th; }
 }
 
-// Drive doc helpers — calls GAS Web App endpoints (uploadDoc / deleteDoc / getAllDocs)
-async function uploadDocToDrive(room: string, checkin: string, resId: string, file: File): Promise<DocFile | null> {
+// Photos straight off an iPhone camera are routinely 3–8MB. The Vercel
+// serverless proxy (/api/gas-proxy) sits behind a ~4.5MB request body cap —
+// past that, Vercel returns an HTML/plain-text error page instead of JSON,
+// and Safari's res.json() then throws its generic
+// "The string did not match the expected pattern" SyntaxError, which is
+// what was surfacing as an opaque "อัปโหลดไม่สำเร็จ" alert. Downscale/
+// recompress any image client-side before it ever gets base64-encoded so
+// the payload comfortably clears that limit. Non-images (PDF scans, etc.)
+// pass through untouched.
+async function compressImageIfNeeded(file: File): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') return file;
+  const MAX_DIM = 1800;
+  const QUALITY = 0.82;
+
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target?.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('decode failed'));
+      el.src = dataUrl;
+    });
+
+    const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file; // no canvas support — fall back to original
+
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', QUALITY));
+    if (!blob || blob.size >= file.size) return file; // compression didn't help — keep original
+
+    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], newName, { type: 'image/jpeg' });
+  } catch {
+    return file; // any decode/canvas failure — just upload the original
+  }
+}
+
+// Drive doc helpers — calls GAS Web App endpoints (uploadDoc / deleteDoc / getAllDocs)
+async function uploadDocToDrive(room: string, checkin: string, resId: string, file: File): Promise<DocFile | null> {
+  const uploadFile = await compressImageIfNeeded(file);
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target?.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(uploadFile);
   });
   // dataUrl looks like "data:image/jpeg;base64,/9j/4AAQ..." — GAS expects
   // the raw base64 payload only, so strip everything up to and including the comma.
@@ -204,12 +252,25 @@ async function uploadDocToDrive(room: string, checkin: string, resId: string, fi
     body: JSON.stringify({
       action: 'uploadDoc',
       room, checkin, resId,
-      fileName: file.name,
-      mimeType: file.type,
+      fileName: uploadFile.name,
+      mimeType: uploadFile.type,
       base64Data,
     }),
   });
-  const json = await res.json();
+
+  // Guard against non-JSON responses (e.g. a Vercel 413/502 HTML error page)
+  // so a proxy-level failure surfaces a readable message instead of Safari's
+  // opaque "The string did not match the expected pattern" JSON-parse error.
+  const raw = await res.text();
+  let json: { ok?: boolean; error?: string } & Partial<DocFile>;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    const reason = !res.ok
+      ? `HTTP ${res.status}${res.status === 413 ? ' — ไฟล์ใหญ่เกินไป' : ''}`
+      : tStatic('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง', 'Server returned an invalid response');
+    throw new Error(reason);
+  }
   if (!json.ok) throw new Error(json.error || tStatic('อัปโหลดไม่สำเร็จ', 'Upload failed'));
   return json as DocFile;
 }
