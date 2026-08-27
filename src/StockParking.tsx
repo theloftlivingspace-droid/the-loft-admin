@@ -592,7 +592,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
   // so we can write per-item audit log entries instead of just overwriting the blob.
   const stockSnapshotRef = useRef<StockItem[]>(stockData);
   const [showStockModal, setShowStockModal] = useState(false);
-  const [newStock, setNewStock] = useState({name:'',qty:0,unit:'',note:''});
+  const [newStock, setNewStock] = useState<{name:string;qty:number;unit:string;note:string;minQty?:number}>({name:'',qty:0,unit:'',note:''});
 
   // Notify parent when low-stock count changes
   const lowStockCount = stockData.filter(r => r.minQty !== undefined && r.qty < r.minQty).length;
@@ -606,11 +606,18 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
     setStockData(d => d.map(r => r.id===id ? {...r, name} : r));
   const updateStockUnit = (id:number, unit:string) =>
     setStockData(d => d.map(r => r.id===id ? {...r, unit} : r));
+  const updateStockMinQty = (id:number, raw:string) =>
+    setStockData(d => d.map(r => {
+      if (r.id !== id) return r;
+      if (raw.trim() === '') { const { minQty, ...rest } = r; return rest; }
+      const n = Math.max(0, Math.floor(Number(raw)));
+      return Number.isFinite(n) ? { ...r, minQty: n } : r;
+    }));
   const delStock = (id:number) => setStockData(d => d.filter(r=>r.id!==id));
   const addStock = () => {
     if(!newStock.name.trim()) return;
     setStockData(d => [...d, {id:nextSId, ...newStock}]);
-    setNextSId(n=>n+1); setNewStock({name:'',qty:0,unit:'',note:''}); setShowStockModal(false);
+    setNextSId(n=>n+1); setNewStock({name:'',qty:0,unit:'',note:'',minQty:undefined}); setShowStockModal(false);
   };
 
   // ── parking in ───────────────────────────────────────────────────────────
@@ -1026,7 +1033,19 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
                                   className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-xs f-num" style={{ color: T.inkSoft }}>{r.minQty !== undefined ? `≥ ${r.minQty}` : ''}</td>
+                            <td className="px-3 py-2 text-xs f-num">
+                              <div className="flex items-center gap-1">
+                                <span style={{ color: T.inkSoft }}>≥</span>
+                                <input
+                                  type="number" min={0}
+                                  className="w-14 bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-num"
+                                  style={{ color: T.inkSoft, border: `1px solid ${T.hairGold}` }}
+                                  value={r.minQty ?? ''}
+                                  placeholder="—"
+                                  onChange={e=>updateStockMinQty(r.id, e.target.value)}
+                                />
+                              </div>
+                            </td>
                             <td className="px-3 py-2 f-thai">
                               <input
                                 className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
@@ -1059,6 +1078,7 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
               <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
               <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
+              <Field label={t('sp_col_min_qty')}><input className={inputCls} style={inputStyle} type="number" min={0} value={newStock.minQty ?? ''} placeholder="—" onChange={e=>setNewStock(p=>({...p, minQty: e.target.value.trim()==='' ? undefined : Math.max(0, Math.floor(+e.target.value))}))} /></Field>
               <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
           )}
