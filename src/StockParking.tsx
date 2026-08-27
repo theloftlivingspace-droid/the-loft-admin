@@ -541,7 +541,7 @@ function useDndSensors() {
 }
 
 
-export default function StockParking({ group, initialTab, onLowStockChange }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void }) {
+export default function StockParking({ group, initialTab, onLowStockChange, isAdmin }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void; isAdmin?: boolean }) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const SECTION_GROUPS = {
@@ -1036,14 +1036,18 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
                             <td className="px-3 py-2 text-xs f-num">
                               <div className="flex items-center gap-1">
                                 <span style={{ color: T.inkSoft }}>≥</span>
-                                <input
-                                  type="number" min={0}
-                                  className="w-14 bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-num"
-                                  style={{ color: T.inkSoft, border: `1px solid ${T.hairGold}` }}
-                                  value={r.minQty ?? ''}
-                                  placeholder="—"
-                                  onChange={e=>updateStockMinQty(r.id, e.target.value)}
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number" min={0}
+                                    className="w-14 bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-num"
+                                    style={{ color: T.inkSoft, border: `1px solid ${T.hairGold}` }}
+                                    value={r.minQty ?? ''}
+                                    placeholder="—"
+                                    onChange={e=>updateStockMinQty(r.id, e.target.value)}
+                                  />
+                                ) : (
+                                  <span style={{ color: T.inkSoft }}>{r.minQty ?? '—'}</span>
+                                )}
                               </div>
                             </td>
                             <td className="px-3 py-2 f-thai">
@@ -1078,7 +1082,9 @@ export default function StockParking({ group, initialTab, onLowStockChange }: { 
               <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
               <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
-              <Field label={t('sp_col_min_qty')}><input className={inputCls} style={inputStyle} type="number" min={0} value={newStock.minQty ?? ''} placeholder="—" onChange={e=>setNewStock(p=>({...p, minQty: e.target.value.trim()==='' ? undefined : Math.max(0, Math.floor(+e.target.value))}))} /></Field>
+              {isAdmin && (
+                <Field label={t('sp_col_min_qty')}><input className={inputCls} style={inputStyle} type="number" min={0} value={newStock.minQty ?? ''} placeholder="—" onChange={e=>setNewStock(p=>({...p, minQty: e.target.value.trim()==='' ? undefined : Math.max(0, Math.floor(+e.target.value))}))} /></Field>
+              )}
               <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newStock.note} onChange={e=>setNewStock(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
           )}
