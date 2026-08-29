@@ -1008,7 +1008,6 @@ export default function AdminDailyDashboard() {
                       onClick={handleLogout}
                       className="press focus-ring w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs f-thai text-center"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)' }}>
-                      <span className="shrink-0">🚪</span>
                       <span>{t('logout_btn')}</span>
                     </button>
                   </div>
