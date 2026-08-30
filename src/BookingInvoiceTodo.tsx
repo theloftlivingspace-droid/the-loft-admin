@@ -468,7 +468,7 @@ function DocViewer({ docs, onClose }: { docs: DocFile[]; onClose: () => void }) 
   const isPdf = doc.mimeType === 'application/pdf';
   const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
       <div className="f-thai flex items-center justify-between px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold truncate">{doc.fileName}</span>

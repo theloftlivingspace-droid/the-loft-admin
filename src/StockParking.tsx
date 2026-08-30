@@ -503,8 +503,8 @@ function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: strin
 //    StockParking, or React remounts it — and its children inputs — on every
 //    keystroke, which is what was breaking typing/adding items) ────────────
 const Modal = ({title,onClose,onSave,children,cancelLabel,saveLabel}:{title:string;onClose:()=>void;onSave:()=>void;children:React.ReactNode;cancelLabel:string;saveLabel:string}) => (
-  <div className="fixed inset-0 bg-black/4 backdrop-blur-sm0 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
-    <div className="f-thai rounded-3xl p-6 w-full max-w-md my-8 sm:my-0" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center">
+    <div className="f-thai rounded-3xl p-6 w-full max-w-md my-8 sm:my-0" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }}>
       <h3 className="f-display text-base font-semibold mb-4" style={{ color: T.ink }}>{title}</h3>
       <div className="space-y-3">{children}</div>
       <div className="flex gap-2 mt-5 justify-end">
@@ -1449,7 +1449,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       {section === 'patrol' && (
         <div className="space-y-4">
           {/* Search box */}
-          <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+          <div className="rounded-2xl p-4" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
             <label className="f-thai text-xs font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>
               {t('sp_patrol_search_label')}
             </label>
@@ -1535,7 +1535,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
               🚨 {t('sp_patrol_unknown_log_title')} ({patrolUnknowns.length})
             </p>
             {patrolUnknowns.length === 0 ? (
-              <div className="rounded-2xl p-8 text-center" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+              <div className="rounded-2xl p-8 text-center" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                 <div className="text-4xl mb-2">✅</div>
                 <p className="f-thai font-medium" style={{ color: T.ink }}>{t('sp_patrol_no_unknown')}</p>
                 <p className="f-thai text-sm mt-1" style={{ color: T.inkSoft }}>{t('sp_patrol_no_unknown_desc')}</p>
@@ -1556,7 +1556,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             </p>
             <div className="space-y-1.5">
               {parkingIn.map(r => (
-                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                   <span className="text-sm">🚗</span>
                   <span className="f-num text-xs font-bold flex-1 truncate" style={{ color: T.navy }}>{r.plate}</span>
                   <span className="f-thai text-xs shrink-0" style={{ color: T.inkSoft }}>{t('sp_room_prefix')} {r.room}</span>
@@ -1564,7 +1564,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                 </div>
               ))}
               {parkingOut.map(r => (
-                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+                <div key={r.id} className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: T.card, border: `1px solid ${T.hair}` }}>
                   <span className="text-sm">🚗</span>
                   <span className="f-num text-xs font-bold flex-1 truncate" style={{ color: T.brassDeep }}>{r.plate}</span>
                   {r.name && <span className="f-thai text-xs truncate shrink-0 max-w-[80px]" style={{ color: T.inkSoft }}>{r.name}</span>}
@@ -1652,8 +1652,8 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
 
       {/* ── PATROL FORM MODAL ── */}
       {showPatrolForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-          <div className="f-thai w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center">
+          <div className="f-thai w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }}>
             <div className="px-4 py-3 flex items-center justify-between" style={{ background: T.wine, color: '#fff' }}>
               <span className="font-semibold">🚨 {t('sp_patrol_form_title')}</span>
               <button onClick={() => setShowPatrolForm(false)} className="press text-xl leading-none" style={{ color: 'rgba(255,255,255,0.85)' }}>✕</button>

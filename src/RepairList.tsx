@@ -307,7 +307,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           <p className="f-thai text-sm" style={{ color: T.inkSoft }}>{t('repair_subtitle')}</p>
         </div>
         <button onClick={load} className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs f-thai"
-          style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}>
+          style={{ background: T.card, border: `1px solid ${T.hair}`, color: T.inkSoft }}>
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> {t('cal_refresh')}
         </button>
       </div>
@@ -341,7 +341,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           return (
             <button key={item.uid} onClick={() => setSelected(item)}
               className="press focus-ring text-left rounded-xl p-3"
-              style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, boxShadow: '0 4px 14px rgba(11,30,66,0.06)' }}>
+              style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 4px 14px rgba(11,30,66,0.06)' }}>
               <div className="f-display" style={{ fontWeight: 700, color: T.ink, fontSize: 15 }}>
                 {t('cal_room_word')} {item.room}
               </div>
@@ -379,9 +379,9 @@ export default function RepairList({ currentUser }: RepairListProps) {
 
       {/* Detail sheet */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(11,30,66,0.4)' }}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(11,30,66,0.4)' }}>
           <div className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl p-5 max-h-[90vh] overflow-y-auto"
-            style={{ background: 'rgba(247,249,251,0.75)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.5)' }}>
+            style={{ background: T.paper }}>
             <div className="flex items-start justify-between mb-3">
               <h2 className="f-display" style={{ fontSize: 17, fontWeight: 700, color: T.ink }}>
                 {t('cal_room_word')} {selected.room}
@@ -452,7 +452,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
               )}
               <label
                 className="press focus-ring inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs f-thai font-semibold cursor-pointer"
-                style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}
+                style={{ background: T.card, border: `1px solid ${T.hair}`, color: T.inkSoft }}
               >
                 {uploadingUid === selected.uid ? (
                   <RefreshCw size={13} className="animate-spin" />
