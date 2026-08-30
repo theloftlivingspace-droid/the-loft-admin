@@ -531,6 +531,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   repair_upload_after:      { th: 'ถ่าย/อัปโหลดรูปหลังซ่อม', en: 'Add after photo' },
   repair_uploading:         { th: 'กำลังอัปโหลด...', en: 'Uploading...' },
   repair_upload_failed:     { th: 'อัปโหลดรูปไม่สำเร็จ ลองใหม่อีกครั้ง', en: 'Upload failed, please try again' },
+  repair_photo_delete_confirm: { th: 'ลบรูปนี้หรือไม่?', en: 'Delete this photo?' },
 };
 
 type TranslationKey = keyof typeof DICT;

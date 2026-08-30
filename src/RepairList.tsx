@@ -281,6 +281,13 @@ export default function RepairList({ currentUser }: RepairListProps) {
     }
   }
 
+  async function removeAfterPhoto(uid: string, index: number) {
+    if (!confirm(t('repair_photo_delete_confirm'))) return;
+    const current = items.find(i => i.uid === uid);
+    const nextPhotos = (current?.afterPhotos || []).filter((_, i) => i !== index);
+    await persist(uid, { after_photos: nextPhotos });
+  }
+
   if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center py-16" style={{ color: T.inkSoft }}>
@@ -426,9 +433,20 @@ export default function RepairList({ currentUser }: RepairListProps) {
               {selected.afterPhotos.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   {selected.afterPhotos.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noreferrer">
-                      <img src={url} alt={`after-${i}`} className="rounded-lg object-cover aspect-square w-full" />
-                    </a>
+                    <div key={i} className="relative">
+                      <a href={url} target="_blank" rel="noreferrer">
+                        <img src={url} alt={`after-${i}`} className="rounded-lg object-cover aspect-square w-full" />
+                      </a>
+                      <button
+                        type="button"
+                        className="press absolute top-1 right-1 flex items-center justify-center rounded-full"
+                        style={{ width: 22, height: 22, background: 'rgba(0,0,0,0.55)', color: '#fff' }}
+                        onClick={() => removeAfterPhoto(selected.uid, i)}
+                        aria-label="delete photo"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
