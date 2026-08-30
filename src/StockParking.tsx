@@ -92,6 +92,14 @@ const STOCK_NAME_EN: Record<string,string> = {
   'หน้ากากอนามัย': 'Face mask',
   'ฝาชักโครก': 'Toilet seat cover',
   'หลอดไฟ LED': 'LED light bulb',
+  'แก้วกาแฟ': 'coffee cup',
+  'แก้วน้ำ': 'water glass',
+  'ปลอกหมอน': 'Pillowcase',
+  'ที่นอน': 'Mattress',
+  'โซฟา': 'Sofa',
+  'หลอดไฟดวงเล็กสีเหลือง': 'Small yellow light bulb',
+  'หลอดไฟดวงเล็กสีขาว': 'Small white light bulb',
+  'เบาะปิกนิก': 'picnic mattress',
 };
 // Reverse (en->th), auto-derived, for items whose stored name is already English
 const STOCK_NAME_TH: Record<string,string> = Object.fromEntries(
