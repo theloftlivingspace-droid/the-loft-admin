@@ -25,6 +25,21 @@ export const T = {
   plumTint: "#EAE2F2",
   hair: "rgba(11,27,61,0.12)",
   hairGold: "rgba(217,178,92,0.4)",
+  // Liquid-glass surface tints — pair with backdropFilter: 'blur(..) saturate(180%)'
+  glassNavy: "rgba(20,46,103,0.55)",
+  glassNavyStrong: "rgba(20,46,103,0.72)",
+  glassCard: "rgba(255,255,255,0.55)",
+  glassCardStrong: "rgba(255,255,255,0.68)",
+} as const;
+
+/** Inline style helpers for the "liquid glass" surface treatment used across
+ *  headers, nav pills, cards, and modals. Spread into a style={{}} object;
+ *  any later key (e.g. a conditional background) will still override. */
+export const glass = {
+  navy: { background: T.glassNavy, backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)' },
+  navyStrong: { background: T.glassNavyStrong, backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' },
+  card: { background: T.glassCard, backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' },
+  modal: { background: T.glassCardStrong, backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)' },
 } as const;
 
 /* Thin brass foil rule — used as a signature accent at the top of cards */

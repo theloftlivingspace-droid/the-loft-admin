@@ -665,7 +665,7 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
   // use the thumbnail endpoint for inline display, keep downloadUrl for the download button.
   const displayUrl = `https://drive.google.com/thumbnail?id=${doc.fileId}&sz=w1600`;
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex flex-col" onClick={onClose}>
       <div className="f-thai flex items-center gap-2 px-4 py-3 text-white" style={{ background: T.navyDeep }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-x-auto">
           <span className="text-sm font-semibold truncate flex-shrink-0">{doc.fileName}</span>
@@ -2174,8 +2174,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       {/* Cancel confirmation modal */}
       {cancelModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">🚫</div>
               <p className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('ci_confirm_cancel_q')}</p>
@@ -2203,8 +2203,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       {/* Checkout confirmation modal */}
       {checkoutModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setCheckoutModal(null); setCheckoutArmed(false); }}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setCheckoutModal(null); setCheckoutArmed(false); }}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <div className="text-center mb-4">
               <div className="text-4xl mb-2">🧳</div>
               <p className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('ci_confirm_checkout_q')}</p>
@@ -2239,8 +2239,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       )}
 
       {noteModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>📝 {t('ci_note_modal_title')} {noteModal.room}</p>
             <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{noteModal.guest} · {noteModal.checkin} → {noteModal.checkout}</p>
             <textarea
@@ -2283,8 +2283,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         const candidateRooms = ROOM_LIST.filter(r => !MANUALLY_CLOSED_ROOMS.has(r.num) && r.num !== s.roomNum);
 
         return (
-          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !moveSaving && setMoveModal(null)}>
-            <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !moveSaving && setMoveModal(null)}>
+            <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
               <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🏠 {t('ci_move_room_title')} — {t('ci_room_word')} {s.roomNum}</p>
               <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{s.guest} · {s.checkin} → {s.checkout}</p>
 
@@ -2342,8 +2342,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       {/* แก้ไขวันเช็คเอาท์ modal */}
       {extendModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !extendSaving && setExtendModal(null)}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !extendSaving && setExtendModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🗓️ {t('ci_edit_checkout_date')} — {t('ci_room_word')} {extendModal.roomNum}</p>
             <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{extendModal.guest} · {t('ci_checkin_label')} {extendModal.checkin}</p>
             <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
@@ -2379,8 +2379,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       {/* แก้ไขวันเช็คอิน modal */}
       {checkinEditModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !checkinEditSaving && setCheckinEditModal(null)}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !checkinEditSaving && setCheckinEditModal(null)}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <p className="f-thai font-bold text-sm mb-1" style={{ color: T.ink }}>🗓️ {t('ci_edit_checkin_date')} — {t('ci_room_word')} {checkinEditModal.roomNum}</p>
             <p className="f-thai text-xs mb-3" style={{ color: T.inkSoft }}>{checkinEditModal.guest} · {t('ci_checkout_label')} {checkinEditModal.checkout}</p>
             <label className="f-thai text-[11px] font-semibold tracking-wide uppercase mb-1 block" style={{ color: T.inkSoft }}>
