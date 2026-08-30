@@ -307,7 +307,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           <p className="f-thai text-sm" style={{ color: T.inkSoft }}>{t('repair_subtitle')}</p>
         </div>
         <button onClick={load} className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs f-thai"
-          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}>
+          style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}>
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> {t('cal_refresh')}
         </button>
       </div>
@@ -341,7 +341,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
           return (
             <button key={item.uid} onClick={() => setSelected(item)}
               className="press focus-ring text-left rounded-xl p-3"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, boxShadow: '0 4px 14px rgba(11,30,66,0.06)' }}>
+              style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, boxShadow: '0 4px 14px rgba(11,30,66,0.06)' }}>
               <div className="f-display" style={{ fontWeight: 700, color: T.ink, fontSize: 15 }}>
                 {t('cal_room_word')} {item.room}
               </div>
@@ -452,7 +452,7 @@ export default function RepairList({ currentUser }: RepairListProps) {
               )}
               <label
                 className="press focus-ring inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs f-thai font-semibold cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}
+                style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, color: T.inkSoft }}
               >
                 {uploadingUid === selected.uid ? (
                   <RefreshCw size={13} className="animate-spin" />

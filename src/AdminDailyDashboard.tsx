@@ -773,7 +773,7 @@ export default function AdminDailyDashboard() {
         <div
           className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3"
           style={{ top: 12 }}>
-          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
+          <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: 'rgba(20,46,103,0.55)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
               <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
@@ -786,7 +786,7 @@ export default function AdminDailyDashboard() {
               (was a separate fixed row below it) so desktop stays down
               to one top row. Label hides below xl to leave room for the
               header/controls clusters on narrower laptop widths. */}
-          <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
+          <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
             {(isMaintenance ? [
               { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
               { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
@@ -810,7 +810,7 @@ export default function AdminDailyDashboard() {
           </div>
 
           <div className="hidden xl:flex items-center gap-1.5 flex-shrink-0">
-            <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
+            <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(20,46,103,0.55)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)' }}>
               <button
                 onClick={() => setLang('th')}
                 className="press focus-ring rounded-full"
@@ -846,7 +846,7 @@ export default function AdminDailyDashboard() {
                   <div
                     className="flex items-center rounded-full px-2 py-1"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)',
+                      background: 'rgba(20,46,103,0.55)',
                       backdropFilter: 'blur(16px) saturate(180%)',
                       WebkitBackdropFilter: 'blur(16px) saturate(180%)',
                       border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
@@ -876,13 +876,13 @@ export default function AdminDailyDashboard() {
               onClick={handleEnableNotifications}
               title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
               className="press focus-ring flex items-center justify-center rounded-full shrink-0"
-              style={{ width: 26, height: 26, background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+              style={{ width: 26, height: 26, background: 'rgba(20,46,103,0.55)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
               {pushPerm === 'granted' ? <BellRing size={12} /> : <Bell size={12} />}
             </button>
             <button
               onClick={handleLogout}
               className="press focus-ring flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] f-thai whitespace-nowrap"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
+              style={{ background: 'rgba(20,46,103,0.55)', backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)', border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.25)', color: 'rgba(255,255,255,0.9)' }}>
               {t('logout_btn')}
             </button>
           </div>
@@ -898,7 +898,7 @@ export default function AdminDailyDashboard() {
                 <div
                   className="flex items-center rounded-full px-2 py-1"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)',
+                    background: 'rgba(20,46,103,0.55)',
                     backdropFilter: 'blur(16px) saturate(180%)',
                     WebkitBackdropFilter: 'blur(16px) saturate(180%)',
                     border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
@@ -948,7 +948,7 @@ export default function AdminDailyDashboard() {
                   <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
                   <div
                     className="absolute right-0 top-full mt-2.5 z-50 w-48 rounded-2xl p-1.5 flex flex-col gap-1"
-                    style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.58)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)', border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
+                    style={{ background: 'rgba(20,46,103,0.72)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)', border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
                     <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
                       <button
                         onClick={() => setLang('th')}
@@ -1067,7 +1067,7 @@ export default function AdminDailyDashboard() {
             className="flex items-center justify-center rounded-full shrink-0 overflow-hidden"
             style={{
               width: 46, height: 46,
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)',
+              background: 'rgba(20,46,103,0.55)',
               border: `1px solid ${T.hairGold}`,
               boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
               backdropFilter: 'saturate(180%) blur(20px)',
@@ -1093,7 +1093,7 @@ export default function AdminDailyDashboard() {
                   <div
                     className="flex items-center rounded-full px-3.5 py-2.5"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)',
+                      background: 'rgba(20,46,103,0.55)',
                       backdropFilter: 'saturate(180%) blur(20px)',
                       WebkitBackdropFilter: 'saturate(180%) blur(20px)',
                       border: `1px solid ${isPreviewDate ? T.brass : T.hairGold}`,
@@ -1128,7 +1128,7 @@ export default function AdminDailyDashboard() {
                 className="press focus-ring flex items-center justify-center rounded-full shrink-0"
                 style={{
                   width: 46, height: 46,
-                  background: headerMenuOpen ? T.brass : 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)',
+                  background: headerMenuOpen ? T.brass : 'rgba(20,46,103,0.55)',
                   border: `1px solid ${headerMenuOpen ? T.brass : T.hairGold}`,
                   boxShadow: '0 12px 28px rgba(11,30,66,0.32), 0 3px 10px rgba(11,30,66,0.18)',
                   backdropFilter: 'saturate(180%) blur(20px)',
@@ -1151,7 +1151,7 @@ export default function AdminDailyDashboard() {
                   {/* dropdown — its own floating pill, anchored under the menu button; compact + centered */}
                   <div
                     className="absolute right-0 top-full mt-2.5 z-50 w-48 rounded-2xl p-1.5 flex flex-col gap-1"
-                    style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.58)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)', border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
+                    style={{ background: 'rgba(20,46,103,0.72)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)', border: `1px solid ${T.brass}40`, boxShadow: '0 16px 40px rgba(11,30,66,0.55)' }}>
                     <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
                       <button
                         onClick={() => setLang('th')}
@@ -1218,7 +1218,7 @@ export default function AdminDailyDashboard() {
           className="md:hidden fixed left-4 right-4 z-50 flex items-center justify-around rounded-[26px]"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.5)',
+            background: 'rgba(255,255,255,0.68)',
             border: `1px solid ${T.hair}`,
             boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
             backdropFilter: 'saturate(180%) blur(20px)',
@@ -1415,7 +1415,7 @@ export default function AdminDailyDashboard() {
                 }
               }}
               className="press focus-ring rounded-2xl p-3 flex flex-col items-center gap-1.5 text-center"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+              style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <span className="text-2xl">{q.icon}</span>
               <span className="f-thai text-xs font-semibold leading-tight" style={{ color: T.ink }}>{q.line1}<br/>{q.line2}</span>
             </button>
@@ -1436,7 +1436,7 @@ export default function AdminDailyDashboard() {
         {/* Billing Token Modal */}
         {showBillingModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div className="rounded-2xl w-full max-w-sm p-6" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.5)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
+            <div className="rounded-2xl w-full max-w-sm p-6" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
               <h3 className="f-display text-base font-bold mb-1" style={{ color: T.ink }}>💳 Billing Console</h3>
               <p className="f-thai text-xs mb-4" style={{ color: T.inkSoft }}>{t('adm_billing_token_prompt')}</p>
               <input
@@ -1489,7 +1489,7 @@ export default function AdminDailyDashboard() {
             { icon: '🧳', label: t('adm_stat_checkout_today'), value: `${roomCounts.checkedOutToday} / ${roomCounts.checkingOutToday} ${t('adm_stat_rooms')}` },
             { icon: '📄', label: t('adm_stat_all_reports'), value: `${reports.length} ${t('adm_stat_docs_unit')}` },
           ].map((c, i) => (
-            <div key={i} className="rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div key={i} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <div className="flex items-center gap-2 mb-2"><span className="text-lg">{c.icon}</span><p className="f-thai text-xs" style={{ color: T.inkSoft }}>{c.label}</p></div>
               <p className="f-num text-lg font-bold truncate" style={{ color: T.ink }}>{c.value}</p>
             </div>
@@ -1515,7 +1515,7 @@ export default function AdminDailyDashboard() {
           <h2 className="f-display text-xl font-semibold mb-4" style={{ color: T.ink }}>{t('adm_checklist_title')}</h2>
           <div className="space-y-3">
             {TASKS.map((task, i) => (
-              <div key={i} className="flex items-center justify-between rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+              <div key={i} className="flex items-center justify-between rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" className="w-5 h-5" style={{ accentColor: T.brass }}
                     checked={!!taskChecked[i]}
@@ -1543,7 +1543,7 @@ export default function AdminDailyDashboard() {
 
           {/* Check-in / Check-out / TM30 / Invoice */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_checkin_today_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_checkin_guest_count')}</label>
@@ -1552,7 +1552,7 @@ export default function AdminDailyDashboard() {
                   <textarea rows={3} value={checkInRooms} onChange={e => setCheckInRooms(e.target.value)} className="focus-ring w-full rounded-xl p-3" style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder={t('adm_rooms_eg1')} /></div>
               </div>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_checkout_today_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_checkout_guest_count')}</label>
@@ -1561,7 +1561,7 @@ export default function AdminDailyDashboard() {
                   <textarea rows={3} value={checkOutRooms} onChange={e => setCheckOutRooms(e.target.value)} className="focus-ring w-full rounded-xl p-3" style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder={t('adm_rooms_eg2')} /></div>
               </div>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_tm30_booking_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_tm30_complete_q')}</label>
@@ -1574,7 +1574,7 @@ export default function AdminDailyDashboard() {
                   <textarea rows={3} value={newBookingRooms} onChange={e => setNewBookingRooms(e.target.value)} className="focus-ring w-full rounded-xl p-3" style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder={t('adm_rooms_eg3')} /></div>
               </div>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_invoice_receipt_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_invoice_count')}</label>
@@ -1589,7 +1589,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Stock */}
-        <div className="rounded-3xl p-6 mb-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.58)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' }}>
+        <div className="rounded-3xl p-6 mb-8" style={{ background: 'rgba(20,46,103,0.72)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' }}>
           <h2 className="f-display text-xl font-semibold mb-6" style={{ color: T.brass }}>{t('adm_stock_purchase_title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-2xl p-5" style={{ background: T.card }}>
@@ -1637,7 +1637,7 @@ export default function AdminDailyDashboard() {
         <div className="rounded-3xl p-6 mb-8" style={{ background: T.navyTint, border: `1px solid ${T.hairGold}` }}>
           <h2 className="f-display text-xl font-semibold mb-6" style={{ color: T.navy }}>{t('adm_docs_extra_title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_docs_today_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_doc_list_label')}</label>
@@ -1646,7 +1646,7 @@ export default function AdminDailyDashboard() {
                   <input type="number" value={docCount} onChange={e => setDocCount(e.target.value)} className="focus-ring w-full rounded-2xl px-4 py-3" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="0" /></div>
               </div>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               <h3 className="f-thai font-semibold mb-4" style={{ color: T.ink }}>{t('adm_extra_tasks_title')}</h3>
               <div className="space-y-4">
                 <div><label className="f-thai block text-sm mb-2" style={{ color: T.inkSoft }}>{t('adm_task_detail_label')}</label>
@@ -1676,7 +1676,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Footer */}
-        <div className="rounded-3xl p-5 mb-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.58)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' }}>
+        <div className="rounded-3xl p-5 mb-8" style={{ background: 'rgba(20,46,103,0.72)', backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' }}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h2 className="f-display text-base font-semibold" style={{ color: T.brass }}>{t('adm_report_system_title')}</h2>
@@ -1690,7 +1690,7 @@ export default function AdminDailyDashboard() {
         </div>
 
         {/* Report History */}
-        <div className="rounded-3xl p-6 mb-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+        <div className="rounded-3xl p-6 mb-8" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="f-display text-xl font-semibold" style={{ color: T.ink }}>{isAdmin ? t('adm_all_reports') : t('adm_my_reports')}</h2>
             <span className="f-thai text-sm" style={{ color: T.inkSoft }}>{reports.length} {t('adm_reports_unit')}</span>
@@ -1740,7 +1740,7 @@ export default function AdminDailyDashboard() {
       {/* Modal — แสดงสรุปอัตโนมัติ */}
       {selectedReport && (
         <div className="fixed inset-0 bg-black/5 backdrop-blur-sm0 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="rounded-3xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.5)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
+          <div className="rounded-3xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }}>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="f-display text-xl font-bold" style={{ color: T.ink }}>{t('adm_report_detail_title')}</h2>

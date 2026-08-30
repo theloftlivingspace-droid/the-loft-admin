@@ -169,7 +169,7 @@ export default function UserManagement() {
       ) : (
         <div className="space-y-2">
           {users.map(u => (
-            <div key={u.id} className="rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
+            <div key={u.id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: `1px solid ${T.hair}` }}>
               {editingId === u.id ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

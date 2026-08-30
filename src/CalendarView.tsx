@@ -461,7 +461,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
       {/* Detail modal */}
       {detail && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
-          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.5)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: 'rgba(255,255,255,0.68)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 20px 50px rgba(11,30,66,0.4), inset 0 1px 0 rgba(255,255,255,0.6)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
               <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].accent }}>
                 {t(STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].label)}
