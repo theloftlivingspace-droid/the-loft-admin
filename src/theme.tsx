@@ -4,6 +4,7 @@
    Check-in/out, Stock, Users, Car, Pricing) uses the same
    navy / brass / bone identity as the header + bottom nav.
 ========================================================= */
+import type { CSSProperties } from 'react';
 
 export const T = {
   ink: "#0B1E42",
@@ -36,11 +37,48 @@ export const T = {
  *  headers, nav pills, cards, and modals. Spread into a style={{}} object;
  *  any later key (e.g. a conditional background) will still override. */
 export const glass = {
-  navy: { background: T.glassNavy, backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)' },
-  navyStrong: { background: T.glassNavyStrong, backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' },
-  card: { background: T.glassCard, backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' },
-  modal: { background: T.glassCardStrong, backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)' },
+  navy: { background: "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.42)", backdropFilter: 'blur(16px) saturate(180%)', WebkitBackdropFilter: 'blur(16px) saturate(180%)' },
+  navyStrong: { background: "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.1) 100%), rgba(20,46,103,0.58)", backdropFilter: 'blur(18px) saturate(180%)', WebkitBackdropFilter: 'blur(18px) saturate(180%)' },
+  card: { background: "linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.38)", backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' },
+  modal: { background: "linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.25) 100%), rgba(255,255,255,0.5)", backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)' },
 } as const;
+
+/** Converts a '#rrggbb'/'#rgb' hex color or an 'rgb(...)' string to
+ *  'rgba(r, g, b, alpha)'. Falls back to returning the input unchanged
+ *  for anything else (e.g. already-rgba strings, named colors). */
+export function toRgba(color: string, alpha: number): string {
+  const c = color.trim();
+  if (c.startsWith('#')) {
+    let h = c.slice(1);
+    if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const parts = m[1].split(',').map(s => s.trim());
+    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`;
+  }
+  return c;
+}
+
+/** Builds a "liquid glass" style object over ANY base color (hex or
+ *  rgb()/rgba()) — a translucent, blurred tint with a diagonal specular
+ *  sheen and a bright top-edge highlight. Status/brand colors stay
+ *  recognizable (same hue) while reading as glass rather than a flat
+ *  fill. Spread into style={{ ...glassTint(cfg.bg), ... }}; later keys
+ *  (color, border, etc.) still apply normally. */
+export function glassTint(color: string, alpha = 0.5, blurPx = 16): CSSProperties {
+  const tint = toRgba(color, alpha);
+  return {
+    background: `linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.16) 100%), ${tint}`,
+    backdropFilter: `blur(${blurPx}px) saturate(180%)`,
+    WebkitBackdropFilter: `blur(${blurPx}px) saturate(180%)`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(11,30,66,0.06)',
+  };
+}
 
 /* Thin brass foil rule — used as a signature accent at the top of cards */
 export function FoilRule() {
