@@ -390,6 +390,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   sp_col_installed:        { th: 'วันติดตั้ง', en: 'Install date' },
   sp_modal_add_item:       { th: 'เพิ่มของใช้', en: 'Add item' },
   sp_field_item_name:      { th: 'ชื่อของใช้', en: 'Item name' },
+  sp_translating:          { th: 'กำลังแปล...', en: 'Translating...' },
   sp_placeholder_soap:     { th: 'เช่น สบู่', en: 'e.g. soap' },
   sp_field_qty:            { th: 'จำนวน', en: 'Quantity' },
   sp_field_unit:           { th: 'หน่วยนับ', en: 'Unit' },

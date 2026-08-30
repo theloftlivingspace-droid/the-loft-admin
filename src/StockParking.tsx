@@ -116,7 +116,27 @@ const STOCK_NOTE_TH: Record<string,string> = Object.fromEntries(
   Object.entries(STOCK_NOTE_EN).map(([th, en]) => [en, th])
 );
 
-interface StockItem  { id:number; name:string; qty:number; unit:string; note:string; minQty?: number }
+interface StockItem  { id:number; name:string; nameTh?:string; nameEn?:string; qty:number; unit:string; note:string; minQty?: number }
+
+// ── auto-translate (Claude API via /api/translate) ─────────────────────────
+const isThaiText = (s: string) => /[\u0E00-\u0E7F]/.test(s);
+
+async function autoTranslate(text: string, context?: string): Promise<string> {
+  if (!text.trim()) return '';
+  const targetLang = isThaiText(text) ? 'en' : 'th';
+  try {
+    const r = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, targetLang, sourceLang: 'auto', context }),
+    });
+    if (!r.ok) return '';
+    const data = await r.json();
+    return data.translated ?? '';
+  } catch {
+    return '';
+  }
+}
 interface ParkingIn  { id:number; room:string; plate:string; type:string; name:string; status:string }
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
@@ -124,7 +144,7 @@ interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:str
 const EQUIP_CATS = ['อุปกรณ์ช่างทั่วไป', 'อุปกรณ์ซ่อมแซมตกแต่ง', 'อุปกรณ์งานประปา'] as const;
 type EquipCat = typeof EQUIP_CATS[number];
 
-interface EquipmentItem { id:number; cat:EquipCat; name:string; qty:number; unit:string; note:string }
+interface EquipmentItem { id:number; cat:EquipCat; name:string; nameTh?:string; nameEn?:string; qty:number; unit:string; note:string }
 
 // ช่างอาคาร (maintenance) equipment list, imported from Nathan's อุปกรณ์ช่าง.xlsx
 // (2026-08) — seeds the Equipment tab's initial state (same pattern as the
@@ -592,7 +612,8 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
   // so we can write per-item audit log entries instead of just overwriting the blob.
   const stockSnapshotRef = useRef<StockItem[]>(stockData);
   const [showStockModal, setShowStockModal] = useState(false);
-  const [newStock, setNewStock] = useState<{name:string;qty:number;unit:string;note:string;minQty?:number}>({name:'',qty:0,unit:'',note:''});
+  const [newStock, setNewStock] = useState<{name:string;nameTh?:string;nameEn?:string;qty:number;unit:string;note:string;minQty?:number}>({name:'',nameTh:'',nameEn:'',qty:0,unit:'',note:''});
+  const [translatingStockName, setTranslatingStockName] = useState(false);
 
   // Notify parent when low-stock count changes
   const lowStockCount = stockData.filter(r => r.minQty !== undefined && r.qty < r.minQty).length;
@@ -602,8 +623,11 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     setStockData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
   const updateStockNote = (id:number, note:string) =>
     setStockData(d => d.map(r => r.id===id ? {...r, note} : r));
-  const updateStockName = (id:number, name:string) =>
-    setStockData(d => d.map(r => r.id===id ? {...r, name} : r));
+  const updateStockName = (id:number, value:string, editLang:'th'|'en') =>
+    setStockData(d => d.map(r => {
+      if (r.id !== id) return r;
+      return editLang==='en' ? {...r, nameEn:value} : {...r, nameTh:value, name:value};
+    }));
   const updateStockUnit = (id:number, unit:string) =>
     setStockData(d => d.map(r => r.id===id ? {...r, unit} : r));
   const updateStockMinQty = (id:number, raw:string) =>
@@ -617,7 +641,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
   const addStock = () => {
     if(!newStock.name.trim()) return;
     setStockData(d => [...d, {id:nextSId, ...newStock}]);
-    setNextSId(n=>n+1); setNewStock({name:'',qty:0,unit:'',note:'',minQty:undefined}); setShowStockModal(false);
+    setNextSId(n=>n+1); setNewStock({name:'',nameTh:'',nameEn:'',qty:0,unit:'',note:'',minQty:undefined}); setShowStockModal(false);
   };
 
   // ── parking in ───────────────────────────────────────────────────────────
@@ -747,13 +771,17 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
   const [nextEqId, setNextEqId] = useState(EQUIPMENT_SEED.length + 1);
   const [eqCat, setEqCat] = useState<EquipCat>(EQUIP_CATS[0]);
   const [showEqModal, setShowEqModal] = useState(false);
-  const [newEq, setNewEq] = useState<Omit<EquipmentItem,'id'>>({cat:EQUIP_CATS[0],name:'',qty:0,unit:'ชิ้น',note:''});
+  const [newEq, setNewEq] = useState<Omit<EquipmentItem,'id'>>({cat:EQUIP_CATS[0],name:'',nameTh:'',nameEn:'',qty:0,unit:'ชิ้น',note:''});
+  const [translatingEqName, setTranslatingEqName] = useState(false);
   const changeEqQty = (id:number, delta:number) =>
     setEquipmentData(d => d.map(r => r.id===id ? {...r, qty:Math.max(0,r.qty+delta)} : r));
   const updateEqNote = (id:number, note:string) =>
     setEquipmentData(d => d.map(r => r.id===id ? {...r, note} : r));
-  const updateEqName = (id:number, name:string) =>
-    setEquipmentData(d => d.map(r => r.id===id ? {...r, name} : r));
+  const updateEqName = (id:number, value:string, editLang:'th'|'en') =>
+    setEquipmentData(d => d.map(r => {
+      if (r.id !== id) return r;
+      return editLang==='en' ? {...r, nameEn:value} : {...r, nameTh:value, name:value};
+    }));
   const updateEqUnit = (id:number, unit:string) =>
     setEquipmentData(d => d.map(r => r.id===id ? {...r, unit} : r));
   const delEquipment = (id:number) => setEquipmentData(d => d.filter(r=>r.id!==id));
@@ -761,7 +789,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     if(!newEq.name.trim()) return;
     setEquipmentData(d=>[...d,{id:nextEqId,...newEq}]);
     setNextEqId(n=>n+1); setEqCat(newEq.cat);
-    setNewEq({cat:newEq.cat,name:'',qty:0,unit:'ชิ้น',note:''});
+    setNewEq({cat:newEq.cat,name:'',nameTh:'',nameEn:'',qty:0,unit:'ชิ้น',note:''});
     setShowEqModal(false);
   };
 
@@ -1020,8 +1048,17 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                               <input
                                 className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
                                 style={{ color: isLow ? T.wine : T.ink, border: '1px solid transparent', minWidth: '80px' }}
-                                value={lang==='en' ? (STOCK_NAME_EN[r.name] || r.name) : (STOCK_NAME_TH[r.name] || r.name)}
-                                onChange={e=>updateStockName(r.id, e.target.value)}
+                                value={lang==='en' ? (r.nameEn || STOCK_NAME_EN[r.name] || r.name) : (r.nameTh || STOCK_NAME_TH[r.name] || r.name)}
+                                onChange={e=>updateStockName(r.id, e.target.value, lang)}
+                                onBlur={async e=>{
+                                  const val = e.target.value;
+                                  if (!val.trim()) return;
+                                  const translated = await autoTranslate(val, 'hotel stock/supply item name');
+                                  if (!translated) return;
+                                  setStockData(d => d.map(row => row.id===r.id
+                                    ? (lang==='en' ? {...row, nameTh: translated} : {...row, nameEn: translated})
+                                    : row));
+                                }}
                               />
                             </td>
                             <td className="px-3 py-2">
@@ -1079,7 +1116,33 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
           </div>
           {showStockModal && (
             <Modal title={t('sp_modal_add_item')} onClose={()=>setShowStockModal(false)} onSave={addStock} cancelLabel={t('sp_cancel')} saveLabel={t('sp_save_btn')}>
-              <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newStock.name} onChange={e=>setNewStock(p=>({...p,name:e.target.value}))} placeholder={t('sp_placeholder_soap')}/></Field>
+              <Field label={t('sp_field_item_name')}>
+                <input
+                  className={inputCls} style={inputStyle}
+                  value={newStock.name}
+                  onChange={e=>setNewStock(p=>({...p,name:e.target.value}))}
+                  onBlur={async e=>{
+                    const val = e.target.value;
+                    if (!val.trim() || newStock.nameTh || newStock.nameEn) return;
+                    setTranslatingStockName(true);
+                    const translated = await autoTranslate(val, 'hotel stock/supply item name');
+                    setNewStock(p => {
+                      if (p.name !== val) return p; // typed further while translating
+                      return isThaiText(val)
+                        ? { ...p, nameTh: val, nameEn: translated }
+                        : { ...p, nameEn: val, nameTh: translated };
+                    });
+                    setTranslatingStockName(false);
+                  }}
+                  placeholder={t('sp_placeholder_soap')}
+                />
+                {translatingStockName && <span style={{fontSize:11,color:T.brass,marginTop:2,display:'block'}}>{t('sp_translating')}</span>}
+                {!translatingStockName && (newStock.nameTh || newStock.nameEn) && (
+                  <span style={{fontSize:11,color:T.inkSoft,marginTop:2,display:'block'}}>
+                    TH: {newStock.nameTh || '—'} · EN: {newStock.nameEn || '—'}
+                  </span>
+                )}
+              </Field>
               <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newStock.qty} onChange={e=>setNewStock(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newStock.unit} onChange={e=>setNewStock(p=>({...p,unit:e.target.value}))} placeholder={t('sp_placeholder_bottle')}/></Field>
               {isAdmin && (
@@ -1136,8 +1199,17 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                             <input
                               className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
                               style={{ color: T.ink, border: '1px solid transparent', minWidth: '80px' }}
-                              value={lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name)}
-                              onChange={e=>updateEqName(r.id, e.target.value)}
+                              value={lang==='en' ? (r.nameEn || EQUIP_NAME_EN[r.name] || r.name) : (r.nameTh || EQUIP_NAME_TH[r.name] || r.name)}
+                              onChange={e=>updateEqName(r.id, e.target.value, lang)}
+                              onBlur={async e=>{
+                                const val = e.target.value;
+                                if (!val.trim()) return;
+                                const translated = await autoTranslate(val, 'hotel maintenance equipment name');
+                                if (!translated) return;
+                                setEquipmentData(d => d.map(row => row.id===r.id
+                                  ? (lang==='en' ? {...row, nameTh: translated} : {...row, nameEn: translated})
+                                  : row));
+                              }}
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -1182,7 +1254,32 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                   {EQUIP_CATS.map(c=><option key={c} value={c}>{lang==='en' ? (EQUIP_CAT_EN[c]||c) : c}</option>)}
                 </select>
               </Field>
-              <Field label={t('sp_field_item_name')}><input className={inputCls} style={inputStyle} value={newEq.name} onChange={e=>setNewEq(p=>({...p,name:e.target.value}))} /></Field>
+              <Field label={t('sp_field_item_name')}>
+                <input
+                  className={inputCls} style={inputStyle}
+                  value={newEq.name}
+                  onChange={e=>setNewEq(p=>({...p,name:e.target.value}))}
+                  onBlur={async e=>{
+                    const val = e.target.value;
+                    if (!val.trim() || newEq.nameTh || newEq.nameEn) return;
+                    setTranslatingEqName(true);
+                    const translated = await autoTranslate(val, 'hotel maintenance equipment name');
+                    setNewEq(p => {
+                      if (p.name !== val) return p;
+                      return isThaiText(val)
+                        ? { ...p, nameTh: val, nameEn: translated }
+                        : { ...p, nameEn: val, nameTh: translated };
+                    });
+                    setTranslatingEqName(false);
+                  }}
+                />
+                {translatingEqName && <span style={{fontSize:11,color:T.brass,marginTop:2,display:'block'}}>{t('sp_translating')}</span>}
+                {!translatingEqName && (newEq.nameTh || newEq.nameEn) && (
+                  <span style={{fontSize:11,color:T.inkSoft,marginTop:2,display:'block'}}>
+                    TH: {newEq.nameTh || '—'} · EN: {newEq.nameEn || '—'}
+                  </span>
+                )}
+              </Field>
               <Field label={t('sp_field_qty')}><input className={inputCls} style={inputStyle} type="number" value={newEq.qty} onChange={e=>setNewEq(p=>({...p,qty:+e.target.value}))} /></Field>
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newEq.unit} onChange={e=>setNewEq(p=>({...p,unit:e.target.value}))} /></Field>
               <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newEq.note} onChange={e=>setNewEq(p=>({...p,note:e.target.value}))} /></Field>
