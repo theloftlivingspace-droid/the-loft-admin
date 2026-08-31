@@ -4,12 +4,13 @@ import CheckInOut, { type CheckInOutHandle } from './CheckInOut';
 import StockParking from './StockParking';
 import UserManagement from './UserManagement';
 import RevenueDashboard from './RevenueDashboard';
+import PerformanceDashboard from './PerformanceDashboard';
 import CalendarView from './CalendarView';
 import RepairList from './RepairList';
 import { useLang } from './LanguageContext';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, BarChart3, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -276,7 +277,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>('checkinout');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
@@ -307,7 +308,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'>>(
     ['dashboard', 'checkinout', 'calendar', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -321,11 +322,11 @@ export default function AdminDailyDashboard() {
     // Maintenance (ช่างอาคาร) accounts see Stock/Warranty, Calendar, Parking,
     // and now Repairs (via Etc) — every other tab (check-in/out, and the
     // admin-only "etc" pages) is closed off to them.
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'calendar' | 'repair'> = isMaintenanceNow
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'> = isMaintenanceNow
       ? ['calendar', 'stock', 'parking', 'repair']
       : ['dashboard'];
     if (!isMaintenanceNow) {
-      if (isAdminNow) order.push('todo', 'revenue');
+      if (isAdminNow) order.push('todo', 'revenue', 'performance');
       order.push('checkinout', 'calendar', 'stock', 'parking', 'repair');
       if (isAdminNow) order.push('users');
     }
@@ -1278,6 +1279,7 @@ export default function AdminDailyDashboard() {
               ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
+              ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
               ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
@@ -1409,6 +1411,9 @@ export default function AdminDailyDashboard() {
         )}
         {isAdmin && adminTab === 'revenue' && (
           <RevenueDashboard />
+        )}
+        {isAdmin && adminTab === 'performance' && (
+          <PerformanceDashboard />
         )}
         {adminTab === 'calendar' && (
           <CalendarView viewDate={reportDate} onViewDateChange={setReportDate} />
