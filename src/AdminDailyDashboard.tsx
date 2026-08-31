@@ -211,36 +211,6 @@ export default function AdminDailyDashboard() {
     scrollAreaRef.current?.scrollTo({ top: 0 });
   }
 
-  // Mobile bottom-nav tab list, shared between the click handler and the
-  // swipe-to-select touch handler below.
-  const mobileNavItems = (isMaintenance ? [
-    { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
-    { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
-    { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
-    { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
-  ] : [
-    { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
-    { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
-    { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
-    { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
-    { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
-  ]);
-  function selectMobileTab(key: string) {
-    if (!mobileNavItems.some(m => m.key === key)) return;
-    if (key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); }
-    else { setAdminTab(key as typeof adminTab); }
-  }
-  // Lets a finger land anywhere on the pill and drag across it — the tab
-  // under the finger is selected live, like a segmented-control scrubber,
-  // instead of requiring a precise tap on each icon.
-  function handleMobileNavTouch(e: React.TouchEvent<HTMLDivElement>) {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
-    const key = el?.closest('[data-navkey]')?.getAttribute('data-navkey');
-    if (key) selectMobileTab(key);
-  }
-
 
 
   useEffect(() => {
@@ -788,6 +758,37 @@ export default function AdminDailyDashboard() {
   // ช่างอาคาร (building maintenance) — sees Calendar, Stock/Warranty, and
   // Parking only; Check-in/out and the admin-only "etc" pages stay closed.
   const isMaintenance = currentUser?.role === 'maintenance';
+
+  // Mobile bottom-nav tab list, shared between the click handler and the
+  // swipe-to-select touch handler below.
+  const mobileNavItems = (isMaintenance ? [
+    { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+    { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+    { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+    { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
+  ] : [
+    { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+    { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+    { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+    { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+    { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+  ]);
+  function selectMobileTab(key: string) {
+    if (!mobileNavItems.some(m => m.key === key)) return;
+    if (key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); }
+    else { setAdminTab(key as typeof adminTab); }
+  }
+  // Lets a finger land anywhere on the pill and drag across it — the tab
+  // under the finger is selected live, like a segmented-control scrubber,
+  // instead of requiring a precise tap on each icon.
+  function handleMobileNavTouch(e: React.TouchEvent<HTMLDivElement>) {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
+    const key = el?.closest('[data-navkey]')?.getAttribute('data-navkey');
+    if (key) selectMobileTab(key);
+  }
+
 
   return (
     <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
