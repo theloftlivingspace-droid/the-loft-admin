@@ -211,6 +211,36 @@ export default function AdminDailyDashboard() {
     scrollAreaRef.current?.scrollTo({ top: 0 });
   }
 
+  // Mobile bottom-nav tab list, shared between the click handler and the
+  // swipe-to-select touch handler below.
+  const mobileNavItems = (isMaintenance ? [
+    { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+    { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+    { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+    { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
+  ] : [
+    { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+    { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+    { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+    { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+    { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+  ]);
+  function selectMobileTab(key: string) {
+    if (!mobileNavItems.some(m => m.key === key)) return;
+    if (key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); }
+    else { setAdminTab(key as typeof adminTab); }
+  }
+  // Lets a finger land anywhere on the pill and drag across it — the tab
+  // under the finger is selected live, like a segmented-control scrubber,
+  // instead of requiring a precise tap on each icon.
+  function handleMobileNavTouch(e: React.TouchEvent<HTMLDivElement>) {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const el = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
+    const key = el?.closest('[data-navkey]')?.getAttribute('data-navkey');
+    if (key) selectMobileTab(key);
+  }
+
 
 
   useEffect(() => {
@@ -1215,28 +1245,21 @@ export default function AdminDailyDashboard() {
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
             transform: 'translateX(-50%)',
-            background: T.card,
-            border: `1px solid ${T.hair}`,
+            touchAction: 'none',
+            background: 'rgba(255,255,255,0.28)',
+            border: '1px solid rgba(255,255,255,0.45)',
             borderRadius: 999,
             padding: '8px 10px',
             boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
             backdropFilter: 'saturate(180%) blur(20px)',
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          }}>
-          {(isMaintenance ? [
-            { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
-            { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
-            { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
-            { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
-          ] : [
-            { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
-            { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
-            { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
-            { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
-            { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
-          ]).map(m => (
-            <button key={m.key} aria-label={m.label}
-              onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+          }}
+          onTouchStart={(e) => { handleMobileNavTouch(e); }}
+          onTouchMove={(e) => { handleMobileNavTouch(e); }}
+          onTouchEnd={() => { scrollToTop(); }}>
+          {mobileNavItems.map(m => (
+            <button key={m.key} aria-label={m.label} data-navkey={m.key}
+              onClick={() => { selectMobileTab(m.key); scrollToTop(); }}
               className="press focus-ring flex items-center justify-center"
               style={{ width: 46, height: 46 }}>
               <div className="flex items-center justify-center rounded-full transition-all"
