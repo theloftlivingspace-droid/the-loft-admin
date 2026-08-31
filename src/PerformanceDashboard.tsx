@@ -106,6 +106,7 @@ export default function PerformanceDashboard() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [metric, setMetric] = useState<Metric>('revenue');
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -187,6 +188,9 @@ export default function PerformanceDashboard() {
   const chartMax = niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05);
   const avgVal = avg[metric];
   const avgPct = Math.min(100, (avgVal / chartMax) * 100);
+  // 5 evenly-spaced reference lines (0..chartMax), like the vertical axis
+  // numbers in Little Hotelier's own Performance report.
+  const axisTicks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(chartMax * f));
 
   if (loading && rows.length === 0) {
     return (
@@ -230,13 +234,13 @@ export default function PerformanceDashboard() {
 
       {/* Week navigation */}
       <div className="flex items-center justify-between gap-2 mb-4">
-        <button onClick={() => setWeekStart(w => addDays(w, -7))} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
+        <button onClick={() => { setWeekStart(w => addDays(w, -7)); setSelectedDay(null); }} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
           <ChevronLeft size={16} color={T.navy} />
         </button>
-        <button onClick={() => setWeekStart(mondayOf(new Date()))} className="press focus-ring f-thai text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>
+        <button onClick={() => { setWeekStart(mondayOf(new Date())); setSelectedDay(null); }} className="press focus-ring f-thai text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>
           {t('perf_this_week')}
         </button>
-        <button onClick={() => setWeekStart(w => addDays(w, 7))} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
+        <button onClick={() => { setWeekStart(w => addDays(w, 7)); setSelectedDay(null); }} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
           <ChevronRight size={16} color={T.navy} />
         </button>
       </div>
@@ -252,7 +256,7 @@ export default function PerformanceDashboard() {
             {(['rooms', 'revenue'] as Metric[]).map(m => (
               <button
                 key={m}
-                onClick={() => setMetric(m)}
+                onClick={() => { setMetric(m); setSelectedDay(null); }}
                 className="press focus-ring flex-1 f-thai text-xs font-bold py-2 rounded-full"
                 style={{ background: metric === m ? T.navy : 'transparent', color: metric === m ? '#fff' : T.inkSoft }}
               >
@@ -271,34 +275,66 @@ export default function PerformanceDashboard() {
           <p className="f-num text-xs mb-5" style={{ color: T.inkSoft }}>{rangeLabel}</p>
 
           {/* Bar chart */}
-          <div className="flex items-end gap-2 relative" style={{ height: 180 }}>
-            {/* Average dashed line */}
-            <div
-              className="absolute left-0 right-0 flex items-center"
-              style={{ bottom: `${avgPct}%`, borderTop: `1.5px dashed ${T.brassDeep}` }}
-            >
-              <span className="f-num text-[9px] font-bold px-1" style={{ background: T.card, color: T.brassDeep, marginLeft: -2 }}>avg</span>
+          <div className="flex gap-1">
+            <div className="flex-1 flex items-end gap-2 relative" style={{ height: 180 }}>
+              {/* Reference grid lines (0 / 25% / 50% / 75% / 100% of scale) */}
+              {axisTicks.map((tv, i) => (
+                <div key={i} className="absolute left-0 right-0" style={{ bottom: `${(tv / chartMax) * 100}%`, borderTop: `1px solid ${T.hair}` }} />
+              ))}
+              {/* Average dashed line — reflects the true average of the week currently shown */}
+              <div
+                className="absolute left-0 right-0 flex items-center"
+                style={{ bottom: `${avgPct}%`, borderTop: `1.5px dashed ${T.brassDeep}`, zIndex: 2 }}
+              >
+                <span className="f-num text-[9px] font-bold px-1 rounded whitespace-nowrap" style={{ background: T.brassPale, color: T.brassDeep, marginLeft: -2 }}>
+                  avg {metric === 'revenue' ? fmtTHB(avgVal) : avgVal.toFixed(2)}
+                </span>
+              </div>
+              {days.map(d => {
+                const val = d[metric];
+                const pct = Math.max(1, (val / chartMax) * 100);
+                const isToday = d.dateStr === toLocalDate(new Date());
+                const isSelected = selectedDay === d.dateStr;
+                return (
+                  <div key={d.dateStr} className="flex-1 flex flex-col items-center justify-end h-full relative">
+                    {isSelected && (
+                      <div
+                        className="absolute f-num text-[10px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                        style={{ bottom: `calc(${pct}% + 6px)`, background: T.navy, color: '#fff', zIndex: 3 }}
+                      >
+                        {metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setSelectedDay(isSelected ? null : d.dateStr)}
+                      className="press focus-ring w-full rounded-t-md"
+                      style={{
+                        height: `${pct}%`,
+                        background: isSelected ? T.brass : isToday ? `${T.brass}CC` : `${T.navy}CC`,
+                        minHeight: 3,
+                        border: 'none',
+                        padding: 0,
+                      }}
+                      aria-label={metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            {days.map(d => {
-              const val = d[metric];
-              const pct = Math.max(2, (val / chartMax) * 100);
-              const isToday = d.dateStr === toLocalDate(new Date());
-              return (
-                <div key={d.dateStr} className="flex-1 flex flex-col items-center justify-end h-full relative group">
-                  <div
-                    className="w-full rounded-t-md"
-                    style={{
-                      height: `${pct}%`,
-                      background: isToday ? T.brass : `${T.navy}CC`,
-                      minHeight: 3,
-                    }}
-                    title={metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
-                  />
-                </div>
-              );
-            })}
+            {/* Axis number labels, aligned to the grid lines above */}
+            <div className="relative shrink-0" style={{ width: 34, height: 180 }}>
+              {axisTicks.map((tv, i) => (
+                <span
+                  key={i}
+                  className="absolute right-0 f-num text-[9px]"
+                  style={{ bottom: `calc(${(tv / chartMax) * 100}% - 5px)`, color: T.inkSoft }}
+                >
+                  {fmtInt(tv)}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 mt-1.5">
+          <div className="flex gap-2 mt-1.5" style={{ marginRight: 34 + 4 }}>
             {days.map(d => (
               <div key={d.dateStr} className="flex-1 text-center">
                 <p className="f-num text-[10px] font-semibold" style={{ color: T.inkSoft }}>{d.dnum}</p>
