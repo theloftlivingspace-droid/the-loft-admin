@@ -1211,11 +1211,14 @@ export default function AdminDailyDashboard() {
             "Desktop top nav" block); this whole bar is hidden on desktop
             now rather than double-rendering the same tabs twice. */}
         <div
-          className="md:hidden fixed left-4 right-4 z-50 flex items-center justify-around rounded-[26px]"
+          className="md:hidden fixed left-1/2 z-50 flex items-center gap-1"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+            transform: 'translateX(-50%)',
             background: T.card,
             border: `1px solid ${T.hair}`,
+            borderRadius: 999,
+            padding: '8px 10px',
             boxShadow: '0 16px 36px rgba(11,30,66,0.20), 0 4px 12px rgba(11,30,66,0.10)',
             backdropFilter: 'saturate(180%) blur(20px)',
             WebkitBackdropFilter: 'saturate(180%) blur(20px)',
@@ -1234,13 +1237,12 @@ export default function AdminDailyDashboard() {
           ]).map(m => (
             <button key={m.key} aria-label={m.label}
               onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-              className="press focus-ring flex flex-col md:flex-row items-center justify-center py-2.5 md:py-3 md:px-5 gap-1 md:gap-2 min-w-0 flex-1 md:flex-none relative">
+              className="press focus-ring flex items-center justify-center"
+              style={{ width: 46, height: 46 }}>
               <div className="flex items-center justify-center rounded-full transition-all"
-                style={{ width: 40, height: 30, background: mainSection === m.key ? T.navyTint : 'transparent' }}>
-                <m.Icon size={21} color={mainSection === m.key ? T.navy : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+                style={{ width: 40, height: 40, background: mainSection === m.key ? T.navy : 'transparent' }}>
+                <m.Icon size={21} color={mainSection === m.key ? '#fff' : '#8A8570'} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
               </div>
-              <span className="hidden md:inline f-thai text-sm" style={{ color: mainSection === m.key ? T.navy : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>{m.label}</span>
-              <span className="md:hidden" style={{ width: 16, height: 2.5, borderRadius: 1.5, background: mainSection === m.key ? T.brass : 'transparent' }} />
             </button>
           ))}
         </div>
