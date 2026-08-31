@@ -763,6 +763,8 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
   const [showWModal, setShowWModal] = useState(false);
   const [newW, setNewW] = useState<Omit<Warranty,'id'>>({cat:'AIR CONDITIONER',room:'',brand:'',model:'',sn:'',warranty:'',installed:''});
   const delWarranty = (id:number) => setWarrantyData(d=>d.filter(r=>r.id!==id));
+  const updateWarrantyRoom = (id:number, room:string) =>
+    setWarrantyData(d=>d.map(r=>r.id===id ? {...r, room} : r));
   const addWarranty = () => {
     if(!newW.brand.trim()) return;
     setWarrantyData(d=>[...d,{id:nextWId,...newW}]);
@@ -1617,7 +1619,15 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                         {(handleProps) => (<>
                           <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
-                          <td className="px-3 py-2"><span className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: T.navyTint, color: T.navy }}>{r.room}</span></td>
+                          <td className="px-3 py-2">
+                            <input
+                              className="f-thai px-2 py-0.5 rounded-lg text-xs font-medium bg-transparent focus-ring text-center"
+                              style={{ background: T.navyTint, color: T.navy, border: '1px solid transparent', width: '64px' }}
+                              value={r.room}
+                              onChange={e=>updateWarrantyRoom(r.id, e.target.value)}
+                              placeholder={t('sp_placeholder_room')}
+                            />
+                          </td>
                           <td className="px-3 py-2 font-semibold f-thai" style={{ color: T.ink }}>{r.brand}</td>
                           <td className="px-3 py-2 text-xs f-thai" style={{ color: T.inkSoft }}>{r.model}</td>
                           <td className="px-3 py-2 f-num text-xs" style={{ color: T.inkSoft }}>{r.sn||'—'}</td>
