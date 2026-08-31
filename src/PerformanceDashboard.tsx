@@ -4,13 +4,21 @@ import { T, FoilRule } from './theme';
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Reuses the same 'todo' GAS Web App / action RevenueDashboard.tsx calls —
-// its doGet_ getRevenueDashboard reads Bank_Ledger and returns per-booking
-// rows (date, ota/status, room, checkin, checkout, nights, gross...). This
-// page re-slices that same ledger by night-of-stay within a chosen week
-// instead of by month, to mirror Little Hotelier's own "Performance" report
-// (Rooms sold / Revenue toggle + per-day bars + channel breakdown).
-const GAS_API = '/api/gas-proxy?app=todo&action=getRevenueDashboard';
+// Revenue: reuses the same 'todo' GAS Web App / action RevenueDashboard.tsx
+// calls — its doGet_ getRevenueDashboard reads Bank_Ledger and returns
+// per-booking payout rows (date, ota/status, room, checkin, checkout,
+// nights, gross...). This is a money-received ledger, not a booking record,
+// so it's the best available revenue-by-night proxy but not exact — see the
+// note next to the Revenue toggle.
+const LEDGER_API = '/api/gas-proxy?app=todo&action=getRevenueDashboard';
+// Rooms sold: the SAME reservations feed CheckInOut.tsx / CalendarView.tsx
+// use for the live occupancy board (getRoomStatus_ → Sheet1, one row per
+// resId, real Channel column). This is the actual occupancy source of
+// truth — using Bank_Ledger for "rooms sold" previously double-counted
+// rooms whenever a booking produced more than one settlement row (e.g.
+// split/installment payouts), since each ledger row re-added the same
+// room-nights.
+const STAYS_API = '/api/gas-proxy?app=checkinout&action=getRoomStatus';
 
 interface LedgerRow {
   date: string;
@@ -27,25 +35,54 @@ interface LedgerRow {
   status: string;
 }
 
-// Same channel buckets as RevenueDashboard's OTA_META — 'SCB' is the bank
-// account, not a real OTA; in practice these are the payouts/transfers that
-// never matched an OTA name, which for The Loft is overwhelmingly direct
-// bookings paid by bank transfer, so it's labelled "Direct" here to match
-// what the Little Hotelier report calls it. (Same underlying Bank_Ledger
-// bucket as RevenueDashboard's 'SCB' row — just relabeled for this view.)
-const CHANNEL_META: Record<string, { short: string; hex: string }> = {
+interface Stay {
+  room: string;
+  guest: string;
+  checkin: string;
+  checkout: string;
+  channel: string;
+  resId: string;
+}
+
+// Revenue channel buckets — from Bank_Ledger's "Matched - X" status string.
+// 'SCB' is the bank account, not a real OTA; in practice these are the
+// payouts/transfers that never matched an OTA name, which for The Loft is
+// overwhelmingly direct bookings paid by bank transfer, so it's labelled
+// "Direct Booking" here to match what Little Hotelier calls it.
+const REVENUE_CHANNEL_META: Record<string, { short: string; hex: string }> = {
   'Airbnb payout':          { short: 'Airbnb',   hex: '#FF5A5F' },
   'Booking.com remittance': { short: 'Booking.com', hex: '#003580' },
   'Expedia remittance':     { short: 'Expedia',  hex: '#FFB900' },
   'Trip.com settlement':    { short: 'Trip.com', hex: '#1BA0E2' },
   SCB:                      { short: 'Direct Booking', hex: '#607d8b' },
 };
-function channelMeta(key: string) {
-  return CHANNEL_META[key] || { short: key, hex: '#607d8b' };
-}
-function deriveChannelKey(status: string): string {
+function revenueChannelKey(status: string): string {
   const m = (status || '').match(/Matched\s*-\s*(.+)$/);
   return m ? m[1].trim() : 'SCB';
+}
+function revenueChannelMeta(key: string) {
+  return REVENUE_CHANNEL_META[key] || { short: key, hex: '#607d8b' };
+}
+
+// Rooms channel buckets — from Sheet1's actual "Channel" column (same
+// classification CalendarView.tsx's channelLabel/channelColor use), so the
+// Rooms sold tab groups by the real booking channel, not a payment-derived
+// guess.
+function roomsChannelKey(channel: string): string {
+  const ch = (channel || '').toLowerCase();
+  if (ch.includes('airbnb'))  return 'Airbnb';
+  if (ch.includes('booking')) return 'Booking.com';
+  if (ch.includes('expedia')) return 'Expedia';
+  if (ch.includes('trip'))    return 'Trip.com';
+  if (ch.includes('direct') || !ch) return 'Direct Booking';
+  return channel;
+}
+function roomsChannelMeta(key: string) {
+  const known: Record<string, string> = {
+    Airbnb: '#FF5A5F', 'Booking.com': '#003580', Expedia: '#FFB900',
+    'Trip.com': '#1BA0E2', 'Direct Booking': '#607d8b',
+  };
+  return { short: key, hex: known[key] || '#8a8a8a' };
 }
 
 function fmtTHB(n: number) {
@@ -103,6 +140,7 @@ export default function PerformanceDashboard() {
   const [error, setError] = useState('');
   const [errorDetail, setErrorDetail] = useState('');
   const [rows, setRows] = useState<LedgerRow[]>([]);
+  const [stays, setStays] = useState<Stay[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [metric, setMetric] = useState<Metric>('revenue');
@@ -113,7 +151,7 @@ export default function PerformanceDashboard() {
     setError('');
     setErrorDetail('');
     try {
-      const r = await fetch(`${GAS_API}&_ts=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`${LEDGER_API}&_ts=${Date.now()}`, { cache: 'no-store' });
       const raw = await r.text();
       let j: any;
       try {
@@ -129,6 +167,17 @@ export default function PerformanceDashboard() {
       setErrorDetail(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+    }
+
+    // Rooms-sold source (occupancy) — fetched separately, same defensive
+    // pattern as RevenueDashboard's pending-match fetch: a failure here
+    // never blocks Revenue from loading, Rooms sold just falls back to 0.
+    try {
+      const sr = await fetch(`${STAYS_API}&_ts=${Date.now()}`, { cache: 'no-store' });
+      const sj = await sr.json();
+      setStays(Array.isArray(sj?.stays) ? sj.stays : []);
+    } catch {
+      setStays([]);
     }
   }, [t]);
 
@@ -148,32 +197,52 @@ export default function PerformanceDashboard() {
       rooms: 0,
       revenue: 0,
     }));
-    const channelMap: Record<string, ChannelAgg> = {};
+    const roomsChannelMap: Record<string, ChannelAgg> = {};
+    const revenueChannelMap: Record<string, ChannelAgg> = {};
 
+    // Rooms sold + rooms channel breakdown — from actual reservations
+    // (one row per resId — no payout-installment duplication).
+    stays.forEach(s => {
+      const ci = parseYMD(s.checkin);
+      const co = parseYMD(s.checkout);
+      if (!ci || !co) return;
+      const nights = Math.max(0, Math.round((co.getTime() - ci.getTime()) / 86400000));
+      const roomList = (s.room || '').split(',').map(x => x.trim()).filter(x => x && x !== '?');
+      const roomCount = roomList.length || 1;
+      const chKey = roomsChannelKey(s.channel);
+      const meta = roomsChannelMeta(chKey);
+
+      for (let i = 0; i < nights; i++) {
+        const idx = dayIndex[toLocalDate(addDays(ci, i))];
+        if (idx === undefined) continue;
+        dayAgg[idx].rooms += roomCount;
+        if (!roomsChannelMap[chKey]) roomsChannelMap[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
+        roomsChannelMap[chKey].rooms += roomCount;
+      }
+    });
+
+    // Revenue + revenue channel breakdown — from Bank_Ledger (settled
+    // payouts). Approximate: allocates each row's gross evenly across its
+    // stay's nights, since no per-night room rate is tracked anywhere.
     rows.forEach(row => {
       const ci = parseYMD(row.checkin);
       const co = parseYMD(row.checkout);
       if (!ci || !co) return;
       const nights = row.nights > 0 ? row.nights : Math.max(1, Math.round((co.getTime() - ci.getTime()) / 86400000));
       const revPerNight = (Number(row.gross) || 0) / nights;
-      const roomList = (row.room || '').split(',').map(s => s.trim()).filter(s => s && s !== '?');
-      const roomCount = roomList.length || 1;
-      const chKey = deriveChannelKey(row.status);
-      const meta = channelMeta(chKey);
+      const chKey = revenueChannelKey(row.status);
+      const meta = revenueChannelMeta(chKey);
 
       for (let i = 0; i < nights; i++) {
-        const nightStr = toLocalDate(addDays(ci, i));
-        const idx = dayIndex[nightStr];
+        const idx = dayIndex[toLocalDate(addDays(ci, i))];
         if (idx === undefined) continue;
-        dayAgg[idx].rooms += roomCount;
         dayAgg[idx].revenue += revPerNight;
-        if (!channelMap[chKey]) channelMap[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
-        channelMap[chKey].rooms += roomCount;
-        channelMap[chKey].revenue += revPerNight;
+        if (!revenueChannelMap[chKey]) revenueChannelMap[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
+        revenueChannelMap[chKey].revenue += revPerNight;
       }
     });
 
-    const chArr = Object.values(channelMap).sort((a, b) => b[metric] - a[metric]);
+    const chArr = Object.values(metric === 'rooms' ? roomsChannelMap : revenueChannelMap).sort((a, b) => b[metric] - a[metric]);
     const totalRooms = dayAgg.reduce((s, d) => s + d.rooms, 0);
     const totalRevenue = dayAgg.reduce((s, d) => s + d.revenue, 0);
     return {
@@ -181,7 +250,7 @@ export default function PerformanceDashboard() {
       channels: chArr,
       avg: { rooms: totalRooms / 7, revenue: totalRevenue / 7 },
     };
-  }, [rows, weekDays, weekDayStrs, lang, metric]);
+  }, [rows, stays, weekDays, weekDayStrs, lang, metric]);
 
   const rangeLabel = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
@@ -272,7 +341,11 @@ export default function PerformanceDashboard() {
             {metric === 'revenue' && <span className="f-thai text-base font-semibold ml-1.5" style={{ color: T.inkSoft }}>THB</span>}
             {metric === 'rooms' && <span className="f-thai text-base font-semibold ml-1.5" style={{ color: T.inkSoft }}>{t('perf_rooms_unit')}</span>}
           </p>
-          <p className="f-num text-xs mb-5" style={{ color: T.inkSoft }}>{rangeLabel}</p>
+          <p className="f-num text-xs mb-1" style={{ color: T.inkSoft }}>{rangeLabel}</p>
+          {metric === 'revenue' && (
+            <p className="f-thai text-[10px] mb-4" style={{ color: T.inkSoft, opacity: 0.75 }}>{t('perf_revenue_note')}</p>
+          )}
+          {metric === 'rooms' && <div className="mb-5" />}
 
           {/* Bar chart */}
           <div className="flex gap-1">

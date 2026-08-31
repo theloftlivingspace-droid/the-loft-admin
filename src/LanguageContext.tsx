@@ -71,6 +71,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   perf_average:         { th: 'ค่าเฉลี่ย', en: 'Average' },
   perf_rooms_unit:      { th: 'ห้อง', en: 'rooms' },
   perf_channel_breakdown: { th: 'แยกตามช่องทาง', en: 'Channel breakdown' },
+  perf_revenue_note:    { th: 'ประมาณการจากยอดโอนเงินที่ตรงกับการจอง อาจไม่ตรงกับตัวเลขใน Little Hotelier เป๊ะๆ เพราะระบบไม่ได้เก็บราคาห้องต่อคืนไว้โดยตรง', en: 'Estimated from matched bank payouts — may not exactly match Little Hotelier, since per-night room rates aren\'t tracked in this system.' },
   rev_kpi_total:        { th: 'รายรับรวม (THB)', en: 'Total revenue (THB)' },
   rev_kpi_months:       { th: 'เดือนที่บันทึก', en: 'Months recorded' },
   rev_kpi_txn:          { th: 'จำนวนธุรกรรม', en: 'Transactions' },
