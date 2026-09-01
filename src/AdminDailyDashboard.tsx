@@ -282,8 +282,8 @@ export default function AdminDailyDashboard() {
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
   // (labeled) sub-menu, since those pages don't need top-level real estate.
-  const mainSection: 'checkinout' | 'stock' | 'parking' | 'calendar' | 'etc' =
-    (adminTab === 'checkinout' || adminTab === 'stock' || adminTab === 'parking' || adminTab === 'calendar') ? adminTab : 'etc';
+  const mainSection: 'checkinout' | 'stock' | 'parking' | 'calendar' | 'performance' | 'etc' =
+    (adminTab === 'checkinout' || adminTab === 'stock' || adminTab === 'parking' || adminTab === 'calendar' || adminTab === 'performance') ? adminTab : 'etc';
 
   // ── Pull-to-refresh (mobile only) — wired to whichever tab has a manual
   // refresh button (Check-in/out, Booking/Invoice To-Do). Other tabs ignore it.
@@ -772,6 +772,7 @@ export default function AdminDailyDashboard() {
     { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
     { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
     { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+    ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
     { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
   ]);
   function selectMobileTab(key: string) {
@@ -829,6 +830,7 @@ export default function AdminDailyDashboard() {
               { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
               { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
               { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+              ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
               { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
             ]).map(m => (
               <button key={m.key} aria-label={m.label} title={m.label}
@@ -1279,7 +1281,6 @@ export default function AdminDailyDashboard() {
               ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
-              ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
               ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
