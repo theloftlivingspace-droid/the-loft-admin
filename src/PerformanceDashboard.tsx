@@ -354,12 +354,19 @@ export default function PerformanceDashboard() {
               {axisTicks.map((tv, i) => (
                 <div key={i} className="absolute left-0 right-0" style={{ bottom: `${(tv / chartMax) * 100}%`, borderTop: `1px solid ${T.hair}` }} />
               ))}
-              {/* Average dashed line — reflects the true average of the week currently shown */}
+              {/* Average dashed line — reflects the true average of the week currently shown.
+                  height:0 keeps the border-top exactly at avgPct; the label is a separately
+                  positioned child so its own box height can't push the line off-position
+                  (that was the bug: an auto-height flex div grows upward from `bottom`,
+                  so the label's ~13px height was shifting the line above the real average). */}
               <div
-                className="absolute left-0 right-0 flex items-center"
-                style={{ bottom: `${avgPct}%`, borderTop: `1.5px dashed ${T.brassDeep}`, zIndex: 2 }}
+                className="absolute left-0 right-0"
+                style={{ bottom: `${avgPct}%`, height: 0, borderTop: `1.5px dashed ${T.brassDeep}`, zIndex: 2 }}
               >
-                <span className="f-num text-[9px] font-bold px-1 rounded whitespace-nowrap" style={{ background: T.brassPale, color: T.brassDeep, marginLeft: -2 }}>
+                <span
+                  className="f-num text-[9px] font-bold px-1 rounded whitespace-nowrap absolute"
+                  style={{ background: T.brassPale, color: T.brassDeep, left: -2, bottom: 3 }}
+                >
                   avg {metric === 'revenue' ? fmtTHB(avgVal) : avgVal.toFixed(2)}
                 </span>
               </div>
