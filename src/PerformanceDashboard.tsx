@@ -143,7 +143,7 @@ export default function PerformanceDashboard() {
   const [stays, setStays] = useState<Stay[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
-  const [metric, setMetric] = useState<Metric>('revenue');
+  const [metric, setMetric] = useState<Metric>('rooms');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
