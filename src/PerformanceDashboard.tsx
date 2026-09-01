@@ -128,6 +128,9 @@ function niceMax(v: number): number {
   const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
   return step * pow;
 }
+// The Loft has 16 rooms total, so nightly rooms-sold can never exceed 16 —
+// cap that axis there instead of letting niceMax round up to 20.
+const TOTAL_ROOMS = 16;
 
 type Metric = 'rooms' | 'revenue';
 
@@ -254,7 +257,7 @@ export default function PerformanceDashboard() {
 
   const rangeLabel = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
-  const chartMax = niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05);
+  const chartMax = metric === 'rooms' ? TOTAL_ROOMS : niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05);
   const avgVal = avg[metric];
   const avgPct = Math.min(100, (avgVal / chartMax) * 100);
   // 5 evenly-spaced reference lines (0..chartMax), like the vertical axis
@@ -372,7 +375,7 @@ export default function PerformanceDashboard() {
               </div>
               {days.map(d => {
                 const val = d[metric];
-                const pct = Math.max(1, (val / chartMax) * 100);
+                const pct = Math.min(100, Math.max(1, (val / chartMax) * 100));
                 const isToday = d.dateStr === toLocalDate(new Date());
                 const isSelected = selectedDay === d.dateStr;
                 return (
