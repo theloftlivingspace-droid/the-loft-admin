@@ -838,7 +838,7 @@ export default function AdminDailyDashboard() {
                 className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
                 style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
                 <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-                <span className="hidden xl:inline">{m.label}</span>
+                <span className="hidden lg:inline">{m.label}</span>
               </button>
             ))}
           </div>
