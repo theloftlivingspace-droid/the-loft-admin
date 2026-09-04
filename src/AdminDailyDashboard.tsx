@@ -817,30 +817,35 @@ export default function AdminDailyDashboard() {
 
           {/* Main tab nav — merged into the same fixed row as the header
               (was a separate fixed row below it) so desktop stays down
-              to one top row. Label hides below xl to leave room for the
-              header/controls clusters on narrower laptop widths. */}
-          <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
-            {(isMaintenance ? [
-              { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
-              { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
-              { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
-              { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
-            ] : [
-              { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
-              { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
-              { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
-              { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
-              ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
-              { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
-            ]).map(m => (
-              <button key={m.key} aria-label={m.label} title={m.label}
-                onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
-                className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm"
-                style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
-                <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
-                <span className="hidden lg:inline">{m.label}</span>
-              </button>
-            ))}
+              to one top row. Labels show from lg up; wrapped in a
+              flex-1/overflow-x-auto container so if it's ever wider than
+              the space left between the logo and the right-side date/more
+              cluster, it scrolls internally instead of pushing the right
+              cluster off-screen. */}
+          <div className="min-w-0 flex-1 overflow-x-auto flex justify-center">
+            <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
+              {(isMaintenance ? [
+                { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
+                { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
+                { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
+                { key: 'etc' as const,      Icon: MoreHorizontal, label: t('tab_etc') },
+              ] : [
+                { key: 'checkinout' as const, Icon: Building2,      label: t('tab_checkinout') },
+                { key: 'calendar' as const,   Icon: CalendarDays,   label: t('tab_calendar') },
+                { key: 'stock' as const,      Icon: Package,        label: t('tab_stock') },
+                { key: 'parking' as const,    Icon: Car,            label: t('tab_parking') },
+                ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
+                { key: 'etc' as const,        Icon: MoreHorizontal, label: t('tab_etc') },
+              ]).map(m => (
+                <button key={m.key} aria-label={m.label} title={m.label}
+                  onClick={() => { if (m.key === 'etc') { if (mainSection !== 'etc') setAdminTab(isMaintenance ? 'repair' : 'dashboard'); } else { setAdminTab(m.key); } scrollToTop(); }}
+                  className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-full f-thai text-sm whitespace-nowrap"
+                  style={{ background: mainSection === m.key ? T.navy : 'transparent', color: mainSection === m.key ? '#fff' : T.inkSoft, fontWeight: mainSection === m.key ? 600 : 400 }}>
+                  <m.Icon size={17} strokeWidth={mainSection === m.key ? 2.3 : 1.8} />
+                  <span className="hidden lg:inline">{m.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="hidden xl:flex items-center gap-1.5 flex-shrink-0">
