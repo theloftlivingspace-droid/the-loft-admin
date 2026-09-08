@@ -40,19 +40,31 @@ export default async function handler(req, res) {
     const qs = params.toString();
     const targetUrl = qs ? `${base}?${qs}` : base;
 
+    // GAS occasionally stalls (cold start, quota throttling, Google-side
+    // hiccups) with no response at all. Without a timeout this fetch can
+    // hang until Vercel's own function timeout kills it, which is slow and
+    // returns an opaque platform error instead of something the client can
+    // show the user. Fail fast with a clear message instead.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
     let gasRes;
-    if (req.method === 'POST') {
-      const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
-      const rawBody = Buffer.concat(chunks).toString();
-      gasRes = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: rawBody,
-        redirect: 'follow',
-      });
-    } else {
-      gasRes = await fetch(targetUrl, { redirect: 'follow', cache: 'no-store' });
+    try {
+      if (req.method === 'POST') {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const rawBody = Buffer.concat(chunks).toString();
+        gasRes = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: rawBody,
+          redirect: 'follow',
+          signal: controller.signal,
+        });
+      } else {
+        gasRes = await fetch(targetUrl, { redirect: 'follow', cache: 'no-store', signal: controller.signal });
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const text = await gasRes.text();
@@ -64,6 +76,10 @@ export default async function handler(req, res) {
       res.status(gasRes.status).setHeader('Content-Type', 'text/plain').send(text);
     }
   } catch (err) {
-    res.status(502).json({ ok: false, error: 'Proxy error: ' + String(err) });
+    if (err && err.name === 'AbortError') {
+      res.status(504).json({ ok: false, error: 'GAS backend timed out (no response within 9s).' });
+    } else {
+      res.status(502).json({ ok: false, error: 'Proxy error: ' + String(err) });
+    }
   }
 }

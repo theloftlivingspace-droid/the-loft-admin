@@ -1257,8 +1257,15 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   async function load(): Promise<Stay[]> {
     setLoading(true);
     setError('');
+    // Plain fetch() has no built-in timeout. On a flaky/weak connection the
+    // request can hang indefinitely, which leaves loading=true forever —
+    // and since the Refresh control is disabled while loading, the page
+    // gets permanently stuck with no way to retry. A hard timeout guarantees
+    // this always resolves to either data or a recoverable error.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) throw new Error(t('ci_load_room_failed'));
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
@@ -1351,10 +1358,20 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       setStays(list);
       setLastRefresh(new Date().toLocaleTimeString('en-GB'));
 
-      // Checkout log
+      // Checkout log — same no-timeout hazard as the main request above:
+      // this fetch sits inside the outer try, so if it hangs on a bad
+      // connection, `finally` (and therefore setLoading(false)) never runs
+      // even though the room data above already loaded fine.
       try {
         const csvUrl = `https://docs.google.com/spreadsheets/d/${CHECKOUT_LOG_ID}/export?format=csv&gid=${CHECKOUT_GID}`;
-        const cr = await fetch(csvUrl);
+        const csvController = new AbortController();
+        const csvTimeoutId = setTimeout(() => csvController.abort(), 15000);
+        let cr: Response;
+        try {
+          cr = await fetch(csvUrl, { signal: csvController.signal });
+        } finally {
+          clearTimeout(csvTimeoutId);
+        }
         if (cr.ok) {
           const csv = await cr.text();
           // Proper CSV parser - handles quoted fields with commas inside
@@ -1445,9 +1462,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       return list;
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('ci_load_failed'));
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setError(t('ci_load_timeout'));
+      } else {
+        setError(e instanceof Error ? e.message : t('ci_load_failed'));
+      }
       return [];
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }

@@ -148,8 +148,15 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   async function load() {
     setLoading(true);
     setError('');
+    // Weak/flaky mobile connections can leave this fetch pending forever —
+    // plain fetch() has no built-in timeout, so with no AbortController the
+    // promise never settles, loading never flips back to false, and the
+    // Refresh button (disabled while loading) becomes permanently unusable.
+    // A hard timeout guarantees the request always resolves one way or another.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) throw new Error(t('cal_load_failed'));
       const json: { stays: RawStay[] } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('cal_load_failed'));
@@ -181,8 +188,13 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
       setStays(list);
       setLastRefresh(new Date().toLocaleTimeString('en-GB'));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('cal_load_failed'));
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setError(t('cal_load_timeout'));
+      } else {
+        setError(e instanceof Error ? e.message : t('cal_load_failed'));
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }
