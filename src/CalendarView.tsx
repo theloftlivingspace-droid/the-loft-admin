@@ -84,6 +84,23 @@ interface CalStay {
   isCancelled: boolean;
 }
 
+// Persist the last successful fetch so a fresh page load (not just an
+// in-session refresh) can render immediately from cache instead of an empty
+// spinner — the GAS backend behind this is slow/flaky enough on cold cache
+// hits that this matters. `loading && stays.length === 0` below already
+// keeps the grid visible during background refreshes; this just makes sure
+// stays isn't empty in the first place after a reload.
+const CAL_CACHE_KEY = 'cal_room_status_cache_v1';
+function readCalCache(): CalStay[] | null {
+  try {
+    const raw = localStorage.getItem(CAL_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeCalCache(list: CalStay[]) {
+  try { localStorage.setItem(CAL_CACHE_KEY, JSON.stringify(list)); } catch { /* storage full/unavailable — non-fatal */ }
+}
+
 function toLocalDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -110,7 +127,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({ viewDate, onViewDateChange }: CalendarViewProps) {
   const { t, lang } = useLang();
-  const [stays, setStays] = useState<CalStay[]>([]);
+  const [stays, setStays] = useState<CalStay[]>(() => readCalCache() ?? []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefresh, setLastRefresh] = useState('');
@@ -157,7 +174,13 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
-      if (!res.ok) throw new Error(t('cal_load_failed'));
+      if (!res.ok) {
+        // Surface the proxy's actual failure reason (its own 9s timeout vs.
+        // a real GAS-side error) instead of a blanket message.
+        let detail = '';
+        try { detail = (await res.json())?.error || ''; } catch { /* non-JSON error body */ }
+        throw new Error(detail.toLowerCase().includes('timed out') ? t('cal_load_timeout') : (detail || t('cal_load_failed')));
+      }
       const json: { stays: RawStay[] } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('cal_load_failed'));
 
@@ -186,6 +209,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         });
       }
       setStays(list);
+      writeCalCache(list);
       setLastRefresh(new Date().toLocaleTimeString('en-GB'));
     } catch (e: unknown) {
       if (e instanceof DOMException && e.name === 'AbortError') {
