@@ -302,8 +302,19 @@ async function deleteDocFromDrive(fileId: string): Promise<void> {
 
 async function fetchAllDocsIndex(): Promise<Record<string, DocFile[]>> {
   const res = await fetch(`${GAS_API}&action=getAllDocs`);
-  const json = await res.json();
-  return json.ok ? (json.docs as Record<string, DocFile[]>) : {};
+  const raw = await res.text();
+  let json: { ok?: boolean; docs?: Record<string, DocFile[]>; error?: string };
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    // Non-JSON = a Vercel/GAS proxy-level failure (timeout, 5xx HTML page).
+    // This used to fail this same way and get swallowed silently by
+    // refreshDocs()'s catch, so uploaded docs would just look like they
+    // "never showed up" with no indication why.
+    throw new Error(!res.ok ? `HTTP ${res.status}` : tStatic('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง', 'Server returned an invalid response'));
+  }
+  if (!json.ok) throw new Error(json.error || tStatic('โหลดรายการเอกสารไม่สำเร็จ', 'Failed to load document list'));
+  return json.docs || {};
 }
 
 const STATUS_CONFIG = {
@@ -1234,7 +1245,11 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   async function refreshDocs() {
     setDocsLoading(true);
     try { setDocs(await fetchAllDocsIndex()); }
-    catch { /* non-fatal — docs panel just stays empty */ }
+    catch (e) {
+      // Previously silent ("docs panel just stays empty") — indistinguishable
+      // from "no docs uploaded" from the user's side. Now at least visible.
+      showToast(`⚠️ ${e instanceof Error ? e.message : t('ci_load_failed')}`);
+    }
     finally { setDocsLoading(false); }
   }
 
