@@ -188,6 +188,22 @@ function tStatic(th: string, en: string): string {
   try { return localStorage.getItem('loft_admin_lang') === 'en' ? en : th; } catch { return th; }
 }
 
+// Stale-while-revalidate cache for the room-status fetch. Lets the page render
+// last-known data instantly on mount (and stay usable if a refresh fails)
+// instead of blocking on a spinner/error screen every single time — the GAS
+// backend + its cold-cache path is slow/flaky enough that this matters a lot.
+type RoomStatusCache = { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> };
+const ROOM_CACHE_KEY = 'ci_room_status_cache_v1';
+function readRoomStatusCache(): RoomStatusCache | null {
+  try {
+    const raw = localStorage.getItem(ROOM_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeRoomStatusCache(data: RoomStatusCache) {
+  try { localStorage.setItem(ROOM_CACHE_KEY, JSON.stringify(data)); } catch { /* storage full/unavailable — non-fatal */ }
+}
+
 // Photos straight off an iPhone camera are routinely 3–8MB. The Vercel
 // serverless proxy (/api/gas-proxy) sits behind a ~4.5MB request body cap —
 // past that, Vercel returns an HTML/plain-text error page instead of JSON,
@@ -817,7 +833,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   // Every row from the sheet, unfiltered by the 5-day arrival window — kept
   // separately so the manual search/cancel panel can find and cancel any
   // booking regardless of check-in date, not just ones arriving soon.
-  const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }>>([]);
+  const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }>>(() => readRoomStatusCache()?.stays ?? []);
+  // True only while there is no data at all yet (first-ever load with an empty
+  // cache) — a background refresh on top of already-visible cached data uses
+  // `refreshing` instead, so the page never blanks out to a spinner/error on
+  // every load the way it used to.
+  const [refreshing, setRefreshing] = useState(false);
   const [manualSearchOpen, setManualSearchOpen] = useState(false);
   const [manualSearchQuery, setManualSearchQuery] = useState('');
   // The raw row the admin tapped in manual search results — while set, we show
@@ -829,7 +850,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   // Lets a blocked/damaged room keep showing "needs cleaning" even after its
   // checkout date has aged out of the stays list.
   const [latestCoByRoom, setLatestCoByRoom] = useState<Record<string, CheckoutStatus>>({});
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(() => readRoomStatusCache() === null);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
   // Room-status grid legend filter — clicking a legend chip highlights only
@@ -1255,7 +1276,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   }
 
   async function load(): Promise<Stay[]> {
-    setLoading(true);
+    // Stale-while-revalidate: only show the blocking full-page spinner when
+    // there's truly nothing on screen yet. If we already have cached/previous
+    // data, keep it visible and just show a small non-blocking indicator
+    // while this refresh runs in the background.
+    const hadData = allStaysRaw.length > 0;
+    if (hadData) setRefreshing(true); else setLoading(true);
     setError('');
     // Plain fetch() has no built-in timeout. On a flaky/weak connection the
     // request can hang indefinitely, which leaves loading=true forever —
@@ -1266,9 +1292,17 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
-      if (!res.ok) throw new Error(t('ci_load_room_failed'));
+      if (!res.ok) {
+        // The proxy already knows *why* this failed (its own 9s timeout vs.
+        // a real GAS-side error) — surface that instead of a blanket message
+        // so "took forever then failed" is distinguishable from other errors.
+        let detail = '';
+        try { detail = (await res.json())?.error || ''; } catch { /* non-JSON error body */ }
+        throw new Error(detail.toLowerCase().includes('timed out') ? t('ci_load_timeout') : (detail || t('ci_load_room_failed')));
+      }
       const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
+      writeRoomStatusCache(json);
 
       setAllStaysRaw(json.stays.map(row => ({
         room:     row.room || '',
@@ -1462,15 +1496,19 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       return list;
     } catch (e: unknown) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        setError(t('ci_load_timeout'));
-      } else {
-        setError(e instanceof Error ? e.message : t('ci_load_failed'));
-      }
+      const msg = e instanceof DOMException && e.name === 'AbortError'
+        ? t('ci_load_timeout')
+        : (e instanceof Error ? e.message : t('ci_load_failed'));
+      // If we already have data on screen, don't blank the page out over a
+      // failed background refresh — just toast it and keep showing what we
+      // had (it's still the last known-good state, just possibly a bit stale).
+      if (hadData) showToast(`⚠️ ${msg}`);
+      else setError(msg);
       return [];
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -1985,7 +2023,10 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="f-display text-lg font-bold" style={{ color: T.ink }}>{t('ci_room_status_title')}</h2>
-          <p className="f-thai text-xs" style={{ color: T.inkSoft }}>{t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {refDate}</p>
+          <p className="f-thai text-xs flex items-center gap-1.5" style={{ color: T.inkSoft }}>
+            {t('ci_last_refresh')} {lastRefresh} · {t('ci_today_label')} {refDate}
+            {refreshing && <span className="w-3 h-3 rounded-full animate-spin inline-block" style={{ border: `2px solid ${T.hairGold}`, borderTopColor: T.brass }} />}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => window.open(TM30_URL, '_blank', 'noopener,noreferrer')}
