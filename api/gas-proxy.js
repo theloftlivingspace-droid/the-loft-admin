@@ -83,7 +83,7 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     if (err && err.name === 'AbortError') {
-      res.status(504).json({ ok: false, error: 'GAS backend timed out (no response within 9s).' });
+      res.status(504).json({ ok: false, error: 'GAS backend timed out (no response within 20s).' });
     } else {
       res.status(502).json({ ok: false, error: 'Proxy error: ' + String(err) });
     }
