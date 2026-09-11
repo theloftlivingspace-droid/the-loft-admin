@@ -1303,12 +1303,15 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     // and since the Refresh control is disabled while loading, the page
     // gets permanently stuck with no way to retry. A hard timeout guarantees
     // this always resolves to either data or a recoverable error.
+    // 30s (was 15s) — must stay comfortably above the proxy's own 20s
+    // timeout (api/gas-proxy.js), or this fires first and the proxy-side
+    // increase never gets a chance to matter.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) {
-        // The proxy already knows *why* this failed (its own 9s timeout vs.
+        // The proxy already knows *why* this failed (its own 20s timeout vs.
         // a real GAS-side error) — surface that instead of a blanket message
         // so "took forever then failed" is distinguishable from other errors.
         let detail = '';

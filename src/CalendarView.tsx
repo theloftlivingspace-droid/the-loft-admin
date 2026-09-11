@@ -170,12 +170,15 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     // promise never settles, loading never flips back to false, and the
     // Refresh button (disabled while loading) becomes permanently unusable.
     // A hard timeout guarantees the request always resolves one way or another.
+    // 30s (was 15s) — must stay above the proxy's own 20s timeout (was 9s;
+    // api/gas-proxy.js), or this fires first and the proxy-side increase
+    // never gets a chance to matter.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
       const res = await fetch(`${GAS_API}&action=getRoomStatus&_ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) {
-        // Surface the proxy's actual failure reason (its own 9s timeout vs.
+        // Surface the proxy's actual failure reason (its own 20s timeout vs.
         // a real GAS-side error) instead of a blanket message.
         let detail = '';
         try { detail = (await res.json())?.error || ''; } catch { /* non-JSON error body */ }

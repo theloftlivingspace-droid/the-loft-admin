@@ -45,8 +45,14 @@ export default async function handler(req, res) {
     // hang until Vercel's own function timeout kills it, which is slow and
     // returns an opaque platform error instead of something the client can
     // show the user. Fail fast with a clear message instead.
+    // 20s (was 9s) — 9s was tuned to stay under Vercel's *default* 10s
+    // function limit, but that made this fire before a merely-slow (not
+    // actually broken) GAS cold start had a chance to finish, which is what
+    // was producing spurious "failed to load" errors. maxDuration is raised
+    // to 25s in vercel.json so this still resolves — with our own clean JSON
+    // error — before Vercel would kill the function itself.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
     let gasRes;
     try {
       if (req.method === 'POST') {
