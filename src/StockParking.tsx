@@ -3,6 +3,7 @@ import { useLang } from './LanguageContext';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Camera, RefreshCw, X } from 'lucide-react';
 import { T } from './theme';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
@@ -22,6 +23,21 @@ async function sbSave(key: string, value: unknown) {
     method: 'POST', headers: SB_HDR,
     body: JSON.stringify({ key, value: JSON.stringify(value) }),
   });
+}
+
+// Equipment (ช่างอาคาร) item photos — same Storage REST API pattern as
+// RepairList.tsx's sbUploadPhoto. Bucket `equipment-photos` (public) must
+// exist with anon insert/select policies.
+async function sbUploadEquipmentPhoto(id: number, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${id}-${Date.now()}.${ext}`;
+  const res = await fetch(`${SB_URL}/storage/v1/object/equipment-photos/${path}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  return `${SB_URL}/storage/v1/object/public/equipment-photos/${path}`;
 }
 
 // ── stock audit log ─────────────────────────────────────────────────────
@@ -152,7 +168,7 @@ interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:str
 const EQUIP_CATS = ['อุปกรณ์ช่างทั่วไป', 'อุปกรณ์ซ่อมแซมตกแต่ง', 'อุปกรณ์งานประปา'] as const;
 type EquipCat = typeof EQUIP_CATS[number];
 
-interface EquipmentItem { id:number; cat:EquipCat; name:string; nameTh?:string; nameEn?:string; qty:number; unit:string; note:string }
+interface EquipmentItem { id:number; cat:EquipCat; name:string; nameTh?:string; nameEn?:string; qty:number; unit:string; note:string; photo?:string }
 
 // ช่างอาคาร (maintenance) equipment list, imported from Nathan's อุปกรณ์ช่าง.xlsx
 // (2026-08) — seeds the Equipment tab's initial state (same pattern as the
@@ -802,6 +818,23 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     setNewEq({cat:newEq.cat,name:'',nameTh:'',nameEn:'',qty:0,unit:'ชิ้น',note:''});
     setShowEqModal(false);
   };
+  const [uploadingEqId, setUploadingEqId] = useState<number | null>(null);
+  const addEquipmentPhoto = async (id:number, file:File) => {
+    setUploadingEqId(id);
+    try {
+      const url = await sbUploadEquipmentPhoto(id, file);
+      setEquipmentData(d => d.map(r => r.id===id ? {...r, photo:url} : r));
+    } catch (e) {
+      alert(t('sp_photo_upload_failed'));
+      console.error(e);
+    } finally {
+      setUploadingEqId(null);
+    }
+  };
+  const removeEquipmentPhoto = (id:number) => {
+    if (!confirm(t('sp_photo_delete_confirm'))) return;
+    setEquipmentData(d => d.map(r => r.id===id ? {...r, photo:undefined} : r));
+  };
 
 
   // ── patrol ─────────────────────────────────────────────────────────────────
@@ -1193,7 +1226,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
           <div className="overflow-x-auto rounded-2xl" style={{ border: `1px solid ${T.hair}` }}>
             <table className="w-full text-sm">
               <thead style={{ background: T.bone, borderBottom: `1px solid ${T.hair}` }}>
-                <tr>{['#','',t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_unit'),t('sp_col_note'),''].map((h,hi)=>(
+                <tr>{['#','',t('sp_col_photo'),t('sp_col_item_name'),t('sp_col_qty'),t('sp_col_unit'),t('sp_col_note'),''].map((h,hi)=>(
                   <th key={hi} className="f-thai text-left px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: T.inkSoft }}>{h}</th>
                 ))}</tr>
               </thead>
@@ -1205,6 +1238,36 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                         {(handleProps) => (<>
                           <td className="px-3 py-2 text-xs" style={{ color: T.inkSoft }}>{i+1}</td>
                           <td className="px-3 py-2"><DragHandle {...handleProps.attributes} {...handleProps.listeners}/></td>
+                          <td className="px-3 py-2">
+                            <div className="relative" style={{ width: 40, height: 40 }}>
+                              {r.photo ? (
+                                <>
+                                  <img src={r.photo} alt={r.name} className="w-10 h-10 rounded-lg object-cover" style={{ border: `1px solid ${T.hair}` }} />
+                                  <button
+                                    type="button"
+                                    onClick={()=>removeEquipmentPhoto(r.id)}
+                                    aria-label="delete photo"
+                                    className="press absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full"
+                                    style={{ width: 16, height: 16, background: 'rgba(0,0,0,0.55)', color: '#fff' }}
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                </>
+                              ) : (
+                                <label
+                                  className="press focus-ring flex items-center justify-center rounded-lg cursor-pointer w-10 h-10"
+                                  style={{ border: `1px dashed ${T.hairGold}`, color: T.inkSoft }}
+                                >
+                                  {uploadingEqId === r.id ? <RefreshCw size={14} className="animate-spin" /> : <Camera size={14} />}
+                                  <input
+                                    type="file" accept="image/*" className="hidden"
+                                    disabled={uploadingEqId === r.id}
+                                    onChange={e=>{ const file = e.target.files?.[0]; if (file) addEquipmentPhoto(r.id, file); e.target.value=''; }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-2 font-medium f-thai" style={{ color: T.ink }}>
                             <input
                               className="bg-transparent focus-ring rounded-lg px-1.5 py-1 font-medium f-thai"
