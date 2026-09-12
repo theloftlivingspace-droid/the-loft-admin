@@ -49,7 +49,7 @@ const OTA_META: Record<string, { short: string; hex: string; light: string }> = 
   'Booking.com remittance': { short: 'Booking',  hex: '#003580', light: '#e8f0ff' },
   'Expedia remittance':     { short: 'Expedia',  hex: '#FFB900', light: '#fffbe6' },
   'Trip.com settlement':    { short: 'Trip.com', hex: '#1BA0E2', light: '#e6f7ff' },
-  SCB:                      { short: 'SCB',      hex: '#607d8b', light: '#f5f5f5' },
+  SCB:                      { short: 'Direct',   hex: '#607d8b', light: '#f5f5f5' },
 };
 
 function otaMeta(key: string) {
