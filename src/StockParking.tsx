@@ -819,6 +819,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     setShowEqModal(false);
   };
   const [uploadingEqId, setUploadingEqId] = useState<number | null>(null);
+  const [viewPhoto, setViewPhoto] = useState<{ url: string; name: string } | null>(null);
   const addEquipmentPhoto = async (id:number, file:File) => {
     setUploadingEqId(id);
     try {
@@ -1242,10 +1243,15 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                             <div className="relative" style={{ width: 40, height: 40 }}>
                               {r.photo ? (
                                 <>
-                                  <img src={r.photo} alt={r.name} className="w-10 h-10 rounded-lg object-cover" style={{ border: `1px solid ${T.hair}` }} />
+                                  <img
+                                    src={r.photo} alt={r.name}
+                                    className="press w-10 h-10 rounded-lg object-cover cursor-pointer"
+                                    style={{ border: `1px solid ${T.hair}` }}
+                                    onClick={()=>setViewPhoto({ url: r.photo!, name: lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name) })}
+                                  />
                                   <button
                                     type="button"
-                                    onClick={()=>removeEquipmentPhoto(r.id)}
+                                    onClick={(e)=>{ e.stopPropagation(); removeEquipmentPhoto(r.id); }}
                                     aria-label="delete photo"
                                     className="press absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full"
                                     style={{ width: 16, height: 16, background: 'rgba(0,0,0,0.55)', color: '#fff' }}
@@ -1357,6 +1363,31 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
               <Field label={t('sp_field_unit')}><input className={inputCls} style={inputStyle} value={newEq.unit} onChange={e=>setNewEq(p=>({...p,unit:e.target.value}))} /></Field>
               <Field label={t('sp_field_note')}><input className={inputCls} style={inputStyle} value={newEq.note} onChange={e=>setNewEq(p=>({...p,note:e.target.value}))} /></Field>
             </Modal>
+          )}
+          {viewPhoto && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-6"
+              style={{ background: 'rgba(11,30,66,0.85)' }}
+              onClick={()=>setViewPhoto(null)}
+            >
+              <button
+                type="button"
+                onClick={()=>setViewPhoto(null)}
+                aria-label={t('sp_cancel')}
+                className="press absolute top-4 right-4 flex items-center justify-center rounded-full"
+                style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+              >
+                <X size={20} />
+              </button>
+              <div className="flex flex-col items-center gap-3 max-w-full max-h-full" onClick={e=>e.stopPropagation()}>
+                <img
+                  src={viewPhoto.url} alt={viewPhoto.name}
+                  className="rounded-2xl object-contain"
+                  style={{ maxWidth: '90vw', maxHeight: '80vh', border: '1px solid rgba(255,255,255,0.2)' }}
+                />
+                <span className="f-thai text-sm" style={{ color: '#fff' }}>{viewPhoto.name}</span>
+              </div>
+            </div>
           )}
         </div>
       )}
