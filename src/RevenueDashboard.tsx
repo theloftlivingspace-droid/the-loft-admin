@@ -95,7 +95,20 @@ function aggregate(ledger: LedgerRow[]): Agg {
   ledger.forEach(row => {
     const status = row.status || '';
     const m = status.match(/Matched\s*-\s*(.+)$/);
-    const ota = m ? m[1].trim() : 'SCB';
+    let ota = m ? m[1].trim() : 'SCB';
+    // 'Direct/Extranet' (bank-transfer-direct) and 'PayPal direct booking'
+    // (PayPal, withdrawn to SCB) are both a Direct-channel booking paid by
+    // a different rail — fold both into 'SCB', the existing bucket for
+    // plain-transfer Direct bookings, so Revenue by month/OTA shows one
+    // "Direct" column instead of three near-identical ones. This mirrors
+    // the same fix in buildDashboardTab() (payout-income-log/Code.gs) and
+    // revenueChannelKey() (PerformanceDashboard.tsx) — three separate
+    // client/server implementations independently reproduce this
+    // aggregation (see file header comment), so the same fix has to be
+    // applied in all three (found 2026-09-11, Nathan: "Direct/Extranet
+    // กับ PayPal direct booking มันคืออันเดียวกัน" — first two fixes missed
+    // this file, the one actually rendering the table he was looking at).
+    if (ota === 'Direct/Extranet' || ota === 'PayPal direct booking') ota = 'SCB';
     const amt = Number(row.net) || 0;
     const d = new Date(row.date);
     const mKey = isNaN(d.getTime())
