@@ -58,7 +58,15 @@ const REVENUE_CHANNEL_META: Record<string, { short: string; hex: string }> = {
 };
 function revenueChannelKey(status: string): string {
   const m = (status || '').match(/Matched\s*-\s*(.+)$/);
-  return m ? m[1].trim() : 'SCB';
+  const key = m ? m[1].trim() : 'SCB';
+  // 'Direct/Extranet' (bank-transfer-direct) and 'PayPal direct booking'
+  // (PayPal, withdrawn to SCB) are both just a Direct-channel booking paid
+  // by a different rail — fold both into the same 'SCB' bucket used above
+  // for plain-transfer Direct bookings, so they show as one "Direct
+  // Booking" column instead of three near-identical ones (found 2026-09-11,
+  // Nathan: "Direct/Extranet กับ PayPal direct booking มันคืออันเดียวกัน").
+  if (key === 'Direct/Extranet' || key === 'PayPal direct booking') return 'SCB';
+  return key;
 }
 function revenueChannelMeta(key: string) {
   return REVENUE_CHANNEL_META[key] || { short: key, hex: '#607d8b' };
