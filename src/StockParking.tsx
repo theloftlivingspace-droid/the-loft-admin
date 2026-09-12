@@ -3,7 +3,7 @@ import { useLang } from './LanguageContext';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Camera, RefreshCw, X } from 'lucide-react';
+import { Camera, RefreshCw, X, Trash2 } from 'lucide-react';
 import { T } from './theme';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
@@ -819,7 +819,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     setShowEqModal(false);
   };
   const [uploadingEqId, setUploadingEqId] = useState<number | null>(null);
-  const [viewPhoto, setViewPhoto] = useState<{ url: string; name: string } | null>(null);
+  const [viewPhoto, setViewPhoto] = useState<{ id: number; url: string; name: string } | null>(null);
   const addEquipmentPhoto = async (id:number, file:File) => {
     setUploadingEqId(id);
     try {
@@ -1242,23 +1242,12 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                           <td className="px-3 py-2">
                             <div className="relative" style={{ width: 40, height: 40 }}>
                               {r.photo ? (
-                                <>
-                                  <img
-                                    src={r.photo} alt={r.name}
-                                    className="press w-10 h-10 rounded-lg object-cover cursor-pointer"
-                                    style={{ border: `1px solid ${T.hair}` }}
-                                    onClick={()=>setViewPhoto({ url: r.photo!, name: lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name) })}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={(e)=>{ e.stopPropagation(); removeEquipmentPhoto(r.id); }}
-                                    aria-label="delete photo"
-                                    className="press absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full"
-                                    style={{ width: 16, height: 16, background: 'rgba(0,0,0,0.55)', color: '#fff' }}
-                                  >
-                                    <X size={10} />
-                                  </button>
-                                </>
+                                <img
+                                  src={r.photo} alt={r.name}
+                                  className="press w-10 h-10 rounded-lg object-cover cursor-pointer"
+                                  style={{ border: `1px solid ${T.hair}` }}
+                                  onClick={()=>setViewPhoto({ id: r.id, url: r.photo!, name: lang==='en' ? (EQUIP_NAME_EN[r.name] || r.name) : (EQUIP_NAME_TH[r.name] || r.name) })}
+                                />
                               ) : (
                                 <label
                                   className="press focus-ring flex items-center justify-center rounded-lg cursor-pointer w-10 h-10"
@@ -1386,6 +1375,14 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                   style={{ maxWidth: '90vw', maxHeight: '80vh', border: '1px solid rgba(255,255,255,0.2)' }}
                 />
                 <span className="f-thai text-sm" style={{ color: '#fff' }}>{viewPhoto.name}</span>
+                <button
+                  type="button"
+                  onClick={()=>{ removeEquipmentPhoto(viewPhoto.id); setViewPhoto(null); }}
+                  className="press f-thai flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: 'rgba(220,60,60,0.85)', color: '#fff' }}
+                >
+                  <Trash2 size={13} /> {t('sp_delete')}
+                </button>
               </div>
             </div>
           )}
