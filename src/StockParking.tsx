@@ -1131,18 +1131,18 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 f-thai">
+                            <td className="px-3 py-2 f-thai" style={{ minWidth: '64px' }}>
                               <input
                                 className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
-                                style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                                style={{ color: T.inkSoft, border: '1px solid transparent', minWidth: '56px' }}
                                 value={lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}
                                 onChange={e=>updateStockUnit(r.id, e.target.value)}
                               />
                             </td>
-                            <td className="px-3 py-2 text-xs f-thai">
+                            <td className="px-3 py-2 text-xs f-thai" style={{ minWidth: '140px' }}>
                               <input
                                 className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-thai"
-                                style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                                style={{ color: T.inkSoft, border: '1px solid transparent', minWidth: '130px' }}
                                 value={lang==='en' ? (STOCK_NOTE_EN[r.note] || r.note) : (STOCK_NOTE_TH[r.note] || r.note)}
                                 onChange={e=>updateStockNote(r.id, e.target.value)}
                                 placeholder={t('sp_field_note')}
@@ -1289,18 +1289,18 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                                 className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
                             </div>
                           </td>
-                          <td className="px-3 py-2 f-thai">
+                          <td className="px-3 py-2 f-thai" style={{ minWidth: '64px' }}>
                             <input
                               className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-sm f-thai"
-                              style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                              style={{ color: T.inkSoft, border: '1px solid transparent', minWidth: '56px' }}
                               value={lang==='en' ? (STOCK_UNIT_EN[r.unit] || r.unit) : (STOCK_UNIT_TH[r.unit] || r.unit)}
                               onChange={e=>updateEqUnit(r.id, e.target.value)}
                             />
                           </td>
-                          <td className="px-3 py-2 text-xs f-thai">
+                          <td className="px-3 py-2 text-xs f-thai" style={{ minWidth: '140px' }}>
                             <input
                               className="w-full bg-transparent focus-ring rounded-lg px-1.5 py-1 text-xs f-thai"
-                              style={{ color: T.inkSoft, border: '1px solid transparent' }}
+                              style={{ color: T.inkSoft, border: '1px solid transparent', minWidth: '130px' }}
                               value={r.note}
                               onChange={e=>updateEqNote(r.id, e.target.value)}
                               placeholder={t('sp_field_note')}
