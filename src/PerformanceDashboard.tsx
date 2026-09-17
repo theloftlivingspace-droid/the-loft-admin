@@ -265,7 +265,10 @@ export default function PerformanceDashboard() {
 
   const rangeLabel = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
-  const chartMax = metric === 'rooms' ? TOTAL_ROOMS : niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05);
+  const chartMax = Math.min(
+    metric === 'rooms' ? TOTAL_ROOMS : Infinity,
+    niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05),
+  );
   const avgVal = avg[metric];
   const avgPct = Math.min(100, (avgVal / chartMax) * 100);
   // 5 evenly-spaced reference lines (0..chartMax), like the vertical axis
