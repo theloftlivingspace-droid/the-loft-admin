@@ -139,6 +139,15 @@ function niceMax(v: number): number {
 // The Loft has 16 rooms total, so nightly rooms-sold can never exceed 16 —
 // cap that axis there instead of letting niceMax round up to 20.
 const TOTAL_ROOMS = 16;
+// niceMax's 1/2/5/10 steps are too coarse for a 0-16 room scale (anything
+// above ~8 jumps straight to 20, which then just gets clipped back to 16 —
+// so the axis never actually shrinks). Round to the nearest multiple of 4
+// instead, so weeks with lower rooms-sold get a genuinely smaller axis.
+function niceMaxRooms(v: number, total: number): number {
+  const step = 4;
+  const rounded = Math.ceil(v / step) * step;
+  return Math.min(total, Math.max(step, rounded));
+}
 
 type Metric = 'rooms' | 'revenue';
 
@@ -265,10 +274,9 @@ export default function PerformanceDashboard() {
 
   const rangeLabel = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
-  const chartMax = Math.min(
-    metric === 'rooms' ? TOTAL_ROOMS : Infinity,
-    niceMax(Math.max(...days.map(d => d[metric]), 1) * 1.05),
-  );
+  const chartMax = metric === 'rooms'
+    ? niceMaxRooms(Math.max(...days.map(d => d.rooms), 1) * 1.05, TOTAL_ROOMS)
+    : niceMax(Math.max(...days.map(d => d.revenue), 1) * 1.05);
   const avgVal = avg[metric];
   const avgPct = Math.min(100, (avgVal / chartMax) * 100);
   // 5 evenly-spaced reference lines (0..chartMax), like the vertical axis
