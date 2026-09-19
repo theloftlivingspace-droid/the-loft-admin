@@ -128,12 +128,16 @@ function mondayOf(d: Date): Date {
   const diff = day === 0 ? -6 : 1 - day;
   return addDays(d, diff);
 }
-// Round up to a "nice" axis max (1/2/5/10 × 10^n), same idea LH's chart uses.
+// Round up to a "nice" axis max. Plain 1/2/5/10 steps are too coarse here —
+// a value like 5.25×10^n rounds straight to 10×10^n (2x too high), which is
+// why the Revenue axis was jumping to 10,000 for a ~5,000 week. Use a finer
+// step table so the axis stays close to the actual data.
 function niceMax(v: number): number {
   if (v <= 0) return 1;
   const pow = Math.pow(10, Math.floor(Math.log10(v)));
   const n = v / pow;
-  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  const steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  const step = steps.find(s => n <= s) ?? 10;
   return step * pow;
 }
 // The Loft has 16 rooms total, so nightly rooms-sold can never exceed 16 —
