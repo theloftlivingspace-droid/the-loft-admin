@@ -34,6 +34,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  const isPost = req.method === 'POST';
   try {
     const params = new URLSearchParams(req.query);
     params.delete('app');
@@ -51,27 +52,60 @@ export default async function handler(req, res) {
     // was producing spurious "failed to load" errors. maxDuration is raised
     // to 25s in vercel.json so this still resolves — with our own clean JSON
     // error — before Vercel would kill the function itself.
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-    let gasRes;
-    try {
-      if (req.method === 'POST') {
-        const chunks = [];
-        for await (const chunk of req) chunks.push(chunk);
-        const rawBody = Buffer.concat(chunks).toString();
-        gasRes = await fetch(targetUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: rawBody,
-          redirect: 'follow',
-          signal: controller.signal,
-        });
-      } else {
-        gasRes = await fetch(targetUrl, { redirect: 'follow', cache: 'no-store', signal: controller.signal });
-      }
-    } finally {
-      clearTimeout(timeoutId);
+    //
+    // GET requests are read-only (getRoomStatus, getAllDocs, ...), so on a
+    // timeout it's safe to retry once more within the same invocation —
+    // same class of transient flake as GAS_TODO_URL (see push-badge.js /
+    // bot.js styleSheet1 retry), just surfacing as a hang here instead of
+    // an HTML error page. Split the 25s maxDuration budget into two GET
+    // attempts (9s, then 13s) instead of one 20s attempt, so a cold-start
+    // hiccup on try 1 doesn't have to sink the whole request. POST is left
+    // as a single 20s attempt — it mutates check-in/out state, so retrying
+    // a call that may have actually succeeded server-side risks a double
+    // action.
+    let rawBody = null;
+    if (isPost) {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      rawBody = Buffer.concat(chunks).toString();
     }
+
+    async function attemptFetch(timeoutMs) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        if (isPost) {
+          return await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: rawBody,
+            redirect: 'follow',
+            signal: controller.signal,
+          });
+        }
+        return await fetch(targetUrl, { redirect: 'follow', cache: 'no-store', signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    const attemptTimeouts = isPost ? [20000] : [9000, 13000];
+    let gasRes;
+    let lastErr;
+    for (let i = 0; i < attemptTimeouts.length; i++) {
+      try {
+        gasRes = await attemptFetch(attemptTimeouts[i]);
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (e && e.name === 'AbortError' && i < attemptTimeouts.length - 1) {
+          continue; // retry once more (GET only)
+        }
+        throw e;
+      }
+    }
+    if (lastErr) throw lastErr;
 
     const text = await gasRes.text();
     // Try to relay as JSON, fallback to plain text
@@ -83,7 +117,10 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     if (err && err.name === 'AbortError') {
-      res.status(504).json({ ok: false, error: 'GAS backend timed out (no response within 20s).' });
+      const msg = isPost
+        ? 'GAS backend timed out (no response within 20s).'
+        : 'GAS backend timed out (no response after 2 attempts, ~22s total).';
+      res.status(504).json({ ok: false, error: msg });
     } else {
       res.status(502).json({ ok: false, error: 'Proxy error: ' + String(err) });
     }
