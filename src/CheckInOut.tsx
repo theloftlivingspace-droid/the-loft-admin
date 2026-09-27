@@ -1737,19 +1737,19 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const isCheckedOut = checkedOutSet.has(s.resId);
             const isNoShow     = s.status === 'arriving-today' && s.checkin < refDate && !isCheckedIn && !isCheckedOut;
 
-            // สี: cancelled=แดง(wine) | checkedOut=เขียวอมฟ้า(teal) | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
-            // checkedOut ใช้ teal — ลองทองมาก่อน (ซ้ำกับ arriving-today) แล้วลอง
-            // plum (ซ้ำกับสถานะ "ปิดปรับปรุง" ของ room grid) ทั้งสองสีถูกใช้ที่
-            // อื่นอยู่แล้ว teal เป็นสีเดียวในธีมที่ไม่ถูกใช้ซ้ำกับสถานะไหนเลย
-            // (แจ้งปัญหา 2026-09-27, แก้รอบ 2)
+            // สี: cancelled=แดง(wine) | checkedOut=ส้ม(orange) | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
+            // checkedOut ผ่านมาแล้ว 3 สี: ทอง (ซ้ำ arriving-today) → ม่วง (ซ้ำ
+            // "ปิดปรับปรุง" บน room grid) → teal (ใช้ได้ แต่ผู้ใช้ขอเปลี่ยนเป็น
+            // ส้มแทน 2026-09-27) — ส้มไม่ซ้ำสีไหนในธีมและแยกจาก brass
+            // (เหลืองทอง) กับ wine (แดง) ได้ชัดพอ
             const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: '#E4BDC3' }
-                             : isCheckedOut              ? { border: `1px solid ${T.teal}40`, background: '#B6CBCC' }
+                             : isCheckedOut              ? { border: `1px solid ${T.orange}40`, background: '#E9C3AA' }
                              : isCheckedIn               ? { border: `1px solid ${T.sage}40`, background: '#C2DACA' }
                              : isNoShow                  ? { border: `1px solid ${T.hair}`, background: T.bone }
                              : s.status==='arriving-soon'? { border: `1px solid ${T.navy}30`, background: '#BAC4D6' }
                                                          : { border: `1px solid ${T.hair}`, background: T.card };
             const topBarBg     = isCancelled  ? T.wine
-                                : isCheckedOut ? T.teal
+                                : isCheckedOut ? T.orange
                                 : isCheckedIn  ? T.sage
                                 : isNoShow     ? '#9CA3AF'
                                                : cfg.bg;
