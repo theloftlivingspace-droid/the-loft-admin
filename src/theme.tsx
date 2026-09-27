@@ -23,6 +23,12 @@ export const T = {
   sageTint: "#E3F0E7",
   plum: "#6B4C93",
   plumTint: "#EAE2F2",
+  // Dedicated to the "checked-out" stay-card status — plum was tried first
+  // but that's also the room-status grid's "closed" color, so a checked-out
+  // stay card and a closed/renovation room read as the same status at a
+  // glance (reported 2026-09-27). Teal isn't used anywhere else in the app.
+  teal: "#2E6B6E",
+  tealTint: "#E6EEED",
   hair: "rgba(11,27,61,0.12)",
   hairGold: "rgba(217,178,92,0.4)",
 } as const;
