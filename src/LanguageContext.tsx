@@ -137,6 +137,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   ci_note_saved_line_warn:{ th: 'Note บันทึกแล้ว ⚠️ LINE: ', en: 'Note saved ⚠️ LINE: ' },
   ci_note_saved_line_ok:{ th: 'บันทึก Note + แจ้ง LINE แล้ว ✅', en: 'Note saved + LINE notified ✅' },
   ci_note_saved_pending_line:{ th: 'บันทึก Note แล้ว ✅ (จะแจ้งพร้อมสรุปประจำวัน 19:00)', en: 'Note saved ✅ (will go out with the 19:00 daily summary)' },
+  ci_note_line_sent_sheet_failed: { th: 'ส่ง LINE เข้ากลุ่มแม่บ้านแล้ว แต่ Sheet ยังไม่บันทึก กดบันทึกอีกครั้ง', en: 'LINE sent to maid group, but Sheet not saved — tap Save again' },
   ci_save_failed_colon: { th: 'บันทึกไม่สำเร็จ: ', en: 'Save failed: ' },
   ci_upload_failed_colon:{ th: 'อัปโหลดไม่สำเร็จ: ', en: 'Upload failed: ' },
   ci_load_room_failed:  { th: 'โหลดข้อมูลห้องไม่สำเร็จ', en: 'Failed to load room data' },

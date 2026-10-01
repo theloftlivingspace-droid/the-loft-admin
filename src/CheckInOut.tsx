@@ -1085,6 +1085,28 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     setNoteText(s.note || '');
   }
 
+  // กัน LINE ซ้ำเมื่อกดบันทึกใหม่หลัง Sheet save ล้มเหลว (resId|note ที่ส่งไปแล้ว)
+  const lastMaidPushRef = useRef<string>('');
+
+  // setNote เป็น GET ที่ idempotent (ตั้งค่า note เดิมซ้ำได้) จึง retry ฝั่ง client ได้ปลอดภัย
+  // GAS มักช้าแบบ cold start / quota throttle → proxy คืน 504 timeout
+  async function setNoteWithRetry(resId: string, text: string, tries = 3): Promise<void> {
+    let lastErr: unknown;
+    for (let i = 0; i < tries; i++) {
+      try {
+        const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
+        let j: { ok?: boolean; error?: string } = {};
+        try { j = JSON.parse(await r.text()); } catch { /* non-JSON */ }
+        if (r.ok && j.ok !== false) return;
+        lastErr = new Error(j.error || `HTTP ${r.status}`);
+        if (r.status !== 502 && r.status !== 504) break; // error จริง (ไม่ใช่ timeout) ไม่ต้อง retry
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  }
+
   async function saveNote() {
     if (!noteModal) return;
     setNoteSaving(true);
@@ -1094,40 +1116,43 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     // ping the maid group right away — the note just needs to be in Sheet1
     // so it rides along with the regular 19:00 daily maid summary instead.
     const isArrivingSoon = status === 'arriving-soon';
-    try {
-      // 1. Write to GAS Sheet1
-      const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
-      let j: { ok?: boolean; error?: string } = {};
-      let rawText = '';
-      try { rawText = await r.text(); j = JSON.parse(rawText); } catch { /* non-JSON */ }
-      if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
+    const pushKey = `${resId}|${text}`;
 
-      // 2. Close modal + update UI
+    // LINE ถึงกลุ่มแม่บ้านไม่ควรขึ้นกับว่า GAS ตอบทันหรือไม่ — ยิงควบคู่กับการเขียน Sheet
+    // (ข้ามถ้าเป็น arriving-soon หรือเพิ่งส่งข้อความเดียวกันไปแล้ว)
+    let linePromise: Promise<{ ok?: boolean; error?: string }> | null = null;
+    if (!isArrivingSoon && lastMaidPushRef.current !== pushKey) {
+      lastMaidPushRef.current = pushKey;
+      linePromise = fetch('/api/maid-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
+        })
+        .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
+        .catch(e => ({ ok: false, error: String(e) }));
+    }
+
+    let saveErr: unknown = null;
+    try {
+      await setNoteWithRetry(resId, text);
+    } catch (e) {
+      saveErr = e;
+    }
+    const lineRes = linePromise ? await linePromise : null;
+    const lineMsg = lineRes
+      ? (lineRes.ok === false ? t('ci_note_saved_line_warn') + (lineRes.error || 'error') : t('ci_note_saved_line_ok'))
+      : '';
+
+    if (saveErr) {
+      // เก็บ modal ไว้ให้กดบันทึกใหม่ได้ (ข้อความไม่หาย)
+      showToast(t('ci_save_failed_colon') + String(saveErr) + (lineRes && lineRes.ok !== false ? ' — ' + t('ci_note_line_sent_sheet_failed') : ''));
+    } else {
       setNoteModal(null);
       setNoteText('');
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
-
-      // 3. Push LINE — skip for arriving-soon; it'll go out with the 19:00 summary
-      if (isArrivingSoon) {
-        showToast(t('ci_note_saved_pending_line'));
-      } else {
-        fetch('/api/maid-note', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resId, room, guest, checkin, checkout, note: text }),
-          })
-          .then(r => r.json().catch(() => ({} as { ok?: boolean; error?: string })))
-            .then(j => {
-              if (j.ok === false) showToast(t('ci_note_saved_line_warn') + (j.error || 'error'));
-              else showToast(t('ci_note_saved_line_ok'));
-            })
-            .catch(e => showToast(t('ci_note_saved_line_warn') + String(e)));
-      }
-    } catch (e) {
-      showToast(t('ci_save_failed_colon') + String(e));
-    } finally {
-      setNoteSaving(false);
+      showToast(isArrivingSoon ? t('ci_note_saved_pending_line') : lineMsg);
     }
+    setNoteSaving(false);
   }
 
   function openExtendModal(s: Stay) {
