@@ -1088,23 +1088,16 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   // กัน LINE ซ้ำเมื่อกดบันทึกใหม่หลัง Sheet save ล้มเหลว (resId|note ที่ส่งไปแล้ว)
   const lastMaidPushRef = useRef<string>('');
 
-  // setNote เป็น GET ที่ idempotent (ตั้งค่า note เดิมซ้ำได้) จึง retry ฝั่ง client ได้ปลอดภัย
-  // GAS มักช้าแบบ cold start / quota throttle → proxy คืน 504 timeout
-  async function setNoteWithRetry(resId: string, text: string, tries = 3): Promise<void> {
-    let lastErr: unknown;
-    for (let i = 0; i < tries; i++) {
-      try {
-        const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
-        let j: { ok?: boolean; error?: string } = {};
-        try { j = JSON.parse(await r.text()); } catch { /* non-JSON */ }
-        if (r.ok && j.ok !== false) return;
-        lastErr = new Error(j.error || `HTTP ${r.status}`);
-        if (r.status !== 502 && r.status !== 504) break; // error จริง (ไม่ใช่ timeout) ไม่ต้อง retry
-      } catch (e) {
-        lastErr = e;
-      }
-    }
-    throw lastErr;
+  // ยิง setNote ครั้งเดียว (ห้าม retry): ฝั่ง GAS ต้อง styleSheet1 ผ่าน ScriptLock ทุกครั้ง
+  // retry ซ้ำจะชนกัน (skipped) แล้วช้ากว่าเดิม — ส่วนการเขียน Note ลง Sheet1 เกิดก่อนขั้นช้า
+  // timeout จึงแปลว่า "น่าจะบันทึกแล้วแต่ GAS ตอบไม่ทัน" ไม่ใช่ "บันทึกไม่สำเร็จ"
+  async function setNoteOnce(resId: string, text: string): Promise<{ timedOut: boolean }> {
+    const r = await fetch(`/api/gas-proxy?app=todo&action=setNote&id=${encodeURIComponent(resId)}&note=${encodeURIComponent(text)}`);
+    let j: { ok?: boolean; error?: string } = {};
+    try { j = JSON.parse(await r.text()); } catch { /* non-JSON */ }
+    if (r.ok && j.ok !== false) return { timedOut: false };
+    if (r.status === 504) return { timedOut: true };
+    throw new Error(j.error || `HTTP ${r.status}`);
   }
 
   async function saveNote() {
@@ -1133,8 +1126,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     }
 
     let saveErr: unknown = null;
+    let timedOut = false;
     try {
-      await setNoteWithRetry(resId, text);
+      ({ timedOut } = await setNoteOnce(resId, text));
     } catch (e) {
       saveErr = e;
     }
@@ -1150,7 +1144,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       setNoteModal(null);
       setNoteText('');
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, note: text } : x));
-      showToast(isArrivingSoon ? t('ci_note_saved_pending_line') : lineMsg);
+      showToast(timedOut ? t('ci_note_saved_gas_slow') + (lineMsg ? ' — ' + lineMsg : '')
+                         : (isArrivingSoon ? t('ci_note_saved_pending_line') : lineMsg));
     }
     setNoteSaving(false);
   }
