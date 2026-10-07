@@ -18,7 +18,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   logout_btn:           { th: '🚪 Logout', en: '🚪 Logout' },
   logout_label:         { th: 'Logout', en: 'Logout' },
   tab_dashboard:        { th: 'แดชบอร์ด', en: 'Dashboard' },
-  tab_booking:          { th: 'การจอง', en: 'Booking' },
+  tab_booking:          { th: 'บัญชี', en: 'Accounting' },
   tab_checkinout:       { th: 'เช็คอิน/เอาท์', en: 'Check-in/out' },
   tab_stock:            { th: 'สต๊อก', en: 'Stock' },
   tab_parking:          { th: 'ที่จอดรถ', en: 'Parking' },
