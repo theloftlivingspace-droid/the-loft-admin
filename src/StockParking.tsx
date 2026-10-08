@@ -505,7 +505,7 @@ function PatrolCard({ u, onDelete, t }: { u: PatrolUnknown; onDelete: (id: strin
           )}
           {u.notes && <p className="text-sm rounded-lg p-2" style={{ color: T.ink, background: T.bone }}>{u.notes}</p>}
           <button onClick={() => onDelete(u.id)}
-            className="press text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${T.wine}30`, color: T.wine }}>
+            className="sp-w press text-xs rounded-lg px-3 py-1.5" style={{ border: `1px solid ${T.wine}30`, color: T.wine }}>
             🗑 {t('sp_delete')}
           </button>
         </div>
@@ -572,7 +572,7 @@ function SortableRow({id, className, style: styleProp, children}:{id:number|stri
 
 const DragHandle = (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button type="button" {...props}
-    className="press w-6 h-6 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+    className="sp-w press w-6 h-6 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
     style={{ color: T.inkSoft }}
     aria-label="drag to reorder">⠿</button>
 );
@@ -585,7 +585,7 @@ function useDndSensors() {
 }
 
 
-export default function StockParking({ group, initialTab, onLowStockChange, isAdmin }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void; isAdmin?: boolean }) {
+export default function StockParking({ group, initialTab, onLowStockChange, isAdmin, readOnly }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void; isAdmin?: boolean; readOnly?: boolean }) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
   const SECTION_GROUPS = {
@@ -977,9 +977,9 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
 
   const inputCls = "focus-ring w-full rounded-xl px-3 py-2 text-sm";
   const inputStyle = { border: `1px solid ${T.hairGold}`, color: T.ink };
-  const btnDel   = "press f-thai px-2 py-1 rounded-lg text-xs";
+  const btnDel   = "sp-w press f-thai px-2 py-1 rounded-lg text-xs";
   const btnDelStyle = { border: `1px solid ${T.wine}30`, background: T.wineTint, color: T.wine };
-  const btnAdd   = "press f-thai px-4 py-2 rounded-2xl text-sm font-medium";
+  const btnAdd   = "sp-w press f-thai px-4 py-2 rounded-2xl text-sm font-medium";
   const btnAddStyle = { background: T.navy, color: '#fff' };
   const saveBtnStyle = (key: string) =>
     saving===key ? { background: '#E5E7EB', color: '#9CA3AF' }
@@ -1040,8 +1040,19 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     });
   };
 
+  // readOnly (frontdesk): hide every write control (.sp-w), make fields inert, and
+  // swallow any change/blur/paste events from non-exempt fields in the capture phase
+  // so none of the row-edit handlers (which save to Supabase) can run.
+  const roGuard = (e: React.SyntheticEvent) => {
+    if (!readOnly) return;
+    const el = e.target as HTMLElement;
+    if (el && el.closest && el.closest('[data-ro-ok]')) return;
+    if (el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) { e.stopPropagation(); }
+  };
   return (
-    <div className="pb-24">
+    <div className={readOnly ? 'pb-24 sp-ro' : 'pb-24'}
+      onChangeCapture={roGuard} onBlurCapture={roGuard} onInputCapture={roGuard} onPasteCapture={roGuard} onKeyDownCapture={e => { if (readOnly && !(e.target as HTMLElement).closest('[data-ro-ok]') && /^(INPUT|SELECT|TEXTAREA)$/.test((e.target as HTMLElement).tagName)) e.preventDefault(); }}>
+      {readOnly && <style>{'.sp-ro .sp-w{display:none!important}.sp-ro input:not([data-ro-ok]),.sp-ro select,.sp-ro textarea{pointer-events:none}'}</style>}
       {group==='stock'
         ? sectionNav([
             {key:'stock',      label:'Stock',        emoji:'📦'},
@@ -1065,7 +1076,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             <div className="flex gap-2">
               <button onClick={()=>setShowStockModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={saveStock}
-                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('stock_data')}>
+                className="sp-w f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('stock_data')}>
                 {saving==='stock_data'?'...' : saved==='stock_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
@@ -1108,10 +1119,10 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-1">
                                 <button onClick={()=>changeQty(r.id,-1)}
-                                  className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
+                                  className="sp-w press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
                                 <span className="f-num min-w-[28px] text-center font-semibold" style={{ color: isLow ? T.wine : T.ink }}>{r.qty}</span>
                                 <button onClick={()=>changeQty(r.id,+1)}
-                                  className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
+                                  className="sp-w press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
                               </div>
                             </td>
                             <td className="px-3 py-2 text-xs f-num">
@@ -1209,7 +1220,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             <div className="flex gap-2">
               <button onClick={()=>{ setNewEq(p=>({...p, cat: eqCat})); setShowEqModal(true); }} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={saveEquipment}
-                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('equipment_data')}>
+                className="sp-w f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('equipment_data')}>
                 {saving==='equipment_data'?'...' : saved==='equipment_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
@@ -1250,7 +1261,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                                 />
                               ) : (
                                 <label
-                                  className="press focus-ring flex items-center justify-center rounded-lg cursor-pointer w-10 h-10"
+                                  className="sp-w press focus-ring flex items-center justify-center rounded-lg cursor-pointer w-10 h-10"
                                   style={{ border: `1px dashed ${T.hairGold}`, color: T.inkSoft }}
                                 >
                                   {uploadingEqId === r.id ? <RefreshCw size={14} className="animate-spin" /> : <Camera size={14} />}
@@ -1283,10 +1294,10 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-1">
                               <button onClick={()=>changeEqQty(r.id,-1)}
-                                className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
+                                className="sp-w press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>−</button>
                               <span className="f-num min-w-[28px] text-center font-semibold" style={{ color: T.ink }}>{r.qty}</span>
                               <button onClick={()=>changeEqQty(r.id,+1)}
-                                className="press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
+                                className="sp-w press w-6 h-6 rounded-lg text-sm flex items-center justify-center" style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>+</button>
                             </div>
                           </td>
                           <td className="px-3 py-2 f-thai" style={{ minWidth: '64px' }}>
@@ -1378,7 +1389,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                 <button
                   type="button"
                   onClick={()=>{ removeEquipmentPhoto(viewPhoto.id); setViewPhoto(null); }}
-                  className="press f-thai flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                  className="sp-w press f-thai flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
                   style={{ background: 'rgba(220,60,60,0.85)', color: '#fff' }}
                 >
                   <Trash2 size={13} /> {t('sp_delete')}
@@ -1400,7 +1411,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             <div className="flex gap-2">
               <button onClick={()=>setShowPIModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_in', parkingIn)}
-                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_in')}>
+                className="sp-w f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_in')}>
                 {saving==='parking_in'?'...' : saved==='parking_in'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
@@ -1475,7 +1486,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             <div className="flex gap-2">
               <button onClick={()=>setShowPOModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('parking_out', parkingOut)}
-                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_out')}>
+                className="sp-w f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('parking_out')}>
                 {saving==='parking_out'?'...' : saved==='parking_out'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
@@ -1548,6 +1559,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             </label>
             <div className="flex gap-2 mt-2">
               <input
+                data-ro-ok="1"
                 value={patrolSearch}
                 onChange={e => { setPatrolSearch(e.target.value); setPatrolSearched(false); }}
                 onKeyDown={e => { if (e.key === 'Enter') setPatrolSearched(true); }}
@@ -1604,7 +1616,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
                 </div>
                 <button
                   onClick={() => openPatrolForm(patrolSearch)}
-                  className="press f-thai w-full rounded-xl py-3 text-sm font-semibold"
+                  className="sp-w press f-thai w-full rounded-xl py-3 text-sm font-semibold"
                   style={{ background: T.wine, color: '#fff' }}
                 >
                   📋 {t('sp_patrol_add_unknown_btn')}
@@ -1616,7 +1628,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
           {/* Direct log button */}
           <button
             onClick={() => openPatrolForm()}
-            className="press f-thai w-full rounded-2xl py-3 text-sm font-medium"
+            className="sp-w press f-thai w-full rounded-2xl py-3 text-sm font-medium"
             style={{ background: T.card, border: `2px dashed ${T.hair}`, color: T.inkSoft }}
           >
             ➕ {t('sp_patrol_add_direct_btn')}
@@ -1680,7 +1692,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
             <div className="flex gap-2">
               <button onClick={()=>setShowWModal(true)} className={btnAdd} style={btnAddStyle}>{t('sp_add_item')}</button>
               <button onClick={()=>doSave('warranty_data', warrantyData)}
-                className="f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('warranty_data')}>
+                className="sp-w f-thai px-3 py-1.5 rounded-xl text-xs font-semibold" style={saveBtnStyle('warranty_data')}>
                 {saving==='warranty_data'?'...' : saved==='warranty_data'?t('sp_saved') : t('sp_save')}
               </button>
             </div>
