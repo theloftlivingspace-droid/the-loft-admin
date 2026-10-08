@@ -324,7 +324,7 @@ export default function AdminDailyDashboard() {
     // and now Repairs (via Etc) — every other tab (check-in/out, and the
     // admin-only "etc" pages) is closed off to them.
     const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'> = isFrontdeskNow
-      ? ['checkinout', 'calendar', 'stock', 'parking']
+      ? ['checkinout', 'calendar', 'stock']
       : isMaintenanceNow
       ? ['calendar', 'stock', 'parking', 'repair']
       : ['dashboard'];
@@ -763,7 +763,7 @@ export default function AdminDailyDashboard() {
   // Parking only; Check-in/out and the admin-only "etc" pages stay closed.
   const isMaintenance = currentUser?.role === 'maintenance';
   // frontdesk — outsourced daily-booking admin: Check-in/out + Calendar, plus
-  // view-only Stock/Parking. Everything else (Repair, Dashboard, Accounting, Revenue,
+  // view-only Stock. Everything else (Repair, Dashboard, Accounting, Revenue,
   // Performance, Users) is closed off.
   const isFrontdesk = currentUser?.role === 'frontdesk';
 
@@ -773,7 +773,6 @@ export default function AdminDailyDashboard() {
     { key: 'checkinout' as const, Icon: Building2,    label: t('tab_checkinout') },
     { key: 'calendar' as const,   Icon: CalendarDays, label: t('tab_calendar') },
     { key: 'stock' as const,      Icon: Package,      label: t('tab_stock') },
-    { key: 'parking' as const,    Icon: Car,          label: t('tab_parking') },
   ] : isMaintenance ? [
     { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
     { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
@@ -840,7 +839,6 @@ export default function AdminDailyDashboard() {
                 { key: 'checkinout' as const, Icon: Building2,    label: t('tab_checkinout') },
                 { key: 'calendar' as const,   Icon: CalendarDays, label: t('tab_calendar') },
                 { key: 'stock' as const,      Icon: Package,      label: t('tab_stock') },
-                { key: 'parking' as const,    Icon: Car,          label: t('tab_parking') },
               ] : isMaintenance ? [
                 { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
                 { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
@@ -1427,7 +1425,7 @@ export default function AdminDailyDashboard() {
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
         <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
-          <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} isAdmin={isAdmin} readOnly={isFrontdesk} hiddenSections={isFrontdesk ? ['warranty', 'equipment'] : undefined} />
+          <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} isAdmin={isAdmin} readOnly={isFrontdesk} hiddenSections={isFrontdesk ? ['warranty', 'equipment', 'parking-in', 'parking-out', 'patrol'] : undefined} />
         </div>
         {isAdmin && adminTab === 'users' && (
           <UserManagement />

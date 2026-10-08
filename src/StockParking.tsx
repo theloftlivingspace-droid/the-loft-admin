@@ -933,14 +933,14 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       if (fixed.length) setNextSId(Math.max(...fixed.map(r => r.id)) + 1);
       if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
     });
-    sbLoad('parking_in').then(d => {
+    if (!hidden.includes('parking-in')) sbLoad('parking_in').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as ParkingIn[]);
       setParkingIn(fixed);
       if (fixed.length) setNextPIId(Math.max(...fixed.map(r => r.id)) + 1);
       if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_in', fixed);
     });
-    sbLoad('parking_out').then(d => {
+    if (!hidden.includes('parking-out')) sbLoad('parking_out').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as ParkingOut[]);
       setParkingOut(fixed);
@@ -962,7 +962,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       if (fixed.length) setNextEqId(Math.max(...fixed.map(r => r.id)) + 1);
       if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('equipment_data', fixed);
     });
-    sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
+    if (!hidden.includes('patrol')) sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
   }, []);
 
   // ── shared styles ─────────────────────────────────────────────────────────
