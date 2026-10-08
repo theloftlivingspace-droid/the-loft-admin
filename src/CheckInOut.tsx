@@ -820,6 +820,9 @@ function DocViewer({ docs, onClose, onDelete }: { docs: DocFile[]; onClose: () =
 // ─── Main Component ───────────────────────────────────────────────────────────
 export type CheckInOutHandle = { refresh: () => void };
 export type CheckInOutProps = {
+  // frontdesk (outsourced) accounts: documents (passports/IDs) are fully closed —
+  // no fetch, no upload, no viewer.
+  hideDocs?: boolean;
   // ISO 'YYYY-MM-DD'. When omitted (or invalid), the view uses the real
   // current date. When set to a different date, the whole Room Status view
   // (KPI cards, legend counts, room grid, stay list, no-show detection)
@@ -834,7 +837,7 @@ export type CheckInOutProps = {
   onViewDateChange?: (date: string) => void;
 };
 
-const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckInOut({ viewDate, onViewDateChange }, ref) {
+const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckInOut({ viewDate, onViewDateChange, hideDocs }, ref) {
   const { t } = useLang();
   const realToday = today();
   const isValidIsoDate = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -1263,6 +1266,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   }
 
   async function refreshDocs() {
+    if (hideDocs) { setDocs({}); setDocsLoading(false); return; }
     setDocsLoading(true);
     try { setDocs(await fetchAllDocsIndex()); }
     catch (e) {
@@ -1996,14 +2000,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     )}
 
                     {/* Upload + doc list */}
-                    <button
+                    {!hideDocs && (<button
                       disabled={isUploading}
                       onClick={() => handleUploadClick(s.roomNum, s.checkin, s.resId)}
                       className="press f-thai inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg disabled:opacity-50"
                       style={{ border: `1px dashed ${T.hair}`, color: T.inkSoft }}>
                       {isUploading ? `⏳ ${t('ci_uploading')}` : `📎 ${t('ci_upload_doc')}`}
-                    </button>
-                    {!docsLoading && cardDocs.length > 0 && (
+                    </button>)}
+                    {!hideDocs && !docsLoading && cardDocs.length > 0 && (
                       <button
                         onClick={() => setViewerKey(cardKey)}
                         className="press f-thai inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg font-medium"
@@ -2035,7 +2039,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         multiple className="hidden" onChange={handleFileChange} />
 
       {/* Doc viewer modal */}
-      {viewerKey && viewerDocs.length > 0 && (
+      {!hideDocs && viewerKey && viewerDocs.length > 0 && (
         <DocViewer
           docs={viewerDocs}
           onClose={() => setViewerKey(null)}
