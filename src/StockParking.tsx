@@ -585,15 +585,18 @@ function useDndSensors() {
 }
 
 
-export default function StockParking({ group, initialTab, onLowStockChange, isAdmin, readOnly }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void; isAdmin?: boolean; readOnly?: boolean }) {
+export default function StockParking({ group, initialTab, onLowStockChange, isAdmin, readOnly, hiddenSections }: { group: 'stock'|'parking'; initialTab?: 'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'; onLowStockChange?: (count: number) => void; isAdmin?: boolean; readOnly?: boolean; hiddenSections?: string[] }) {
   const { t, lang } = useLang();
   // ── nav ──────────────────────────────────────────────────────────────────
+  const hidden = hiddenSections ?? [];
   const SECTION_GROUPS = {
     stock:   ['stock', 'warranty', 'equipment'],
     parking: ['parking-in', 'parking-out', 'patrol'],
   } as const;
   const [section, setSection] = useState<'stock'|'parking-in'|'parking-out'|'patrol'|'warranty'|'equipment'>(initialTab ?? SECTION_GROUPS[group][0]);
   useEffect(() => { if (initialTab) setSection(initialTab); }, [initialTab]);
+  // A hidden section (e.g. warranty/equipment for frontdesk) can never be the active one.
+  useEffect(() => { if (hidden.includes(section)) setSection(SECTION_GROUPS[group][0]); }, [section]);
   // If the active main tab (group) changes and the current sub-tab doesn't
   // belong to it, snap to that group's first sub-tab.
   useEffect(() => {
@@ -928,36 +931,36 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       setStockData(fixed);
       stockSnapshotRef.current = fixed;
       if (fixed.length) setNextSId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
+      if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('stock_data', fixed);
     });
     sbLoad('parking_in').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as ParkingIn[]);
       setParkingIn(fixed);
       if (fixed.length) setNextPIId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_in', fixed);
+      if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_in', fixed);
     });
     sbLoad('parking_out').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as ParkingOut[]);
       setParkingOut(fixed);
       if (fixed.length) setNextPOId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_out', fixed);
+      if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('parking_out', fixed);
     });
-    sbLoad('warranty_data').then(d => {
+    if (!hidden.includes('warranty')) sbLoad('warranty_data').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as Warranty[]);
       setWarrantyData(fixed);
       if (fixed.length) setNextWId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
+      if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
     });
-    sbLoad('equipment_data').then(d => {
+    if (!hidden.includes('equipment')) sbLoad('equipment_data').then(d => {
       if (!d) return;
       const fixed = dedupeIds(d as EquipmentItem[]);
       setEquipmentData(fixed);
       equipmentSnapshotRef.current = fixed;
       if (fixed.length) setNextEqId(Math.max(...fixed.map(r => r.id)) + 1);
-      if (JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('equipment_data', fixed);
+      if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('equipment_data', fixed);
     });
     sbLoad('patrol_unknowns').then(d => { if (d) setPatrolUnknowns(d); });
   }, []);
@@ -965,7 +968,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
   // ── shared styles ─────────────────────────────────────────────────────────
   const sectionNav = (keys: {key:typeof section; label:string; emoji:string}[]) => (
     <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
-      {keys.map(k=>(
+      {keys.filter(k=>!hidden.includes(k.key)).map(k=>(
         <button key={k.key} onClick={()=>setSection(k.key)}
           className="f-thai flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold press"
           style={section===k.key ? { background: T.navy, color: '#fff', border: `1px solid ${T.navy}` } : { background: T.card, color: T.inkSoft, border: `1px solid ${T.hair}` }}>
@@ -1210,7 +1213,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       )}
 
       {/* ── EQUIPMENT (ช่างอาคาร) ── */}
-      {section==='equipment' && (
+      {section==='equipment' && !hidden.includes('equipment') && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>
@@ -1682,7 +1685,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
       )}
 
       {/* ── WARRANTY ── */}
-      {section==='warranty' && (
+      {section==='warranty' && !hidden.includes('warranty') && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="f-display text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0" style={{ color: T.ink }}>

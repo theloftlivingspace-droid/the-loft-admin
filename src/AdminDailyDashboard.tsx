@@ -1427,7 +1427,7 @@ export default function AdminDailyDashboard() {
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
         <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
-          <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} isAdmin={isAdmin} readOnly={isFrontdesk} />
+          <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} isAdmin={isAdmin} readOnly={isFrontdesk} hiddenSections={isFrontdesk ? ['warranty', 'equipment'] : undefined} />
         </div>
         {isAdmin && adminTab === 'users' && (
           <UserManagement />
