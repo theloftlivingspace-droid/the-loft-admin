@@ -135,7 +135,7 @@ export interface RepairItem {
 }
 
 interface CurrentUser {
-  role: 'admin' | 'employee' | 'maintenance' | string;
+  role: 'admin' | 'employee' | 'maintenance' | 'frontdesk' | string;
   full_name?: string;
 }
 

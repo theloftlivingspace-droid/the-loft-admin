@@ -42,7 +42,7 @@ interface User {
   full_name: string;
   username: string;
   password: string;
-  role: 'admin' | 'employee' | 'maintenance';
+  role: 'admin' | 'employee' | 'maintenance' | 'frontdesk';
 }
 
 export default function UserManagement() {
@@ -53,7 +53,7 @@ export default function UserManagement() {
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editDraft, setEditDraft]   = useState<Partial<User>>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newUser, setNewUser]       = useState({ full_name: '', username: '', password: '', role: 'employee' as 'admin' | 'employee' | 'maintenance' });
+  const [newUser, setNewUser]       = useState({ full_name: '', username: '', password: '', role: 'employee' as 'admin' | 'employee' | 'maintenance' | 'frontdesk' });
   const [busy, setBusy]             = useState(false);
 
   async function loadUsers() {
@@ -146,10 +146,11 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="f-thai block text-xs font-medium mb-1" style={{ color: T.inkSoft }}>Role</label>
-              <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'employee' | 'maintenance' })}
+              <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'employee' | 'maintenance' | 'frontdesk' })}
                 className="focus-ring w-full rounded-xl px-3 py-2 text-sm" style={{ background: T.card, border: `1px solid ${T.hairGold}`, color: T.ink }}>
                 <option value="employee">employee</option>
                 <option value="maintenance">maintenance</option>
+                <option value="frontdesk">frontdesk</option>
                 <option value="admin">admin</option>
               </select>
             </div>
@@ -179,10 +180,11 @@ export default function UserManagement() {
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="username" />
                     <input value={editDraft.password ?? ''} onChange={e => setEditDraft({ ...editDraft, password: e.target.value })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="password" />
-                    <select value={editDraft.role ?? 'employee'} onChange={e => setEditDraft({ ...editDraft, role: e.target.value as 'admin' | 'employee' | 'maintenance' })}
+                    <select value={editDraft.role ?? 'employee'} onChange={e => setEditDraft({ ...editDraft, role: e.target.value as 'admin' | 'employee' | 'maintenance' | 'frontdesk' })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}>
                       <option value="employee">employee</option>
                       <option value="maintenance">maintenance</option>
+                <option value="frontdesk">frontdesk</option>
                       <option value="admin">admin</option>
                     </select>
                   </div>

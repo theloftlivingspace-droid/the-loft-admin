@@ -60,7 +60,7 @@ interface User {
   full_name: string;
   username: string;
   password: string;
-  role: 'admin' | 'employee' | 'maintenance';
+  role: 'admin' | 'employee' | 'maintenance' | 'frontdesk';
 }
 
 interface Report {
@@ -319,13 +319,16 @@ export default function AdminDailyDashboard() {
   {
     const isAdminNow = currentUser?.role === 'admin';
     const isMaintenanceNow = currentUser?.role === 'maintenance';
+    const isFrontdeskNow = currentUser?.role === 'frontdesk';
     // Maintenance (ช่างอาคาร) accounts see Stock/Warranty, Calendar, Parking,
     // and now Repairs (via Etc) — every other tab (check-in/out, and the
     // admin-only "etc" pages) is closed off to them.
-    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'> = isMaintenanceNow
+    const order: Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair'> = isFrontdeskNow
+      ? ['checkinout', 'calendar']
+      : isMaintenanceNow
       ? ['calendar', 'stock', 'parking', 'repair']
       : ['dashboard'];
-    if (!isMaintenanceNow) {
+    if (!isMaintenanceNow && !isFrontdeskNow) {
       if (isAdminNow) order.push('todo', 'revenue', 'performance');
       order.push('checkinout', 'calendar', 'stock', 'parking', 'repair');
       if (isAdminNow) order.push('users');
@@ -759,10 +762,17 @@ export default function AdminDailyDashboard() {
   // ช่างอาคาร (building maintenance) — sees Calendar, Stock/Warranty, and
   // Parking only; Check-in/out and the admin-only "etc" pages stay closed.
   const isMaintenance = currentUser?.role === 'maintenance';
+  // frontdesk — outsourced daily-booking admin: Check-in/out + Calendar only.
+  // Everything else (Stock/Parking, Repair, Dashboard, Accounting, Revenue,
+  // Performance, Users) is closed off.
+  const isFrontdesk = currentUser?.role === 'frontdesk';
 
   // Mobile bottom-nav tab list, shared between the click handler and the
   // swipe-to-select touch handler below.
-  const mobileNavItems = (isMaintenance ? [
+  const mobileNavItems = (isFrontdesk ? [
+    { key: 'checkinout' as const, Icon: Building2,    label: t('tab_checkinout') },
+    { key: 'calendar' as const,   Icon: CalendarDays, label: t('tab_calendar') },
+  ] : isMaintenance ? [
     { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
     { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
     { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
@@ -824,7 +834,10 @@ export default function AdminDailyDashboard() {
               cluster off-screen. */}
           <div className="min-w-0 flex-1 overflow-x-auto flex justify-center">
             <div className="flex items-center gap-1 rounded-full px-1.5 py-1.5 flex-shrink-0" style={{ background: T.card, border: `1px solid ${T.hair}`, boxShadow: '0 8px 20px rgba(11,30,66,0.10)' }}>
-              {(isMaintenance ? [
+              {(isFrontdesk ? [
+                { key: 'checkinout' as const, Icon: Building2,    label: t('tab_checkinout') },
+                { key: 'calendar' as const,   Icon: CalendarDays, label: t('tab_calendar') },
+              ] : isMaintenance ? [
                 { key: 'calendar' as const, Icon: CalendarDays,   label: t('tab_calendar') },
                 { key: 'stock' as const,    Icon: Package,        label: t('tab_stock') },
                 { key: 'parking' as const,  Icon: Car,            label: t('tab_parking') },
@@ -1409,9 +1422,11 @@ export default function AdminDailyDashboard() {
           <CheckInOut ref={checkInOutRef} viewDate={reportDate} onViewDateChange={setReportDate} />
         )}
         {/* Always mounted (hidden when inactive) so onLowStockChange fires on login */}
+        {!isFrontdesk && (
         <div className={adminTab === 'stock' || adminTab === 'parking' ? '' : 'hidden'}>
           <StockParking group={adminTab === 'parking' ? 'parking' : 'stock'} initialTab={stockInitialTab} onLowStockChange={(n) => setNotifLowStock(n)} isAdmin={isAdmin} />
         </div>
+        )}
         {isAdmin && adminTab === 'users' && (
           <UserManagement />
         )}
@@ -1429,7 +1444,7 @@ export default function AdminDailyDashboard() {
         )}
 
         {/* Dashboard Tab */}
-        {adminTab === 'dashboard' && !isMaintenance && <div>
+        {adminTab === 'dashboard' && !isMaintenance && !isFrontdesk && <div>
 
         {/* Quick Links — shortcut buttons */}
         <div className="grid grid-cols-3 gap-3 mb-5">
