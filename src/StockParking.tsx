@@ -73,7 +73,7 @@ function diffStock(prev: { id:number; name:string; qty:number; unit:string; note
   return entries;
 }
 
-const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER'] as const;
+const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER','OTHER'] as const;
 type WCat = typeof W_CATS[number];
 
 // ── Thai ↔ English translations for stock item names & units ──────────────
@@ -165,7 +165,7 @@ interface ParkingIn  { id:number; room:string; plate:string; type:string; name:s
 interface ParkingOut { id:number; plate:string; type:string; name:string; status:string }
 interface Warranty   { id:number; cat:WCat; room:string; brand:string; model:string; sn:string; warranty:string; installed:string }
 
-const EQUIP_CATS = ['อุปกรณ์ช่างทั่วไป', 'อุปกรณ์ซ่อมแซมตกแต่ง', 'อุปกรณ์งานประปา'] as const;
+const EQUIP_CATS = ['อุปกรณ์ช่างทั่วไป', 'อุปกรณ์ซ่อมแซมตกแต่ง', 'อุปกรณ์งานประปา', 'อื่นๆ'] as const;
 type EquipCat = typeof EQUIP_CATS[number];
 
 interface EquipmentItem { id:number; cat:EquipCat; name:string; nameTh?:string; nameEn?:string; qty:number; unit:string; note:string; photo?:string }
@@ -445,6 +445,7 @@ const EQUIP_CAT_EN: Record<string,string> = {
   'อุปกรณ์ช่างทั่วไป': 'General Tools',
   'อุปกรณ์ซ่อมแซมตกแต่ง': 'Repair & Decoration',
   'อุปกรณ์งานประปา': 'Plumbing',
+  'อื่นๆ': 'Other',
 };
 
 
