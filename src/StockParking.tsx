@@ -73,7 +73,7 @@ function diffStock(prev: { id:number; name:string; qty:number; unit:string; note
   return entries;
 }
 
-const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','PHOTOCOPIER','OTHER'] as const;
+const W_CATS = ['AIR CONDITIONER','WATER HEATER','MICROWAVE','TV','REFRIGERATOR','OTHER'] as const;
 type WCat = typeof W_CATS[number];
 
 // ── Thai ↔ English translations for stock item names & units ──────────────
@@ -776,7 +776,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     {id:41,cat:'REFRIGERATOR',room:'113',brand:'TOSHIBA',model:'GR-A704CX',sn:'1939712200103',warranty:'',installed:''},
     {id:42,cat:'REFRIGERATOR',room:'214',brand:'Midea',model:'K57050 01 HS-65LN',sn:'3100008G-3626-1120112',warranty:'',installed:''},
     {id:43,cat:'REFRIGERATOR',room:'205',brand:'Midea',model:'K90230 01 HS-65LN',sn:'3100008G-3902-1120368',warranty:'',installed:''},
-    {id:44,cat:'PHOTOCOPIER',room:'OFFICE',brand:'CANNON',model:'MF635Cx',sn:'WTY14984',warranty:'3yr warranty',installed:''},
+    {id:44,cat:'OTHER',room:'OFFICE',brand:'CANNON',model:'MF635Cx',sn:'WTY14984',warranty:'3yr warranty',installed:''},
   ]);
   const [nextWId, setNextWId] = useState(45);
   const [wCat, setWCat] = useState<WCat>('AIR CONDITIONER');
@@ -950,7 +950,7 @@ export default function StockParking({ group, initialTab, onLowStockChange, isAd
     });
     if (!hidden.includes('warranty')) sbLoad('warranty_data').then(d => {
       if (!d) return;
-      const fixed = dedupeIds(d as Warranty[]);
+      const fixed = dedupeIds(d as Warranty[]).map(r => (r.cat as string) === 'PHOTOCOPIER' ? { ...r, cat: 'OTHER' as const } : r);
       setWarrantyData(fixed);
       if (fixed.length) setNextWId(Math.max(...fixed.map(r => r.id)) + 1);
       if (!readOnly && JSON.stringify(fixed) !== JSON.stringify(d)) sbSave('warranty_data', fixed);
