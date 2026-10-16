@@ -32,6 +32,16 @@ const DICT: Record<string, { th: string; en: string }> = {
   notif_on:             { th: 'เปิดแจ้งเตือนแล้ว', en: 'Notifications on' },
   notif_enable:         { th: 'เปิดการแจ้งเตือน', en: 'Enable notifications' },
 
+  // ── จำนวนแขก (guests.tsx) ──
+  guests_label:         { th: 'จำนวนแขก', en: 'Guests' },
+  guests_unknown:       { th: 'ไม่ระบุ', en: 'Not specified' },
+  guests_unit:          { th: 'ท่าน', en: 'guests' },
+  guests_unit_one:      { th: 'ท่าน', en: 'guest' },
+  guests_adults:        { th: 'ผู้ใหญ่', en: 'adults' },
+  guests_adult_one:     { th: 'ผู้ใหญ่', en: 'adult' },
+  guests_children:      { th: 'เด็ก', en: 'children' },
+  guests_child_one:     { th: 'เด็ก', en: 'child' },
+
   // ── CalendarView.tsx ──
   cal_title:            { th: 'ปฏิทินการจอง', en: 'Booking Calendar' },
   cal_refresh:          { th: 'รีเฟรช', en: 'Refresh' },

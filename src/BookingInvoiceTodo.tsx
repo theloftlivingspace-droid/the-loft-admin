@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
+import { GuestBadge } from './GuestBadge';
 import { T } from './theme';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ interface BookingRaw {
   firstSeen?: string; isNewToday?: boolean; done?: boolean;
   matchKeys?: string[];
   apartmenteryBookingId?: string;
+  adults?: number | null; children?: number | null; guests?: number | null;
 }
 interface InvoiceRaw {
   invoiceKey?: string; bookingId: string; room: string; guest: string;
@@ -822,6 +824,7 @@ const BookingInvoiceTodo = forwardRef<BookingInvoiceTodoHandle, { initialTab?: '
                         ) : (
                           <span className={`flex-1 min-w-0 text-[17px] font-semibold truncate ${th.name}`}>{item.guest}</span>
                         )}
+                        <GuestBadge g={item} className={`text-[13px] font-medium ${th.name}`} />
                         <span className={`text-[13px] rounded-full px-1.5 py-px font-medium flex-shrink-0 ${th.badge}`}>{item.channel}</span>
                         {item.isNewToday && !item.done && (
                           <span className="f-thai text-[13px] rounded-full px-1 py-px font-bold flex-shrink-0" style={{ background: T.brassPale, color: T.brassDeep }}>{t('bi_new_badge')}</span>
