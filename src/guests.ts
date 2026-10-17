@@ -31,12 +31,11 @@ export function formatGuests(g: GuestFields, t: TFn, compact = false): string {
   return `${total} ${unit}`;
 }
 
-// อีโมจินำหน้าตามจำนวนแขก: 1 🧍 · 2 👫 · 3 👨‍👩‍👧 · 4+ 👨‍👩‍👧‍👦 · ไม่ระบุ ❓ (ตรงกับข้อความ LINE ของบอท)
+// อีโมจินำหน้าตามจำนวนแขก: 1 👤 · 2 👥 · 3 คนขึ้นไป 🫂 · ไม่ระบุ ❓ (ตรงกับข้อความ LINE ของบอท)
 export function guestEmoji(g: GuestFields): string {
   const total = guestTotal(g);
   if (!total) return '\u2753';
-  if (total === 1) return '\u{1F9CD}';
-  if (total === 2) return '\u{1F46B}';
-  if (total === 3) return '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}';
-  return '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}';
+  if (total === 1) return '\u{1F464}';
+  if (total === 2) return '\u{1F465}';
+  return '\u{1FAC2}';
 }
