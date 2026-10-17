@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLang } from './LanguageContext';
-import { formatGuests, type GuestFields } from './guests';
+import { formatGuests, guestEmoji, type GuestFields } from './guests';
 import { T } from './theme';
 import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react';
 
@@ -514,7 +514,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
             <p className="f-thai text-sm font-semibold mb-1" style={{ color: T.ink }}>{detail.guest || t('cal_no_name')}</p>
             <p className="f-num text-xs mb-1" style={{ color: T.inkSoft }}>{detail.checkin} → {detail.checkout} · {detail.nights} {t('cal_nights')}</p>
             <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{t('cal_channel')}: <span className="font-bold" style={{ color: channelColor(detail.channel) }}>{channelLabel(detail.channel)}</span></p>
-            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>👥 {t('guests_label')}: <span className="font-bold">{formatGuests(detail, t)}</span></p>
+            <p className="f-thai text-xs mb-1" style={{ color: T.inkSoft }}>{guestEmoji(detail)} {t('guests_label')}: <span className="font-bold">{formatGuests(detail, t)}</span></p>
             {detail.resId && <p className="f-num text-[11px] mb-1" style={{ color: T.inkSoft }}>{t('cal_res_id')}: {detail.resId}</p>}
             {detail.note && (
               <div className="rounded-lg px-3 py-2 mt-2 mb-3 f-thai text-xs" style={{ background: T.brassPale, color: T.brassDeep }}>
