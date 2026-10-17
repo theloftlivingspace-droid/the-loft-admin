@@ -2277,7 +2277,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       {filtered.length === 0 ? (
         <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[900px]:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2">
           {filtered.map(s => renderStayCard(s))}
         </div>
       )}
