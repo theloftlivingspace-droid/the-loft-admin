@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useLang } from './LanguageContext';
+import { GuestBadge } from './GuestBadge';
+import { type GuestFields } from './guests';
 import { T } from './theme';
 import { createWorker, PSM } from 'tesseract.js';
 import { parse as parseMRZ } from 'mrz';
@@ -45,7 +47,7 @@ function apartmenteryNoteTH_(note?: string): string {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Stay {
+interface Stay extends GuestFields {
   room: string;
   roomNum: string;
   guest: string;
@@ -129,7 +131,7 @@ function roomNum(r: string): string {
 // Build a full Stay (same shape used by the room-status grid cards) from any raw
 // sheet row, regardless of the 5-day arrival window — used by manual search so a
 // booking far in the future (or already fully checked out) still gets a proper card.
-function stayFromRawRow(row: { room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }): Stay {
+function stayFromRawRow(row: { room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string } & GuestFields): Stay {
   const tod = today();
   const ciStr = (row.checkin || '').substring(0, 10);
   const coStr = (row.checkout || '').substring(0, 10);
@@ -156,6 +158,9 @@ function stayFromRawRow(row: { room: string; guest: string; checkin: string; che
     channel:  row.channel || '',
     resId:    row.resId || '',
     note:     row.note || '',
+    adults:   row.adults ?? null,
+    children: row.children ?? null,
+    guests:   row.guests ?? null,
     nights:   diffDays(ciStr, coStr),
     status,
     daysLeft,
@@ -192,7 +197,7 @@ function tStatic(th: string, en: string): string {
 // last-known data instantly on mount (and stay usable if a refresh fails)
 // instead of blocking on a spinner/error screen every single time — the GAS
 // backend + its cold-cache path is slow/flaky enough that this matters a lot.
-type RoomStatusCache = { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> };
+type RoomStatusCache = { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string } & GuestFields> };
 const ROOM_CACHE_KEY = 'ci_room_status_cache_v1';
 function readRoomStatusCache(): RoomStatusCache | null {
   try {
@@ -847,7 +852,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   // Every row from the sheet, unfiltered by the 5-day arrival window — kept
   // separately so the manual search/cancel panel can find and cancel any
   // booking regardless of check-in date, not just ones arriving soon.
-  const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string }>>(() => readRoomStatusCache()?.stays ?? []);
+  const [allStaysRaw, setAllStaysRaw] = useState<Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string } & GuestFields>>(() => readRoomStatusCache()?.stays ?? []);
   // True only while there is no data at all yet (first-ever load with an empty
   // cache) — a background refresh on top of already-visible cached data uses
   // `refreshing` instead, so the page never blanks out to a spinner/error on
@@ -1342,7 +1347,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         try { detail = (await res.json())?.error || ''; } catch { /* non-JSON error body */ }
         throw new Error(detail.toLowerCase().includes('timed out') ? t('ci_load_timeout') : (detail || t('ci_load_room_failed')));
       }
-      const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string }> } = await res.json();
+      const json: { today: string; stays: Array<{ room: string; guest: string; checkin: string; checkout: string; channel: string; resId: string; note: string; checkedInAt?: string; checkedOutAt?: string } & GuestFields> } = await res.json();
       if (!Array.isArray(json.stays)) throw new Error(t('ci_invalid_data_format'));
       writeRoomStatusCache(json);
 
@@ -1354,6 +1359,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         channel:  row.channel || '',
         resId:    row.resId || '',
         note:     row.note || '',
+        adults:   row.adults ?? null,
+        children: row.children ?? null,
+        guests:   row.guests ?? null,
       })));
 
       // Merge server-side (shared) check-in/checkout status into local sets.
@@ -1419,6 +1427,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           channel:  row.channel || '',
           resId:    row.resId || '',
           note:     row.note || '',
+          adults:   row.adults ?? null,
+          children: row.children ?? null,
+          guests:   row.guests ?? null,
           nights:   diffDays(ciStr, coStr),
           status,
           daysLeft,
@@ -1869,6 +1880,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                         <span className="inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: channelStyle(s.channel).bg, color: channelStyle(s.channel).fg }}>
                           {channelIcon(s.channel)} {s.channel}
                         </span>
+                        <GuestBadge g={s} compact={false} className="text-[11px] font-medium" />
                       </div>
                     </div>
 
