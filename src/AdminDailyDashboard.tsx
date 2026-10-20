@@ -8,6 +8,7 @@ import PerformanceDashboard from './PerformanceDashboard';
 import CalendarView from './CalendarView';
 import RepairList from './RepairList';
 import { useLang } from './LanguageContext';
+import { setAuthToken } from './auth';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
 import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, BarChart3, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
@@ -603,50 +604,32 @@ export default function AdminDailyDashboard() {
   const handleLogin = async () => {
     if (!username || !password) { alert(t('adm_alert_fill_credentials')); return; }
     setAuthLoading(true);
-    // Re-fetch IP + prefix fresh every login attempt
-    let currentIP = clientIP;
-    let currentPrefix = officeIpPrefix;
-    let currentExempt = ipExemptUsernames;
     try {
-      const [ipRes, prefixRows, exemptRows] = await Promise.all([
-        fetch('https://api.ipify.org?format=json').then(r => r.json()),
-        sbGet('settings', 'key=eq.office_ip_prefix'),
-        sbGet('settings', 'key=eq.ip_exempt_usernames'),
-      ]);
-      currentIP = ipRes.ip;
-      setClientIP(currentIP);
-      if (prefixRows && prefixRows.length > 0) {
-        currentPrefix = prefixRows[0].value;
-        setOfficeIpPrefix(currentPrefix);
-        setIpPrefixInput(currentPrefix);
+      // Credentials + office-IP rule are now checked on the server (/api/login).
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403 && data.error === 'ip_denied') {
+        if (data.ip) setClientIP(data.ip);
+        alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${data.ip || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`);
+        return;
       }
-      if (exemptRows && exemptRows.length > 0) {
-        currentExempt = exemptRows[0].value;
-        setIpExemptUsernames(currentExempt);
-        setIpExemptInput(currentExempt);
-      }
-    } catch (_) {}
-    const isOfficeNow = currentPrefix ? currentIP.startsWith(currentPrefix) : false;
-    const exemptList = (currentExempt || '').split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
-    const isExempt = exemptList.includes(username.trim().toLowerCase());
-    const results = await sbGet('users',
-      `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`);
-    setAuthLoading(false);
-    if (!results || results.length === 0) {
-      sbInsert('login_log', { username, success: false, reason: 'wrong_credentials', ip: currentIP });
-      alert(t('adm_alert_wrong_credentials')); return;
+      if (res.status === 429) { alert(t('adm_alert_too_many_attempts')); return; }
+      if (!res.ok || !data.ok) { alert(t('adm_alert_wrong_credentials')); return; }
+      setAuthToken(data.token);
+      const matched: User = { ...data.user, password: '' };
+      setPassword('');
+      setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
+      // Maintenance accounts land on Stock/Warranty by default — they can
+      // also switch to Calendar and Parking, but not Check-in/out or the
+      // admin-only "etc" pages.
+      if (matched.role === 'maintenance') { setAdminTab('stock'); setStockInitialTab('stock'); }
+    } finally {
+      setAuthLoading(false);
     }
-    const matched: User = results[0];
-    if ((matched.role === 'employee' || matched.role === 'maintenance') && !isOfficeNow && !isExempt) {
-      sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: false, reason: 'ip_denied', ip: currentIP });
-      alert(`${t('adm_alert_denied_title')}\n${t('adm_alert_denied_body')}\n\n${t('adm_alert_current_ip')}: ${currentIP || t('adm_alert_unknown')}\n${t('adm_alert_notify_admin')}`); return;
-    }
-    sbInsert('login_log', { username, full_name: matched.full_name, role: matched.role, success: true, ip: currentIP });
-    setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
-    // Maintenance accounts land on Stock/Warranty by default — they can
-    // also switch to Calendar and Parking, but not Check-in/out or the
-    // admin-only "etc" pages.
-    if (matched.role === 'maintenance') { setAdminTab('stock'); setStockInitialTab('stock'); }
   };
 
   const handleLogout = () => {

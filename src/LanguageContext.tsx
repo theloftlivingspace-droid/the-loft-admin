@@ -257,6 +257,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   adm_alert_register_success:{ th: 'สมัครสมาชิกเรียบร้อยแล้ว', en: 'Registered successfully' },
   adm_alert_fill_credentials:{ th: 'กรุณากรอก Username และ Password', en: 'Please enter username and password' },
   adm_alert_wrong_credentials:{ th: 'Username หรือ Password ไม่ถูกต้อง', en: 'Incorrect username or password' },
+  adm_alert_too_many_attempts:{ th: 'ใส่รหัสผ่านผิดหลายครั้ง กรุณาลองใหม่ใน 15 นาที', en: 'Too many failed attempts. Please try again in 15 minutes' },
   adm_alert_denied_title:   { th: '⛔ ไม่อนุญาต', en: '⛔ Not allowed' },
   adm_alert_denied_body:    { th: 'พนักงานสามารถเข้าใช้งานได้เฉพาะเครือข่ายออฟฟิศเท่านั้น', en: 'Employees can only access from the office network' },
   adm_alert_current_ip:     { th: 'IP ปัจจุบันของคุณ', en: 'Your current IP' },
