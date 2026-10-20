@@ -35,6 +35,11 @@ export default async function handler(req, res) {
   }
 
   const isPost = req.method === 'POST';
+  // GET บางตัวไม่ใช่ read-only จริง (เปลี่ยนข้อมูล/ส่ง LINE) — retry เมื่อ timeout อาจทำให้
+  // รันซ้ำทั้งที่ครั้งแรกสำเร็จไปแล้ว (เช่น cancelBooking ส่ง "ยกเลิกการจอง" เข้า LINE 2 ครั้ง)
+  // ให้ action เหล่านี้ใช้ attempt เดียว 20 วิ เหมือน POST
+  const MUTATING_GET_ACTIONS = new Set(['cancelBooking', 'setBookingDone', 'setInvoiceDone']);
+  const singleAttempt = isPost || MUTATING_GET_ACTIONS.has(req.query.action);
   try {
     const params = new URLSearchParams(req.query);
     params.delete('app');
@@ -89,7 +94,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const attemptTimeouts = isPost ? [20000] : [9000, 13000];
+    const attemptTimeouts = singleAttempt ? [20000] : [9000, 13000];
     let gasRes;
     let lastErr;
     for (let i = 0; i < attemptTimeouts.length; i++) {
@@ -117,7 +122,7 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     if (err && err.name === 'AbortError') {
-      const msg = isPost
+      const msg = singleAttempt
         ? 'GAS backend timed out (no response within 20s).'
         : 'GAS backend timed out (no response after 2 attempts, ~22s total).';
       res.status(504).json({ ok: false, error: msg });
