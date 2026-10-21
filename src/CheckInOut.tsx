@@ -209,6 +209,20 @@ function writeRoomStatusCache(data: RoomStatusCache) {
   try { localStorage.setItem(ROOM_CACHE_KEY, JSON.stringify(data)); } catch { /* storage full/unavailable — non-fatal */ }
 }
 
+// Docs index cache (stale-while-revalidate, like the room-status cache above).
+// sessionStorage, not localStorage: the index names passport/ID files, so it
+// should die with the tab rather than linger on a shared device.
+const DOCS_CACHE_KEY = 'loft_ci_docs_index_v1';
+function readDocsCache(): Record<string, DocFile[]> | null {
+  try {
+    const raw = sessionStorage.getItem(DOCS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeDocsCache(data: Record<string, DocFile[]>) {
+  try { sessionStorage.setItem(DOCS_CACHE_KEY, JSON.stringify(data)); } catch { /* non-fatal */ }
+}
+
 // Photos straight off an iPhone camera are routinely 3–8MB. The Vercel
 // serverless proxy (/api/gas-proxy) sits behind a ~4.5MB request body cap —
 // past that, Vercel returns an HTML/plain-text error page instead of JSON,
@@ -879,8 +893,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [gridFilter, setGridFilter] = useState<RoomGridStatus | null>(null);
   const [lastRefresh, setLastRefresh] = useState('');
   // Docs keyed by cardKey (resId or roomNum+checkin) — mirrors the Drive folder name "{room}_{checkin}_{resId}"
-  const [docs, setDocs]             = useState<Record<string, DocFile[]>>({});
-  const [docsLoading, setDocsLoading] = useState(true);
+  const [docs, setDocs]             = useState<Record<string, DocFile[]>>(() => (hideDocs ? null : readDocsCache()) ?? {});
+  const [docsLoading, setDocsLoading] = useState(() => hideDocs ? true : readDocsCache() === null);
+  const docsBootRef = useRef(false);
   const [viewerKey, setViewerKey]   = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [noteModal, setNoteModal]       = useState<{ resId: string; room: string; guest: string; checkin: string; checkout: string; current: string; status: string } | null>(null);
@@ -1272,8 +1287,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
   async function refreshDocs() {
     if (hideDocs) { setDocs({}); setDocsLoading(false); return; }
-    setDocsLoading(true);
-    try { setDocs(await fetchAllDocsIndex()); }
+    // Only blank the button while there's nothing cached to show.
+    if (Object.keys(docs).length === 0) setDocsLoading(true);
+    try {
+      const fresh = await fetchAllDocsIndex();
+      setDocs(fresh);
+      writeDocsCache(fresh);
+    }
     catch (e) {
       // Previously silent ("docs panel just stays empty") — indistinguishable
       // from "no docs uploaded" from the user's side. Now at least visible.
@@ -1565,13 +1585,20 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     }
   }
 
-  useEffect(() => { refreshDocs(); }, []);
   // Re-fetch/reclassify whenever the previewed date changes (including the
   // initial mount, where refDate === realToday).
-  useEffect(() => { load(); }, [refDate]);
+  // The docs index (heavy Drive scan) is fetched once, AFTER room status
+  // settles, instead of in parallel — both hit the same GAS deployment, and
+  // running them together was slowing getRoomStatus down. load() never
+  // throws (errors are handled inside), so docs always get their turn.
+  useEffect(() => {
+    load().then(() => {
+      if (!docsBootRef.current) { docsBootRef.current = true; refreshDocs(); }
+    });
+  }, [refDate]);
 
   useImperativeHandle(ref, () => ({
-    refresh: () => { load(); refreshDocs(); }
+    refresh: () => { load().then(() => refreshDocs()); }
   }));
 
   // Whenever stays or the housekeeping/inspection log update, sweep today's
@@ -2092,7 +2119,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             style={{ background: T.navyTint, border: `1px solid ${T.hairGold}`, color: T.navy }}>
             {t('ci_create_tm30')}
           </button>
-          <button onClick={() => { load(); refreshDocs(); }}
+          <button onClick={() => { load().then(() => refreshDocs()); }}
             className="press f-thai flex items-center gap-1 px-3 py-1.5 text-xs rounded-xl"
             style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
             {t('ci_refresh')}

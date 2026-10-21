@@ -39,7 +39,14 @@ export default async function handler(req, res) {
   // รันซ้ำทั้งที่ครั้งแรกสำเร็จไปแล้ว (เช่น cancelBooking ส่ง "ยกเลิกการจอง" เข้า LINE 2 ครั้ง)
   // ให้ action เหล่านี้ใช้ attempt เดียว 20 วิ เหมือน POST
   const MUTATING_GET_ACTIONS = new Set(['cancelBooking', 'setBookingDone', 'setInvoiceDone']);
-  const singleAttempt = isPost || MUTATING_GET_ACTIONS.has(req.query.action);
+  // getAllDocs scans every Drive subfolder, so it's the one read that can
+  // legitimately take >9s on a GAS cold start. The 9s+13s split below aborts
+  // the first call near the finish line, and GAS keeps running the aborted
+  // scan — so the retry piles a second scan on top, slowing getRoomStatus
+  // on the same deployment. Give it one 20s attempt like the others.
+  // Scoped to this action only; every other read keeps its 9s+13s retry.
+  const SLOW_READ_ACTIONS = new Set(['getAllDocs']);
+  const singleAttempt = isPost || MUTATING_GET_ACTIONS.has(req.query.action) || SLOW_READ_ACTIONS.has(req.query.action);
   try {
     const params = new URLSearchParams(req.query);
     params.delete('app');
