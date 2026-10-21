@@ -2,46 +2,13 @@ import { useState, useEffect } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
 import { Shield, Users2, Wrench } from 'lucide-react';
-
-const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
-
-const SB_HEADERS = {
-  'Content-Type': 'application/json',
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-};
-
-async function sbGet(table: string, params = '') {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: SB_HEADERS });
-  return res.json();
-}
-async function sbInsert(table: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
-async function sbUpdate(table: string, params: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    method: 'PATCH',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
-async function sbDelete(table: string, params: string) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    method: 'DELETE',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-  });
-}
+import { sbGet, sbInsert, sbUpdate, sbDelete } from './api';
 
 interface User {
   id: number;
   full_name: string;
   username: string;
-  password: string;
+  password?: string; // write-only: the server never returns passwords
   role: 'admin' | 'employee' | 'maintenance' | 'frontdesk';
 }
 
@@ -49,7 +16,6 @@ export default function UserManagement() {
   const { t } = useLang();
   const [users, setUsers]           = useState<User[]>([]);
   const [loading, setLoading]       = useState(true);
-  const [showPw, setShowPw]         = useState<Record<number, boolean>>({});
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editDraft, setEditDraft]   = useState<Partial<User>>({});
   const [showAddForm, setShowAddForm] = useState(false);
@@ -71,16 +37,18 @@ export default function UserManagement() {
 
   function startEdit(u: User) {
     setEditingId(u.id);
-    setEditDraft({ full_name: u.full_name, username: u.username, password: u.password, role: u.role });
+    setEditDraft({ full_name: u.full_name, username: u.username, password: '', role: u.role });
   }
 
   async function saveEdit(id: number) {
-    if (!editDraft.username || !editDraft.password || !editDraft.full_name) {
+    if (!editDraft.username || !editDraft.full_name) {
       alert(t('um_fill_required'));
       return;
     }
     setBusy(true);
-    await sbUpdate('users', `id=eq.${id}`, editDraft);
+    // blank password = keep the current one
+    const { password: newPw, ...rest } = editDraft;
+    await sbUpdate('users', `id=eq.${id}`, newPw ? { ...rest, password: newPw } : rest);
     setEditingId(null);
     setEditDraft({});
     await loadUsers();
@@ -179,7 +147,7 @@ export default function UserManagement() {
                     <input value={editDraft.username ?? ''} onChange={e => setEditDraft({ ...editDraft, username: e.target.value })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="username" />
                     <input value={editDraft.password ?? ''} onChange={e => setEditDraft({ ...editDraft, password: e.target.value })}
-                      className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder="password" />
+                      className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }} placeholder={t('um_new_password_placeholder')} />
                     <select value={editDraft.role ?? 'employee'} onChange={e => setEditDraft({ ...editDraft, role: e.target.value as 'admin' | 'employee' | 'maintenance' | 'frontdesk' })}
                       className="focus-ring rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${T.hairGold}`, color: T.ink }}>
                       <option value="employee">employee</option>
@@ -217,16 +185,6 @@ export default function UserManagement() {
                       </div>
                       <div className="f-thai text-sm mt-0.5" style={{ color: T.inkSoft }}>
                         Username: <span className="f-num">{u.username}</span>
-                      </div>
-                      <div className="f-thai text-sm flex items-center gap-1" style={{ color: T.inkSoft }}>
-                        Password:{' '}
-                        <span className="f-num">
-                          {showPw[u.id] ? u.password : '•'.repeat(Math.max(u.password?.length ?? 6, 6))}
-                        </span>
-                        <button onClick={() => setShowPw(s => ({ ...s, [u.id]: !s[u.id] }))}
-                          className="press text-xs ml-1 underline" style={{ color: T.navy }}>
-                          {showPw[u.id] ? t('um_hide') : t('um_show')}
-                        </button>
                       </div>
                     </div>
                   </div>

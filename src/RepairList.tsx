@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from './LanguageContext';
 import { T } from './theme';
 import { Wrench, Filter, X, Camera, Clock, CheckCircle2, AlertCircle, RefreshCw, UserCog } from 'lucide-react';
+import { sbGet, sbUpsert } from './api';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Same Apps Script Web App the checkout-inspection form (checkout-checklist.html,
@@ -44,24 +45,9 @@ function maintenanceIssuesOf(issues?: string[]): string[] {
 // checkout, not a mutable task tracker, so status lives separately here,
 // keyed by the inspection's uid. Same Supabase project/anon-key pattern as
 // UserManagement.tsx / AdminDailyDashboard.tsx.
+// Storage uploads still use the public anon key directly (separate follow-up step).
 const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
-const SB_HEADERS = {
-  'Content-Type': 'application/json',
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-};
-async function sbGet(table: string, params = '') {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: SB_HEADERS });
-  return res.json();
-}
-async function sbUpsert(table: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
 // NOTE: requires a `repair_status` table in Supabase — create once:
 //   uid text primary key, status text default 'pending', assigned_to text,
 //   notes text, completed_date timestamptz, after_photos text[] default '{}'

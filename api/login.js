@@ -1,7 +1,8 @@
 // /api/login.js — server-side login for the-loft-admin
 //
 // POST /api/login   Body: { username, password }
-//   200 { ok:true, token, user:{ id, full_name, username, role } }
+//   200 { ok:true, token, in_office, user:{ id, full_name, username, role } }
+// GET /api/login   -> { ok:true, in_office }  (is the caller on the office network?)
 //   401 { ok:false, error:'wrong_credentials' }
 //   403 { ok:false, error:'ip_denied', ip }
 //   429 { ok:false, error:'too_many_attempts' }
@@ -38,8 +39,30 @@ function clientIp(req) {
   return (first || req.headers['x-real-ip'] || '').toString().trim();
 }
 
+// Is this caller on the office network? (prefix + per-user exemptions live in `settings`)
+async function officeInfo(ip, username) {
+  const [prefixRows, exemptRows] = await Promise.all([
+    sb('settings?select=value&key=eq.office_ip_prefix'),
+    sb('settings?select=value&key=eq.ip_exempt_usernames'),
+  ]);
+  const prefix = prefixRows?.[0]?.value || '';
+  const exempt = String(exemptRows?.[0]?.value || '')
+    .split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  return {
+    inOffice: prefix ? ip.startsWith(prefix) : false,
+    exempt: exempt.includes(String(username || '').trim().toLowerCase()),
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'GET') {
+    // Login screen asks: "is this device on the office network?" (no secrets returned)
+    if (!SB_URL || !SB_KEY) { res.status(200).json({ ok: true, in_office: false }); return; }
+    try { res.status(200).json({ ok: true, in_office: (await officeInfo(clientIp(req), '')).inOffice }); }
+    catch { res.status(200).json({ ok: true, in_office: false }); }
+    return;
+  }
   if (req.method !== 'POST') { res.status(405).json({ ok: false, error: 'POST only' }); return; }
   if (!SB_URL || !SB_KEY || !SECRET) { res.status(500).json({ ok: false, error: 'server_not_configured' }); return; }
 
@@ -76,20 +99,13 @@ export default async function handler(req, res) {
       res.status(401).json({ ok: false, error: 'wrong_credentials' }); return;
     }
 
-    // Office-IP rule (same as before, but now enforced on the server).
-    if (user.role === 'employee' || user.role === 'maintenance') {
-      const [prefixRows, exemptRows] = await Promise.all([
-        sb('settings?select=value&key=eq.office_ip_prefix'),
-        sb('settings?select=value&key=eq.ip_exempt_usernames'),
-      ]);
-      const prefix = prefixRows?.[0]?.value || '';
-      const exempt = String(exemptRows?.[0]?.value || '')
-        .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-      const inOffice = prefix ? ip.startsWith(prefix) : false;
-      if (!inOffice && !exempt.includes(username.trim().toLowerCase())) {
-        await logLogin({ username, full_name: user.full_name, role: user.role, success: false, reason: 'ip_denied', ip });
-        res.status(403).json({ ok: false, error: 'ip_denied', ip }); return;
-      }
+    // Office-IP rule (employee/maintenance only; fails closed for them).
+    const restricted = user.role === 'employee' || user.role === 'maintenance';
+    let office = { inOffice: false, exempt: false };
+    try { office = await officeInfo(ip, username); } catch (e) { if (restricted) throw e; }
+    if (restricted && !office.inOffice && !office.exempt) {
+      await logLogin({ username, full_name: user.full_name, role: user.role, success: false, reason: 'ip_denied', ip });
+      res.status(403).json({ ok: false, error: 'ip_denied', ip }); return;
     }
 
     await logLogin({ username, full_name: user.full_name, role: user.role, success: true, ip });
@@ -99,6 +115,7 @@ export default async function handler(req, res) {
     );
     res.status(200).json({
       ok: true,
+      in_office: office.inOffice,
       token,
       user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role },
     });

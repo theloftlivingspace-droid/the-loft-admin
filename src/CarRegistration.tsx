@@ -2,15 +2,7 @@
 // Data stored in Supabase: settings table, key='car_registration'
 
 import { useState, useEffect } from 'react';
-
-const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
-const SB_HEADERS = {
-  'Content-Type': 'application/json',
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  Prefer: 'resolution=merge-duplicates',
-};
+import { sbGet, sbUpsert } from './api';
 
 interface CarEntry {
   id: string;       // uuid
@@ -52,22 +44,14 @@ const INITIAL_DATA: CarEntry[] = [
 
 async function loadFromSB(): Promise<CarEntry[] | null> {
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/settings?key=eq.car_registration&select=value`,
-      { headers: SB_HEADERS }
-    );
-    const rows = await res.json();
+    const rows = await sbGet('settings', 'key=eq.car_registration&select=value');
     if (rows?.[0]?.value) return JSON.parse(rows[0].value);
   } catch { /* fall through */ }
   return null;
 }
 
 async function saveToDB(entries: CarEntry[]) {
-  await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
-    method: 'POST',
-    headers: SB_HEADERS,
-    body: JSON.stringify({ key: 'car_registration', value: JSON.stringify(entries) }),
-  });
+  await sbUpsert('settings', { key: 'car_registration', value: JSON.stringify(entries) });
 }
 
 function uid() { return Math.random().toString(36).slice(2, 10); }

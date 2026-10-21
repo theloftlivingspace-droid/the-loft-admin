@@ -524,6 +524,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   um_cancel:               { th: 'ยกเลิก', en: 'Cancel' },
   um_add_account:          { th: '+ เพิ่มบัญชี', en: '+ Add account' },
   um_fill_required:        { th: 'กรุณากรอกข้อมูลให้ครบ', en: 'Please fill in all required fields' },
+  um_new_password_placeholder: { th: 'รหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)', en: 'New password (blank = keep current)' },
   um_delete_confirm:       { th: 'ลบบัญชี', en: 'Delete account' },
   um_confirm_suffix:       { th: 'ใช่หรือไม่?', en: '?' },
   um_username_exists:      { th: 'Username นี้มีอยู่แล้ว', en: 'This username already exists' },

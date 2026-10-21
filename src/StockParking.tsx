@@ -5,24 +5,19 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { Camera, RefreshCw, X, Trash2 } from 'lucide-react';
 import { T } from './theme';
+import { sbGet, sbInsert, sbUpsert } from './api';
 
 const SB_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
-const SB_HDR = { 'Content-Type':'application/json', apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, Prefer:'resolution=merge-duplicates' };
-
 async function sbLoad(key: string) {
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/settings?key=eq.${key}&select=value`, { headers: SB_HDR });
-    const rows = await r.json();
+    const rows = await sbGet('settings', `key=eq.${key}&select=value`);
     if (rows?.[0]?.value) return JSON.parse(rows[0].value);
   } catch {}
   return null;
 }
 async function sbSave(key: string, value: unknown) {
-  await fetch(`${SB_URL}/rest/v1/settings`, {
-    method: 'POST', headers: SB_HDR,
-    body: JSON.stringify({ key, value: JSON.stringify(value) }),
-  });
+  await sbUpsert('settings', { key, value: JSON.stringify(value) });
 }
 
 // Equipment (ช่างอาคาร) item photos — same Storage REST API pattern as
@@ -45,10 +40,7 @@ interface StockAuditEntry { item_name:string; old_qty:number|null; new_qty:numbe
 async function sbLogStockChanges(entries: StockAuditEntry[]) {
   if (!entries.length) return;
   try {
-    await fetch(`${SB_URL}/rest/v1/stock_audit_log`, {
-      method: 'POST', headers: SB_HDR,
-      body: JSON.stringify(entries),
-    });
+    await sbInsert('stock_audit_log', entries);
   } catch {}
 }
 function diffStock(prev: { id:number; name:string; qty:number; unit:string; note:string }[], next: typeof prev): StockAuditEntry[] {

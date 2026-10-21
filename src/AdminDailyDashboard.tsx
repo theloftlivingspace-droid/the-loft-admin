@@ -9,6 +9,7 @@ import CalendarView from './CalendarView';
 import RepairList from './RepairList';
 import { useLang } from './LanguageContext';
 import { setAuthToken } from './auth';
+import { sbGet, sbInsert, sbUpsert } from './api';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
 import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, BarChart3, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
@@ -25,35 +26,7 @@ function localToday(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-// IP prefix โหลดจาก Supabase settings table
-const SUPABASE_URL = 'https://vshrmwfyanwwocftnccu.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaHJtd2Z5YW53d29jZnRuY2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NTgyMTksImV4cCI6MjA5MzUzNDIxOX0.H8zKjDtCnRxzLcV2k-NsSIqJe0k_JkS-_zTtBaHCaGo';
-
-const SB_HEADERS = {
-  'Content-Type': 'application/json',
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-};
-
-async function sbGet(table: string, params = '') {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: SB_HEADERS });
-  return res.json();
-}
-async function sbInsert(table: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
-
-async function sbUpsert(table: string, body: object) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify(body),
-  });
-}
+// All database access goes through ./api (server gateway) — no keys in the browser.
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface User {
@@ -205,6 +178,7 @@ export default function AdminDailyDashboard() {
   const { lang, setLang, t } = useLang();
   // IP
   const [clientIP, setClientIP]   = useState('');
+  const [inOffice, setInOffice]   = useState(false);
   const [ipLoading, setIpLoading] = useState(true);
 
 
@@ -233,7 +207,23 @@ export default function AdminDailyDashboard() {
       .finally(() => setIpLoading(false));
   }, []);
 
+
+  // Auth
+  const [loggedIn, setLoggedIn]             = useState(false);
+  const [username, setUsername]             = useState('');
+  const [password, setPassword]             = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [currentUser, setCurrentUser]       = useState<User | null>(null);
+  const [fullName, setFullName]             = useState('');
+  const [authLoading, setAuthLoading]       = useState(false);
+
+  // Office-network badge on the login screen (server decides; no settings read needed)
   useEffect(() => {
+    fetch('/api/login').then(r => r.json()).then(d => setInOffice(!!d.in_office)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!loggedIn) return;
     sbGet('settings', 'key=eq.office_ip_prefix')
       .then(rows => {
         if (rows && rows.length > 0) {
@@ -262,16 +252,7 @@ export default function AdminDailyDashboard() {
           } catch { /* ignore */ }
         }
       });
-  }, []);
-
-  // Auth
-  const [loggedIn, setLoggedIn]             = useState(false);
-  const [username, setUsername]             = useState('');
-  const [password, setPassword]             = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [currentUser, setCurrentUser]       = useState<User | null>(null);
-  const [fullName, setFullName]             = useState('');
-  const [authLoading, setAuthLoading]       = useState(false);
+  }, [loggedIn]);
 
   // Reports
   const [reports, setReports]               = useState<Report[]>([]);
@@ -587,18 +568,25 @@ export default function AdminDailyDashboard() {
       .finally(() => setReportsLoading(false));
   }, [loggedIn, currentUser]);
 
-  const isOfficeNetwork = officeIpPrefix ? clientIP.startsWith(officeIpPrefix) : false;
+  const isOfficeNetwork = inOffice;
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
   const handleRegister = async () => {
     if (!username || !password || !fullName) { alert(t('adm_alert_fill_all')); return; }
     setAuthLoading(true);
-    const existing = await sbGet('users', `username=eq.${encodeURIComponent(username)}`);
-    if (existing.length > 0) { alert(t('adm_alert_username_taken')); setAuthLoading(false); return; }
-    await sbInsert('users', { full_name: fullName, username, password, role: 'employee' });
-    alert(t('adm_alert_register_success'));
-    setIsRegisterMode(false); setFullName(''); setUsername(''); setPassword('');
-    setAuthLoading(false);
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: fullName, username, password }),
+      });
+      if (res.status === 409) { alert(t('adm_alert_username_taken')); return; }
+      if (!res.ok) { alert('เกิดข้อผิดพลาด กรุณาลองใหม่ / Something went wrong, please try again'); return; }
+      alert(t('adm_alert_register_success'));
+      setIsRegisterMode(false); setFullName(''); setUsername(''); setPassword('');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -620,6 +608,7 @@ export default function AdminDailyDashboard() {
       if (res.status === 429) { alert(t('adm_alert_too_many_attempts')); return; }
       if (!res.ok || !data.ok) { alert(t('adm_alert_wrong_credentials')); return; }
       setAuthToken(data.token);
+      setInOffice(!!data.in_office);
       const matched: User = { ...data.user, password: '' };
       setPassword('');
       setLoggedIn(true); setEmployeeName(matched.full_name); setCurrentUser(matched);
