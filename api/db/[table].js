@@ -110,14 +110,19 @@ export default async function handler(req, res) {
   if (!user) { res.status(401).json({ ok: false, error: 'unauthorized' }); return; }
 
   const url = new URL(req.url, 'http://local');
-  const table = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '');
+  const params = new URLSearchParams(url.search);
+  // Vercel passes the dynamic segment as req.query.table (and may append `table=` to the
+  // query string / rewrite the path to /api/db/[table]). Use it, and never forward it.
+  const q = req.query && req.query.table;
+  const fromPath = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '');
+  const table = String((Array.isArray(q) ? q[0] : q) || params.get('table') || (fromPath === '[table]' ? '' : fromPath));
+  params.delete('table');
   const rule = Object.prototype.hasOwnProperty.call(RULES, table) ? RULES[table] : null;
   if (!rule) { res.status(404).json({ ok: false, error: 'unknown_table' }); return; }
 
   const method = req.method;
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = undefined; } }
-  const params = new URLSearchParams(url.search);
 
   const verdict = rule({ method, params, body, user });
   if (!verdict.ok) { res.status(verdict.status).json({ ok: false, error: verdict.error }); return; }

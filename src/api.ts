@@ -29,7 +29,7 @@ async function call(table: string, method: string, params = '', body?: unknown, 
 
 export async function sbGet(table: string, params = '') {
   const res = await call(table, 'GET', params);
-  if (!res.ok) return [];
+  if (!res.ok) { console.error('[db] GET', table, res.status); return []; }
   return res.json();
 }
 export async function sbInsert(table: string, body: object) {
