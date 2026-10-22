@@ -1241,6 +1241,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       if (!r.ok || j.ok === false) {
         if (j.error === 'conflict' && j.conflict) {
           setExtendError(`${t('ci_extend_conflict')} — ${j.conflict.guest} (${j.conflict.checkin})`);
+        } else if (r.status === 504 || /timed out/i.test(j.error || '')) {
+          // The proxy gave up waiting, but GAS keeps running and has usually
+          // already written the sheet. Resync instead of leaving a stale date
+          // that makes a retry fail with "same as current checkout".
+          setExtendError('⏳ เซิร์ฟเวอร์ตอบช้า — อาจบันทึกแล้ว กำลังรีเฟรชข้อมูล...');
+          setTimeout(() => { load(); }, 8000);
         } else {
           setExtendError(j.error || `HTTP ${r.status}`);
         }
@@ -1248,8 +1254,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         return;
       }
 
-      // 2. Update local UI immediately
+      // 2. Update local UI immediately (and the stale-while-revalidate cache,
+      //    so a reload doesn't bring the old date back)
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x));
+      setAllStaysRaw(prev => prev.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x));
+      const cachedRs = readRoomStatusCache();
+      if (cachedRs) writeRoomStatusCache({ ...cachedRs, stays: cachedRs.stays.map(x => x.resId === resId ? { ...x, checkout: extendDate } : x) });
       setExtendModal(null);
       if (j.apartmenterySynced) {
         showToast(`🗓️ บันทึกวันเช็คเอาท์ใหม่แล้ว ซิงก์ Apartmentery เรียบร้อย`);
@@ -1279,7 +1289,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         }).catch(() => { /* non-fatal — date is already saved */ });
       }
     } catch (e) {
+      // Network drop mid-request: the write may still have landed — resync.
       setExtendError(String(e));
+      setTimeout(() => { load(); }, 8000);
     } finally {
       setExtendSaving(false);
     }
