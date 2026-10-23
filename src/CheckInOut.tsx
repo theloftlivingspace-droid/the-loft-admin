@@ -343,6 +343,24 @@ const STATUS_CONFIG = {
   'arriving-soon':     { labelKey: 'ci_arriving_soon',      bg: T.navy,      text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
+// ─── Stay-card palette (2026-10-23 redesign) ───────────────────────────────
+// Each variant = deep header bar + very light tint body + mid-tone border,
+// so every card reads as one family on the bone page background.
+// bar/text = header strip · bg/bd = card body + border · ac = accent
+// (nights label, date-box dividers).
+type CardVariant = 'staying' | 'checkedInToday' | 'arriving-today' | 'arriving-soon'
+  | 'checking-out-today' | 'checkedOut' | 'cancelled' | 'noShow';
+const CARD_PALETTE: Record<CardVariant, { bar: string; text: string; bg: string; bd: string; ac: string }> = {
+  'staying':            { bar: '#3F8256', text: '#FFFFFF', bg: '#EAF3ED', bd: '#BFD8C8', ac: '#2F6B45' },
+  'checkedInToday':     { bar: '#1F7C82', text: '#FFFFFF', bg: '#E6F3F3', bd: '#B5D9DB', ac: '#17666B' },
+  'arriving-today':     { bar: '#D9B25C', text: '#071B3D', bg: '#FBF5E4', bd: '#E7D5A3', ac: '#8A6414' },
+  'arriving-soon':      { bar: '#2A4378', text: '#FFFFFF', bg: '#E9EEF7', bd: '#BAC7E0', ac: '#2A4378' },
+  'checking-out-today': { bar: '#9C2C3D', text: '#FFFFFF', bg: '#F9ECEE', bd: '#E5BEC5', ac: '#9C2C3D' },
+  'checkedOut':         { bar: '#C9682A', text: '#FFFFFF', bg: '#FAEEE3', bd: '#ECCCB1', ac: '#A8531C' },
+  'cancelled':          { bar: '#8C6A70', text: '#FFFFFF', bg: '#F5EEF0', bd: '#DECBCF', ac: '#6F5157' },
+  'noShow':             { bar: '#8A93A3', text: '#FFFFFF', bg: '#F0F2F6', bd: '#D0D5DF', ac: '#5F6878' },
+};
+
 // ─── Physical room list (all 10 units) ─────────────────────────────────────
 // Static — room numbers/types don't change at runtime. Used to render the
 // always-complete room-status grid (unlike `stays`, which only contains
@@ -1811,28 +1829,22 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const isCheckedOut = checkedOutSet.has(s.resId);
             const isNoShow     = s.status === 'arriving-today' && s.checkin < refDate && !isCheckedIn && !isCheckedOut;
 
-            // สี: cancelled=แดง(wine) | checkedOut=ส้ม(orange) | checkedIn=เขียว | noShow=เทา | arriving-soon=navy | default=cfg
-            // checkedOut ผ่านมาแล้ว 3 สี: ทอง (ซ้ำ arriving-today) → ม่วง (ซ้ำ
-            // "ปิดปรับปรุง" บน room grid) → teal (ใช้ได้ แต่ผู้ใช้ขอเปลี่ยนเป็น
-            // ส้มแทน 2026-09-27) — ส้มไม่ซ้ำสีไหนในธีมและแยกจาก brass
-            // (เหลืองทอง) กับ wine (แดง) ได้ชัดพอ
-            const cardStyle = isCancelled               ? { border: `1px solid ${T.wine}40`, background: '#E4BDC3' }
-                             : isCheckedOut              ? { border: `1px solid ${T.orange}40`, background: '#E9C3AA' }
-                             : isCheckedIn               ? { border: `1px solid ${T.sage}40`, background: '#C2DACA' }
-                             : isNoShow                  ? { border: `1px solid ${T.hair}`, background: T.bone }
-                             : s.status==='arriving-soon'? { border: `1px solid ${T.navy}30`, background: '#BAC4D6' }
-                                                         : { border: `1px solid ${T.hair}`, background: T.card };
-            const topBarBg     = isCancelled  ? T.wine
-                                : isCheckedOut ? T.orange
-                                : isCheckedIn  ? T.sage
-                                : isNoShow     ? '#9CA3AF'
-                                               : cfg.bg;
+            // สี: ดู CARD_PALETTE ด้านบน — เช็คอินวันนี้ (teal) แยกจากพักอยู่ (เขียว)
+            const variant: CardVariant = isCancelled ? 'cancelled'
+                                       : isCheckedOut ? 'checkedOut'
+                                       : isCheckedIn  ? 'checkedInToday'
+                                       : isNoShow     ? 'noShow'
+                                       : s.status === 'checked-in' ? 'staying'
+                                       : s.status;
+            const pal = CARD_PALETTE[variant];
+            const cardStyle = { border: `1px solid ${pal.bd}`, background: pal.bg };
+            const topBarBg  = pal.bar;
             const topBarLabel  = isCancelled  ? `🚫 ${t('ci_cancelled_booking')}`
                                 : isCheckedOut ? `🧳 ${t('ci_checked_out_done')}`
                                 : isCheckedIn  ? `✅ ${t('ci_checked_in_done')}`
                                 : isNoShow     ? `⚠️ ${t('ci_no_show')}`
                                                : t(cfg.labelKey);
-            const topBarText   = (isCancelled || isCheckedOut || isCheckedIn || isNoShow) ? '#FFFFFF' : cfg.text;
+            const topBarText   = pal.text;
 
             const isHighlighted = highlightKey === cardKey;
 
@@ -1914,7 +1926,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
                     {/* Guest + channel */}
                     <div className="flex-1 min-w-0">
-                      <div className="f-display font-semibold text-base leading-tight truncate" style={{ color: T.ink }}>{s.guest}</div>
+                      <div className="f-display font-semibold text-base leading-tight truncate" style={{ color: T.ink, ...(isCancelled ? { textDecoration: 'line-through', opacity: 0.7 } : {}) }}>{s.guest}</div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <span className="inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: channelStyle(s.channel).bg, color: channelStyle(s.channel).fg }}>
                           {channelIcon(s.channel)} {s.channel}
@@ -1969,7 +1981,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     const canEditCheckin = isViewingToday && !isCancelled && !isCheckedOut && !isCheckedIn
                       && (s.status === 'arriving-today' || s.status === 'arriving-soon');
                     return (
-                      <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${T.hairGold}` }}>
+                      <div className="flex rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${pal.bd}`, background: 'rgba(255,255,255,0.72)' }}>
                         <div
                           onClick={canEditCheckin ? (e => { e.stopPropagation(); openCheckinEditModal(s); }) : undefined}
                           className={`flex-1 px-3 py-2 relative${canEditCheckin ? ' press cursor-pointer' : ''}`}
@@ -1981,7 +1993,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                             <span className="absolute top-1.5 right-1.5 text-[10px]" style={{ color: T.brassDeep, opacity: 0.6 }}>✏️</span>
                           )}
                         </div>
-                        <div className="flex items-center justify-center px-3 text-[11px] font-medium" style={{ background: T.bone, color: T.brassDeep, borderLeft: `1px solid ${T.hairGold}`, borderRight: `1px solid ${T.hairGold}` }}>
+                        <div className="flex items-center justify-center px-3 text-[11px] font-medium" style={{ background: pal.bg, color: pal.ac, borderLeft: `1px solid ${pal.bd}`, borderRight: `1px solid ${pal.bd}` }}>
                           {s.nights}<br/>{t('ci_nights')}
                         </div>
                         <div
