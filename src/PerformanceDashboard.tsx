@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLang } from './LanguageContext';
 import { T, FoilRule } from './theme';
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -153,6 +153,11 @@ function niceMaxRooms(v: number, total: number): number {
   return Math.min(total, Math.max(step, rounded));
 }
 
+// How far the chart can be swiped: 3 months back, and a few weeks ahead so
+// upcoming reservations stay visible (the old ‹ › buttons had no limit).
+const MAX_BACK_MONTHS = 3;
+const FORWARD_WEEKS = 4;
+
 type Metric = 'rooms' | 'revenue';
 
 interface DayAgg { dateStr: string; dow: string; dnum: string; rooms: number; revenue: number }
@@ -166,7 +171,21 @@ export default function PerformanceDashboard() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [stays, setStays] = useState<Stay[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
+  // Every Monday from ~3 months ago to FORWARD_WEEKS ahead. Each one is a
+  // swipeable "page" of the chart (snap-scrolled, one week per screen).
+  const { weeks, currentIdx } = useMemo(() => {
+    const thisMon = mondayOf(new Date());
+    const back = new Date(thisMon);
+    back.setMonth(back.getMonth() - MAX_BACK_MONTHS);
+    const last = addDays(thisMon, FORWARD_WEEKS * 7);
+    const list: Date[] = [];
+    for (let d = mondayOf(back); d <= last; d = addDays(d, 7)) list.push(d);
+    const idx = list.findIndex(w => toLocalDate(w) === toLocalDate(thisMon));
+    return { weeks: list, currentIdx: idx };
+  }, []);
+  const [weekIdx, setWeekIdx] = useState(currentIdx);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const didInitScroll = useRef(false);
   const [metric, setMetric] = useState<Metric>('rooms');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -207,22 +226,52 @@ export default function PerformanceDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  const weekDayStrs = useMemo(() => weekDays.map(toLocalDate), [weekDays]);
+  const ready = !(rows.length === 0 && (loading || error));
 
-  const { days, channels, avg } = useMemo(() => {
+  // Land on the current week the first time the chart mounts.
+  useEffect(() => {
+    if (!ready || didInitScroll.current) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollLeft = currentIdx * el.clientWidth;
+    didInitScroll.current = true;
+  }, [ready, currentIdx]);
+
+  useEffect(() => { setSelectedDay(null); }, [weekIdx]);
+
+  const onScroll = () => {
+    const el = scrollerRef.current;
+    if (!el || !el.clientWidth) return;
+    setWeekIdx(Math.max(0, Math.min(weeks.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
+  };
+  const goWeek = (i: number) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const c = Math.max(0, Math.min(weeks.length - 1, i));
+    el.scrollTo({ left: c * el.clientWidth, behavior: 'smooth' });
+  };
+
+  // Aggregate the WHOLE range once (day totals + per-week channel totals);
+  // the visible week just slices from it, so swiping never refetches/recomputes.
+  const { allDays, roomsCh, revCh } = useMemo(() => {
     const dayIndex: Record<string, number> = {};
-    weekDayStrs.forEach((s, i) => { dayIndex[s] = i; });
-
-    const dayAgg: DayAgg[] = weekDays.map(d => ({
-      dateStr: toLocalDate(d),
-      dow: d.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', { weekday: 'short' }),
-      dnum: String(d.getDate()) + (d.getDate() === 1 || (d.getMonth() !== weekDays[0].getMonth()) ? ` ${d.toLocaleDateString('en-US', { month: 'short' })}` : ''),
-      rooms: 0,
-      revenue: 0,
-    }));
-    const roomsChannelMap: Record<string, ChannelAgg> = {};
-    const revenueChannelMap: Record<string, ChannelAgg> = {};
+    const dayAgg: DayAgg[] = [];
+    weeks.forEach((ws, w) => {
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(ws, i);
+        const str = toLocalDate(d);
+        dayIndex[str] = w * 7 + i;
+        dayAgg.push({
+          dateStr: str,
+          dow: d.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', { weekday: 'short' }),
+          dnum: String(d.getDate()) + (d.getDate() === 1 || d.getMonth() !== ws.getMonth() ? ` ${d.toLocaleDateString('en-US', { month: 'short' })}` : ''),
+          rooms: 0,
+          revenue: 0,
+        });
+      }
+    });
+    const roomsCh: Record<string, ChannelAgg>[] = weeks.map(() => ({}));
+    const revCh: Record<string, ChannelAgg>[] = weeks.map(() => ({}));
 
     // Rooms sold + rooms channel breakdown — from actual reservations
     // (one row per resId — no payout-installment duplication).
@@ -240,8 +289,9 @@ export default function PerformanceDashboard() {
         const idx = dayIndex[toLocalDate(addDays(ci, i))];
         if (idx === undefined) continue;
         dayAgg[idx].rooms += roomCount;
-        if (!roomsChannelMap[chKey]) roomsChannelMap[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
-        roomsChannelMap[chKey].rooms += roomCount;
+        const m = roomsCh[Math.floor(idx / 7)];
+        if (!m[chKey]) m[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
+        m[chKey].rooms += roomCount;
       }
     });
 
@@ -261,26 +311,30 @@ export default function PerformanceDashboard() {
         const idx = dayIndex[toLocalDate(addDays(ci, i))];
         if (idx === undefined) continue;
         dayAgg[idx].revenue += revPerNight;
-        if (!revenueChannelMap[chKey]) revenueChannelMap[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
-        revenueChannelMap[chKey].revenue += revPerNight;
+        const m = revCh[Math.floor(idx / 7)];
+        if (!m[chKey]) m[chKey] = { key: chKey, short: meta.short, hex: meta.hex, rooms: 0, revenue: 0 };
+        m[chKey].revenue += revPerNight;
       }
     });
 
-    const chArr = Object.values(metric === 'rooms' ? roomsChannelMap : revenueChannelMap).sort((a, b) => b[metric] - a[metric]);
-    const totalRooms = dayAgg.reduce((s, d) => s + d.rooms, 0);
-    const totalRevenue = dayAgg.reduce((s, d) => s + d.revenue, 0);
-    return {
-      days: dayAgg,
-      channels: chArr,
-      avg: { rooms: totalRooms / 7, revenue: totalRevenue / 7 },
-    };
-  }, [rows, stays, weekDays, weekDayStrs, lang, metric]);
+    return { allDays: dayAgg, roomsCh, revCh };
+  }, [rows, stays, weeks, lang]);
 
-  const rangeLabel = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const weekStart = weeks[weekIdx];
+  const days = allDays.slice(weekIdx * 7, weekIdx * 7 + 7);
+  const channels = Object.values((metric === 'rooms' ? roomsCh : revCh)[weekIdx] || {}).sort((a, b) => b[metric] - a[metric]);
+  const avg = {
+    rooms: days.reduce((s, d) => s + d.rooms, 0) / 7,
+    revenue: days.reduce((s, d) => s + d.revenue, 0) / 7,
+  };
 
+  const rangeLabel = `${weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${addDays(weekStart, 6).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+  // One scale for the whole 3-month range, so bars keep their height while
+  // swiping between weeks (a per-week scale would rescale mid-swipe).
   const chartMax = metric === 'rooms'
-    ? niceMaxRooms(Math.max(...days.map(d => d.rooms), 1) * 1.05, TOTAL_ROOMS)
-    : niceMax(Math.max(...days.map(d => d.revenue), 1) * 1.05);
+    ? niceMaxRooms(Math.max(...allDays.map(d => d.rooms), 1) * 1.05, TOTAL_ROOMS)
+    : niceMax(Math.max(...allDays.map(d => d.revenue), 1) * 1.05);
   const avgVal = avg[metric];
   const avgPct = Math.min(100, (avgVal / chartMax) * 100);
   // 5 evenly-spaced reference lines (0..chartMax), like the vertical axis
@@ -329,13 +383,13 @@ export default function PerformanceDashboard() {
 
       {/* Week navigation */}
       <div className="flex items-center justify-between gap-2 mb-4">
-        <button onClick={() => { setWeekStart(w => addDays(w, -7)); setSelectedDay(null); }} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
+        <button onClick={() => goWeek(weekIdx - 1)} disabled={weekIdx <= 0} className="press focus-ring flex items-center justify-center rounded-full disabled:opacity-30" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
           <ChevronLeft size={16} color={T.navy} />
         </button>
-        <button onClick={() => { setWeekStart(mondayOf(new Date())); setSelectedDay(null); }} className="press focus-ring f-thai text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>
+        <button onClick={() => goWeek(currentIdx)} className="press focus-ring f-thai text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: T.navyTint, color: T.navy }}>
           {t('perf_this_week')}
         </button>
-        <button onClick={() => { setWeekStart(w => addDays(w, 7)); setSelectedDay(null); }} className="press focus-ring flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
+        <button onClick={() => goWeek(weekIdx + 1)} disabled={weekIdx >= weeks.length - 1} className="press focus-ring flex items-center justify-center rounded-full disabled:opacity-30" style={{ width: 34, height: 34, background: T.card, border: `1px solid ${T.hairGold}` }}>
           <ChevronRight size={16} color={T.navy} />
         </button>
       </div>
@@ -369,66 +423,95 @@ export default function PerformanceDashboard() {
           </p>
           <p className="f-num text-xs mb-1" style={{ color: T.inkSoft }}>{rangeLabel}</p>
           {metric === 'revenue' && (
-            <p className="f-thai text-[10px] mb-4" style={{ color: T.inkSoft, opacity: 0.75 }}>{t('perf_revenue_note')}</p>
+            <p className="f-thai text-[10px] mb-1" style={{ color: T.inkSoft, opacity: 0.75 }}>{t('perf_revenue_note')}</p>
           )}
-          {metric === 'rooms' && <div className="mb-5" />}
+          {metric === 'rooms' && <div className="mb-1" />}
 
-          {/* Bar chart */}
+          {/* Bar chart — swipe left/right, one week per page (snap) */}
           <div className="flex gap-1">
-            <div className="flex-1 flex items-end gap-2 relative" style={{ height: 180 }}>
-              {/* Reference grid lines (0 / 25% / 50% / 75% / 100% of scale) */}
-              {axisTicks.map((tv, i) => (
-                <div key={i} className="absolute left-0 right-0" style={{ bottom: `${(tv / chartMax) * 100}%`, borderTop: `1px solid ${T.hair}` }} />
-              ))}
-              {/* Average dashed line — reflects the true average of the week currently shown.
-                  height:0 keeps the border-top exactly at avgPct; the label is a separately
-                  positioned child so its own box height can't push the line off-position
-                  (that was the bug: an auto-height flex div grows upward from `bottom`,
-                  so the label's ~13px height was shifting the line above the real average). */}
-              <div
-                className="absolute left-0 right-0"
-                style={{ bottom: `${avgPct}%`, height: 0, borderTop: `1.5px dashed ${T.brassDeep}`, zIndex: 2 }}
-              >
-                <span
-                  className="f-num text-[9px] font-bold px-1 rounded whitespace-nowrap absolute"
-                  style={{ background: T.brassPale, color: T.brassDeep, left: -2, bottom: 3 }}
+            <div className="flex-1 relative min-w-0">
+              {/* Fixed grid + average line (don't scroll; avg follows the visible week) */}
+              <div className="absolute left-0 right-0 pointer-events-none" style={{ top: 24, height: 180 }}>
+                {axisTicks.map((tv, i) => (
+                  <div key={i} className="absolute left-0 right-0" style={{ bottom: `${(tv / chartMax) * 100}%`, borderTop: `1px solid ${T.hair}` }} />
+                ))}
+                <div
+                  className="absolute left-0 right-0"
+                  style={{ bottom: `${avgPct}%`, height: 0, borderTop: `1.5px dashed ${T.brassDeep}`, zIndex: 2 }}
                 >
-                  avg {metric === 'revenue' ? fmtTHB(avgVal) : avgVal.toFixed(2)}
-                </span>
+                  <span
+                    className="f-num text-[9px] font-bold px-1 rounded whitespace-nowrap absolute"
+                    style={{ background: T.brassPale, color: T.brassDeep, left: -2, bottom: 3 }}
+                  >
+                    avg {metric === 'revenue' ? fmtTHB(avgVal) : avgVal.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              {days.map(d => {
-                const val = d[metric];
-                const pct = Math.min(100, Math.max(1, (val / chartMax) * 100));
-                const isToday = d.dateStr === toLocalDate(new Date());
-                const isSelected = selectedDay === d.dateStr;
-                return (
-                  <div key={d.dateStr} className="flex-1 flex flex-col items-center justify-end h-full relative">
-                    {isSelected && (
-                      <div
-                        className="absolute f-num text-[10px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                        style={{ bottom: `calc(${pct}% + 6px)`, background: T.navy, color: '#fff', zIndex: 3 }}
-                      >
-                        {metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
+
+              <div
+                ref={scrollerRef}
+                onScroll={onScroll}
+                className="no-scrollbar flex"
+                style={{
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  paddingTop: 24, // room for the value tooltip above the tallest bar
+                  scrollSnapType: 'x mandatory',
+                  overscrollBehaviorX: 'contain',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                }}
+              >
+                {weeks.map((_, w) => {
+                  const pageDays = allDays.slice(w * 7, w * 7 + 7);
+                  return (
+                    <div key={w} className="shrink-0" style={{ width: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+                      <div className="flex items-end gap-2" style={{ height: 180 }}>
+                        {pageDays.map(d => {
+                          const val = d[metric];
+                          const pct = Math.min(100, Math.max(1, (val / chartMax) * 100));
+                          const isToday = d.dateStr === toLocalDate(new Date());
+                          const isSelected = selectedDay === d.dateStr;
+                          return (
+                            <div key={d.dateStr} className="flex-1 flex flex-col items-center justify-end h-full relative">
+                              {isSelected && (
+                                <div
+                                  className="absolute f-num text-[10px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                  style={{ bottom: `calc(${pct}% + 6px)`, background: T.navy, color: '#fff', zIndex: 3 }}
+                                >
+                                  {metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => setSelectedDay(isSelected ? null : d.dateStr)}
+                                className="press focus-ring w-full rounded-t-md"
+                                style={{
+                                  height: `${pct}%`,
+                                  background: isSelected ? T.brass : isToday ? `${T.brass}CC` : `${T.navy}CC`,
+                                  minHeight: 3,
+                                  border: 'none',
+                                  padding: 0,
+                                }}
+                                aria-label={metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
-                    <button
-                      onClick={() => setSelectedDay(isSelected ? null : d.dateStr)}
-                      className="press focus-ring w-full rounded-t-md"
-                      style={{
-                        height: `${pct}%`,
-                        background: isSelected ? T.brass : isToday ? `${T.brass}CC` : `${T.navy}CC`,
-                        minHeight: 3,
-                        border: 'none',
-                        padding: 0,
-                      }}
-                      aria-label={metric === 'revenue' ? fmtTHB(val) : fmtInt(val)}
-                    />
-                  </div>
-                );
-              })}
+                      <div className="flex gap-2 mt-1.5">
+                        {pageDays.map(d => (
+                          <div key={d.dateStr} className="flex-1 text-center">
+                            <p className="f-num text-[10px] font-semibold" style={{ color: T.inkSoft }}>{d.dnum}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            {/* Axis number labels, aligned to the grid lines above */}
-            <div className="relative shrink-0" style={{ width: 34, height: 180 }}>
+            {/* Axis number labels, aligned to the grid lines (fixed, not scrolled) */}
+            <div className="relative shrink-0" style={{ width: 34, height: 180, marginTop: 24 }}>
               {axisTicks.map((tv, i) => (
                 <span
                   key={i}
@@ -439,13 +522,6 @@ export default function PerformanceDashboard() {
                 </span>
               ))}
             </div>
-          </div>
-          <div className="flex gap-2 mt-1.5" style={{ marginRight: 34 + 4 }}>
-            {days.map(d => (
-              <div key={d.dateStr} className="flex-1 text-center">
-                <p className="f-num text-[10px] font-semibold" style={{ color: T.inkSoft }}>{d.dnum}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
