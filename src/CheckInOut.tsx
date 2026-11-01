@@ -1229,11 +1229,15 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
       setStays(prev => prev.map(x => x.resId === resId ? { ...x, checkin: checkinEditDate } : x));
       setCheckinEditModal(null);
-      // ไม่มีการ sync วันเช็คอินไป Apartmentery ตอนนี้ (มีแต่ sync วันเช็คเอาท์
-      // ใน updateApartmenteryBookingEndDateForRoom) — แจ้งเตือนเสมอให้ไปแก้เองที่
-      // Apartmentery ด้วย จนกว่าจะมีฟังก์ชัน sync วันเช็คอินจริง
-      setToast(`🗓️ บันทึกวันเช็คอินใหม่แล้ว — ${j.apartmenteryNote || 'อย่าลืมไปแก้วันเช็คอินใน Apartmentery ด้วย (ยังไม่ sync อัตโนมัติ)'}`);
-      setTimeout(() => setToast(''), 6000);
+      if (j.apartmenterySynced) {
+        showToast(`🗓️ บันทึกวันเช็คอินใหม่แล้ว ซิงก์ Apartmentery เรียบร้อย`);
+      } else {
+        // sheet saved but Apartmentery push didn't go through — show the real
+        // reason (same translator the check-out flow uses) so Nathan knows
+        // whether to fix it by hand.
+        setToast(`🗓️ บันทึกวันเช็คอินใหม่แล้ว — ${apartmenteryNoteTH_(j.apartmenteryNote)}`);
+        setTimeout(() => setToast(''), 6000);
+      }
     } catch (e) {
       setCheckinEditError(String(e));
     } finally {
