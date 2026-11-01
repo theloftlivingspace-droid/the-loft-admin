@@ -13,8 +13,12 @@ const GAS_API = '/api/gas-proxy?app=checkinout';
 const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
 const LABEL_W = 76;  // px for the sticky room-label column
 const ROW_H = 62;    // px per room row
-const DAYS_COUNT = 21;
-const CENTER_OFFSET = Math.floor(DAYS_COUNT / 2); // 10 — puts "today" at the middle day column
+const VISIBLE_DAYS = 21; // columns that fit on screen at once (cell width is fitted to this)
+const CENTER_OFFSET = Math.floor(VISIBLE_DAYS / 2);
+// The grid itself is scrollable: 3 months back through FORWARD_DAYS ahead, so
+// past bookings can be browsed by swiping/dragging instead of paging by week.
+const MAX_BACK_MONTHS = 3;
+const FORWARD_DAYS = 30;
 
 // ─── Physical room list (all 10 units), grouped exactly like the property
 // sections shown in Little Hotelier's own calendar ───────────────────────────
@@ -154,7 +158,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     if (!outerEl) return;
     const measure = () => {
       const available = outerEl.clientWidth - LABEL_W;
-      const fitted = Math.floor(available / DAYS_COUNT);
+      const fitted = Math.floor(available / VISIBLE_DAYS);
       setCellW(Math.max(MIN_CELL_W, fitted));
     };
     measure();
@@ -232,16 +236,29 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ช่วง 21 วันที่แสดงบนจอ เริ่มก่อน startDate (=วันที่กำลังดู/reportDate ที่
-  // แชร์กับแท็บ Check-in/out) ไป CENTER_OFFSET วัน เพื่อให้ startDate ตกอยู่
-  // กลางกริดพอดี — เป็นแค่ตัวแปรเรนเดอร์ในนี้เท่านั้น ไม่กระทบ reportDate จริง
-  const rangeStart = addDays(startDate, -CENTER_OFFSET);
+  // กริดครอบคลุมย้อนหลัง MAX_BACK_MONTHS เดือน ถึงล่วงหน้า FORWARD_DAYS วัน
+  // (ขยายออกอัตโนมัติถ้า startDate — วันที่ที่แชร์กับแท็บ Check-in/out — อยู่นอกช่วง)
+  // ผู้ใช้เลื่อนดูเองได้อิสระ; startDate ยังเป็นตัวกำหนดสีสถานะของแต่ละ booking
+  // และเป็นวันที่ที่กริดเลื่อนไปจัดกลางจอตอนเปลี่ยนวัน (ปุ่ม วันนี้ / ◀ ▶ / date picker)
+  const rangeStart = useMemo(() => {
+    const d = new Date(today() + 'T00:00:00');
+    d.setMonth(d.getMonth() - MAX_BACK_MONTHS);
+    const base = toLocalDate(d);
+    const need = addDays(startDate, -CENTER_OFFSET);
+    return need < base ? need : base;
+  }, [startDate]);
+  const rangeEnd = useMemo(() => {
+    const base = addDays(today(), FORWARD_DAYS);
+    const need = addDays(startDate, CENTER_OFFSET);
+    return need > base ? need : base;
+  }, [startDate]);
+  const daysCount = diffDays(rangeStart, rangeEnd) + 1;
 
   const days = useMemo(() => {
     const arr: string[] = [];
-    for (let i = 0; i < DAYS_COUNT; i++) arr.push(addDays(rangeStart, i));
+    for (let i = 0; i < daysCount; i++) arr.push(addDays(rangeStart, i));
     return arr;
-  }, [rangeStart]);
+  }, [rangeStart, daysCount]);
 
   const stayByRoom = useMemo(() => {
     const map: Record<string, CalStay[]> = {};
@@ -252,29 +269,40 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     return map;
   }, [stays]);
 
-  const totalW = LABEL_W + DAYS_COUNT * cellW;
+  const totalW = LABEL_W + daysCount * cellW;
   const todayIdx = diffDays(rangeStart, today());
+  const startIdx = diffDays(rangeStart, startDate);
 
-  // แถบสีเหลือง "วันนี้" ให้อยู่กลางจอเสมอ — เลื่อน scroll ของกริดให้คอลัมน์
-  // วันนี้อยู่ตรงกลางพื้นที่มองเห็นจริง ๆ (ไม่ใช่แค่กลางช่วง 21 วัน) ทุกครั้งที่
-  // เปลี่ยนวันที่ (ปุ่ม วันนี้ / ◀ ▶ / date picker) หรือโหลดข้อมูลเสร็จ (ตอน
-  // โหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
+  // คอลัมน์ซ้ายสุดที่เห็นอยู่ — ใช้แสดงช่วงวันที่ในแถบควบคุม
+  const [firstVisible, setFirstVisible] = useState(0);
+  const didInitScroll = useRef(false);
+
+  // เลื่อนกริดให้คอลัมน์ startDate อยู่กลางจอ ทุกครั้งที่เปลี่ยนวัน หรือโหลดข้อมูลเสร็จ
+  // (ตอนโหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
   //
   // ใช้ requestAnimationFrame หน่วงจนกว่า layout จะนิ่งก่อนค่อยสั่งเลื่อน —
   // ถ้าสั่ง scrollLeft ตรง ๆ กลางเฟรมที่ position:sticky (ทั้งหัวตารางแนวนอน
   // และคอลัมน์เลขห้องแนวตั้ง) ยังไม่จัด layout เสร็จ บาง browser (เจอบน iOS
   // Safari) จะ paint หัวตารางซ้อนกัน 2 ชุด (บั๊ก "วันที่ซ้อน" ที่เจอ)
+  // ครั้งแรกเลื่อนทันที (auto) ครั้งต่อไป (เปลี่ยนวัน) เลื่อนนุ่ม ๆ
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (todayIdx < 0 || todayIdx >= DAYS_COUNT) return; // วันนี้ไม่อยู่ในช่วงที่แสดง — ไม่ต้องเลื่อน
-    const todayColCenter = LABEL_W + todayIdx * cellW + cellW / 2;
-    const target = Math.max(0, todayColCenter - el.clientWidth / 2);
+    const colCenter = LABEL_W + startIdx * cellW + cellW / 2;
+    const target = Math.max(0, colCenter - el.clientWidth / 2);
+    const smooth = didInitScroll.current;
     const raf = requestAnimationFrame(() => {
-      el.scrollTo({ left: target, behavior: 'auto' });
+      el.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
+      didInitScroll.current = true;
     });
     return () => cancelAnimationFrame(raf);
-  }, [rangeStart, loading, todayIdx, cellW]);
+  }, [startDate, loading, cellW, rangeStart]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function onGridScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setFirstVisible(Math.max(0, Math.min(daysCount - 1, Math.floor(el.scrollLeft / cellW))));
+  }
 
   // ── Drag-to-pan (mouse) ────────────────────────────────────────────────────
   // The grid can be wider than the screen; besides native touch/trackpad
@@ -351,7 +379,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           <ChevronRight size={16} color={T.navy} />
         </button>
         <span className="f-num text-xs" style={{ color: T.inkSoft }}>
-          {rangeStart} → {addDays(rangeStart, DAYS_COUNT - 1)}
+          {addDays(rangeStart, firstVisible)} → {addDays(rangeStart, Math.min(daysCount - 1, firstVisible + VISIBLE_DAYS - 1))}
         </span>
       </div>
 
@@ -382,6 +410,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         <div
           ref={el => { scrollRef.current = el; setOuterEl(el); }}
           className="rounded-2xl cal-hscroll"
+          onScroll={onGridScroll}
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
           onMouseUp={endDrag}
@@ -403,7 +432,14 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                     background: isToday ? T.brassPale : T.card,
                   }}>
                     <div className="f-thai text-[10px]" style={{ color: isToday ? T.brassDeep : T.inkSoft, fontWeight: isToday ? 700 : 400 }}>{wd}</div>
-                    <div className="f-num text-sm" style={{ color: isToday ? T.brassDeep : T.ink, fontWeight: isToday ? 800 : 600 }}>{dt.getDate()}</div>
+                    <div className="f-num text-sm" style={{ color: isToday ? T.brassDeep : T.ink, fontWeight: isToday ? 800 : 600 }}>
+                      {dt.getDate()}
+                      {(dt.getDate() === 1 || i === 0) && (
+                        <span className="f-num text-[9px] font-semibold ml-0.5" style={{ color: T.brassDeep }}>
+                          {dt.toLocaleDateString('en-US', { month: 'short' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -427,10 +463,10 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                         <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
                       </div>
                       <div style={{
-                        width: DAYS_COUNT * cellW, minWidth: DAYS_COUNT * cellW, position: 'relative',
+                        width: daysCount * cellW, minWidth: daysCount * cellW, position: 'relative',
                         backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${cellW - 1}px, ${T.hair} ${cellW - 1}px, ${T.hair} ${cellW}px)`,
                       }}>
-                        {todayIdx >= 0 && todayIdx < DAYS_COUNT && (
+                        {todayIdx >= 0 && todayIdx < daysCount && (
                           <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: T.brassPale, opacity: 0.35 }} />
                         )}
                         {roomStays.map(s => {
@@ -444,7 +480,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                           // draws as two half-day segments that meet exactly at midday
                           // instead of the checkout leg vanishing and the check-in leg
                           // starting from the far edge.
-                          const totalPx = DAYS_COUNT * cellW;
+                          const totalPx = daysCount * cellW;
                           const sPx = sIdx * cellW + cellW / 2;
                           const ePx = eIdx * cellW + cellW / 2;
                           if (ePx <= 0 || sPx >= totalPx) return null;
