@@ -7,7 +7,7 @@ import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 // Revenue: reuses the same 'todo' GAS Web App / action RevenueDashboard.tsx
 // calls — its doGet_ getRevenueDashboard reads Bank_Ledger and returns
 // per-booking payout rows (date, ota/status, room, checkin, checkout,
-// nights, gross...). This is a money-received ledger, not a booking record,
+// nights, gross, net...). This is a money-received ledger, not a booking record,
 // so it's the best available revenue-by-night proxy but not exact — see the
 // note next to the Revenue toggle.
 const LEDGER_API = '/api/gas-proxy?app=todo&action=getRevenueDashboard';
@@ -296,14 +296,14 @@ export default function PerformanceDashboard() {
     });
 
     // Revenue + revenue channel breakdown — from Bank_Ledger (settled
-    // payouts). Approximate: allocates each row's gross evenly across its
+    // payouts). Uses net (actual amount transferred in), spread evenly across its
     // stay's nights, since no per-night room rate is tracked anywhere.
     rows.forEach(row => {
       const ci = parseYMD(row.checkin);
       const co = parseYMD(row.checkout);
       if (!ci || !co) return;
       const nights = row.nights > 0 ? row.nights : Math.max(1, Math.round((co.getTime() - ci.getTime()) / 86400000));
-      const revPerNight = (Number(row.gross) || 0) / nights;
+      const revPerNight = (Number(row.net) || 0) / nights;
       const chKey = revenueChannelKey(row.status);
       const meta = revenueChannelMeta(chKey);
 
