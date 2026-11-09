@@ -415,10 +415,10 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           onMouseMove={onDragMove}
           onMouseUp={endDrag}
           onMouseLeave={endDrag}
-          style={{ border: `1px solid ${T.hair}`, background: T.card, overflowX: 'auto', overflowY: 'visible', cursor: 'grab' }}
+          style={{ border: `1px solid ${T.hair}`, background: T.card, overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100dvh - 240px)', minHeight: 320, cursor: 'grab' }}
         >
           <div style={{ width: totalW, minWidth: totalW }}>
-            {/* Header row: sticky top (relative to the page's own scroll area) */}
+            {/* Header row: sticky top (relative to this grid's own vertical scroll) */}
             <div className="flex" style={{ position: 'sticky', top: 0, zIndex: 20, background: T.card }}>
               <div style={{ width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 30, background: T.card, borderBottom: `1px solid ${T.hair}`, borderRight: `1px solid ${T.hair}` }} />
               {days.map((d, i) => {
