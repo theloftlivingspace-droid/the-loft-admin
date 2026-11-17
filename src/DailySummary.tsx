@@ -4,14 +4,15 @@ import { T } from './theme';
 import { useLang } from './LanguageContext';
 import { getAuthToken } from './auth';
 
+type Recipients = 'admin' | 'group' | 'both';
 type Cfg = {
-  morning: { enabled: boolean; time: string };
-  evening: { enabled: boolean; time: string; onlyWhenFlagged: boolean };
+  morning: { enabled: boolean; time: string; recipients: Recipients; includePrices: boolean };
+  evening: { enabled: boolean; time: string; onlyWhenFlagged: boolean; aiSummary: boolean };
 };
 type Entry = { at: string; kind: 'morning' | 'evening'; date: string; decision: 'sent' | 'skipped' | 'error'; reason: string; text: string };
 type Preview = { kind: 'morning' | 'evening'; text: string; send: boolean };
 
-const DEFAULT_CFG: Cfg = { morning: { enabled: true, time: '07:30' }, evening: { enabled: true, time: '18:30', onlyWhenFlagged: true } };
+const DEFAULT_CFG: Cfg = { morning: { enabled: true, time: '07:30', recipients: 'admin', includePrices: false }, evening: { enabled: true, time: '18:30', onlyWhenFlagged: true, aiSummary: false } };
 
 async function call(action: string, init?: { method?: string; body?: unknown; query?: string }) {
   const res = await fetch(`/api/daily-summary?action=${action}${init?.query ? `&${init.query}` : ''}`, {
@@ -90,6 +91,15 @@ export default function DailySummary() {
   const section = (kind: 'morning' | 'evening') => {
     const c = cfg[kind];
     const set = (patch: Partial<Cfg['morning'] & Cfg['evening']>) => setCfg({ ...cfg, [kind]: { ...c, ...patch } } as Cfg);
+    const chk = (checked: boolean, onChange: (v: boolean) => void, label: string, hint: string) => (
+      <div style={{ borderTop: `1px solid ${T.hair}`, paddingTop: 8 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, fontSize: 15 }}>
+          <input type="checkbox" checked={checked} disabled={!c.enabled} onChange={e => onChange(e.target.checked)} style={{ width: 20, height: 20 }} />
+          {label}
+        </label>
+        <div style={{ fontSize: 12, color: T.inkSoft, marginLeft: 30 }}>{hint}</div>
+      </div>
+    );
     return (
       <div style={card} className="f-thai">
         <div style={{ fontWeight: 700, fontSize: 16, color: T.ink, marginBottom: 8 }}>{kindLabel(kind)}</div>
@@ -101,14 +111,25 @@ export default function DailySummary() {
           <label htmlFor={`ds-time-${kind}`} style={{ fontSize: 13, color: T.inkSoft }}>{t('ds_time')}</label>
           <input id={`ds-time-${kind}`} type="time" value={c.time} disabled={!c.enabled} onChange={e => set({ time: e.target.value })} style={{ ...field, maxWidth: 160 }} />
         </div>
+        {kind === 'morning' && (
+          <>
+            <div style={{ borderTop: `1px solid ${T.hair}`, paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label htmlFor="ds-recipients" style={{ fontSize: 13, color: T.inkSoft }}>{t('ds_recipients')}</label>
+              <select id="ds-recipients" value={cfg.morning.recipients} disabled={!c.enabled} onChange={e => setCfg({ ...cfg, morning: { ...cfg.morning, recipients: e.target.value as Recipients } })} style={{ ...field, maxWidth: 360 }}>
+                <option value="admin">{t('ds_rec_admin')}</option>
+                <option value="group">{t('ds_rec_group')}</option>
+                <option value="both">{t('ds_rec_both')}</option>
+              </select>
+              <div style={{ fontSize: 12, color: T.inkSoft }}>{t('ds_rec_hint')}</div>
+            </div>
+            {chk(cfg.morning.includePrices, v => setCfg({ ...cfg, morning: { ...cfg.morning, includePrices: v } }), t('ds_include_prices'), t('ds_include_prices_hint'))}
+          </>
+        )}
         {kind === 'evening' && (
-          <div style={{ borderTop: `1px solid ${T.hair}`, paddingTop: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, fontSize: 15 }}>
-              <input type="checkbox" checked={cfg.evening.onlyWhenFlagged} disabled={!c.enabled} onChange={e => setCfg({ ...cfg, evening: { ...cfg.evening, onlyWhenFlagged: e.target.checked } })} style={{ width: 20, height: 20 }} />
-              {t('ds_only_flagged')}
-            </label>
-            <div style={{ fontSize: 12, color: T.inkSoft, marginLeft: 30 }}>{t('ds_only_flagged_hint')}</div>
-          </div>
+          <>
+            {chk(cfg.evening.onlyWhenFlagged, v => setCfg({ ...cfg, evening: { ...cfg.evening, onlyWhenFlagged: v } }), t('ds_only_flagged'), t('ds_only_flagged_hint'))}
+            {chk(cfg.evening.aiSummary, v => setCfg({ ...cfg, evening: { ...cfg.evening, aiSummary: v } }), t('ds_ai_summary'), t('ds_ai_summary_hint'))}
+          </>
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <button onClick={() => runPreview(kind)} disabled={!!busy} className="press focus-ring" style={{ ...field, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
