@@ -55,7 +55,8 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(55000),
     });
     const text = await r.text();
-    try { res.status(r.status).json(JSON.parse(text)); } catch { res.status(r.status).send(text); }
+    // บอทตอบไม่ใช่ JSON (เช่น 404 "Cannot GET" เมื่อบอทยังเป็นเวอร์ชันเก่า) → ส่ง error ที่อ่านรู้เรื่องกลับไปให้หน้าเว็บ
+    try { res.status(r.status).json(JSON.parse(text)); } catch { res.status(r.status).json({ ok: false, error: 'bot_http_' + r.status }); }
   } catch (e) {
     res.status(502).json({ ok: false, error: 'bot_unreachable' });
   }

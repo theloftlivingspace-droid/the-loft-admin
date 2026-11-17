@@ -125,7 +125,7 @@ export default function DailySummary() {
   if (loading) return <div className="p-6 f-thai" style={{ color: T.inkSoft }}>{t('ds_loading')}</div>;
 
   return (
-    <div className="px-4 md:px-8 py-5 f-thai" style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="px-4 md:px-8 pt-5 f-thai" style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 22, fontWeight: 700, color: T.ink }}><BellRing size={20} />{t('ds_title')}</div>
         <div style={{ fontSize: 13, color: T.inkSoft }}>{t('ds_subtitle')}</div>
