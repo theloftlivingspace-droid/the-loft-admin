@@ -4,6 +4,8 @@
 // POST /api/maid-note
 // Body: { resId, room, guest, checkin, checkout, note }
 
+import { requireSession } from '../lib/requireSession.js';
+
 const LINE_BOT_URL   = process.env.LINE_BOT_URL   || '';  // e.g. https://hotel-line-bot.onrender.com
 const LINE_BOT_TOKEN = process.env.LINE_BOT_ADMIN_TOKEN || '';
 
@@ -13,6 +15,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST')    { res.status(405).json({ ok: false, error: 'POST only' }); return; }
+
+  if (!requireSession(req, res)) return;   // ก่อนหน้านี้ใครก็สั่งบอทส่งข้อความ LINE ได้โดยไม่ต้องล็อกอิน
 
   if (!LINE_BOT_URL) {
     res.status(500).json({ ok: false, error: 'LINE_BOT_URL not configured' });

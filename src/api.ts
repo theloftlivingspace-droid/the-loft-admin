@@ -5,7 +5,7 @@ import { getAuthToken } from './auth';
 const BASE = '/api/db';
 let expiredShown = false;
 
-function onUnauthorized() {
+export function onUnauthorized() {
   if (expiredShown) return;
   expiredShown = true;
   alert('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่ / Session expired, please log in again');

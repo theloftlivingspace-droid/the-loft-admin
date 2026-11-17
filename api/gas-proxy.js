@@ -12,6 +12,8 @@
 //   GET  /api/gas-proxy?app=rate&action=pushRates&token=...       (queue pushRatesToLH now)
 //   GET  /api/gas-proxy?app=rate&action=computeAndPush&token=...  (queue computeTargetRates + push now)
 
+import { requireSession } from '../lib/requireSession.js';
+
 const GAS_ENDPOINTS = {
   todo:       'https://script.google.com/macros/s/AKfycbxHuLVbrYnMS2aMEFUppdpKfwfby6Kn4lqD8MDHFwMf7BFIaUlv6NywAzTB-tH-IXs/exec',
   checkinout: 'https://script.google.com/macros/s/AKfycbzb5T7x7qBw35LwX_bufF9oDjMRQAkI2WAqukQqkH4tNjyhCy-CCuWDDmPaiwxbN6M/exec',
@@ -33,6 +35,10 @@ export default async function handler(req, res) {
     res.status(400).json({ ok: false, error: 'Unknown ?app= param. Use app=todo or app=checkinout.' });
     return;
   }
+
+  // todo / checkinout = ข้อมูลการจอง/แขก/บัญชี → ต้องล็อกอิน (ส่ง Authorization: Bearer ผ่าน src/authFetch.ts)
+  // app=rate ไม่บังคับ session: ผู้เรียกภายนอกใช้ ?token= ที่ GAS ตรวจเอง (อย่าลืมหมุน token นั้นถ้าเคยหลุด)
+  if (appKey !== 'rate' && !requireSession(req, res)) return;
 
   const isPost = req.method === 'POST';
   // GET บางตัวไม่ใช่ read-only จริง (เปลี่ยนข้อมูล/ส่ง LINE) — retry เมื่อ timeout อาจทำให้
