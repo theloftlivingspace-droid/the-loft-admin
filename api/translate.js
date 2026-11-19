@@ -4,6 +4,8 @@
 // POST /api/translate
 // Body: { text, targetLang: 'th'|'en', sourceLang?: 'th'|'en'|'auto', context?: string }
 
+import { requireSession } from '../lib/requireSession.js';
+
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 
@@ -17,6 +19,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST')    { res.status(405).json({ error: 'POST only' }); return; }
+  if (!requireSession(req, res)) return;   // กันคนนอกเรียกใช้ ANTHROPIC_API_KEY ของเรา
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' }); return; }
