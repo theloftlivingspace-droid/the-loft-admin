@@ -48,6 +48,10 @@ export default async function handler(req, res) {
     const raw = await callClaude({ system: SYSTEM, user: JSON.stringify({ guest_message: message, booking_context: ctx }) });
     out = validateReply(raw, message);
   } catch (e) {
+    // แยกสาเหตุให้ชัด: ยังไม่ได้ตั้งคีย์บนเซิร์ฟเวอร์ ≠ AI ล่มชั่วคราว (ไม่ส่งรายละเอียดภายในกลับไปที่เบราว์เซอร์)
+    const msg = e && e.message ? String(e.message) : 'unknown';
+    console.error('[ai-reply] failed:', msg);
+    if (msg === 'ANTHROPIC_API_KEY not set') { res.status(503).json({ ok: false, error: 'not_configured' }); return; }
     res.status(502).json({ ok: false, error: 'ai_unavailable' });
     return;
   }

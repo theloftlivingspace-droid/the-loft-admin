@@ -33,7 +33,7 @@ export default function AiReplyDrafter() {
       const d = await r.json().catch(() => ({} as Record<string, unknown>));
       if (!r.ok || d.ok === false) {
         const code = String(d.error || r.status);
-        throw new Error(code === 'daily_limit' ? L('ใช้โควตา AI วันนี้ครบแล้ว', 'Daily AI quota reached') : code === 'ai_unavailable' ? L('AI ใช้งานไม่ได้ชั่วคราว ให้ตอบเอง', 'AI is temporarily unavailable — please reply manually') : code);
+        throw new Error(code === 'daily_limit' ? L('ใช้โควตา AI วันนี้ครบแล้ว', 'Daily AI quota reached') : code === 'not_configured' ? L('ยังไม่ได้ตั้งค่าคีย์ AI บนเซิร์ฟเวอร์ (ANTHROPIC_API_KEY) — แจ้งผู้ดูแลระบบ', 'AI key is not configured on the server (ANTHROPIC_API_KEY) — contact the administrator') : code === 'ai_unavailable' ? L('AI ใช้งานไม่ได้ชั่วคราว ให้ตอบเอง', 'AI is temporarily unavailable — please reply manually') : code);
       }
       setRes(d as unknown as Result); setDraft(String(d.reply || ''));
     } catch (e) { setErr((e as Error).message); }
