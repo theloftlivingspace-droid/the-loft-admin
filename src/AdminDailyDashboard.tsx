@@ -8,7 +8,7 @@ import PerformanceDashboard from './PerformanceDashboard';
 import CalendarView from './CalendarView';
 import RepairList from './RepairList';
 import DailySummary from './DailySummary';
-import AiReplyDrafter from './AiReplyDrafter';
+import AiAssistant from './AiAssistant';
 import { useLang } from './LanguageContext';
 import { setAuthToken } from './auth';
 import { sbGet, sbInsert, sbUpsert } from './api';
@@ -1410,7 +1410,7 @@ export default function AdminDailyDashboard() {
           <DailySummary />
         )}
         {(isAdmin || isFrontdesk) && adminTab === 'ai' && (
-          <div className="p-4 md:p-8"><AiReplyDrafter /></div>
+          <div className="p-4 md:p-8"><AiAssistant isAdmin={isAdmin} /></div>
         )}
         {isAdmin && adminTab === 'revenue' && (
           <RevenueDashboard />
