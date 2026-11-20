@@ -24,6 +24,7 @@ const DICT: Record<string, { th: string; en: string }> = {
   tab_parking:          { th: 'ที่จอดรถ', en: 'Parking' },
   tab_etc:              { th: 'อื่นๆ', en: 'Etc' },
   tab_summary:          { th: 'สรุปประจำวัน', en: 'Daily summary' },
+  tab_ai:               { th: 'ผู้ช่วย AI', en: 'AI assistant' },
   ds_title:             { th: 'ตั้งค่าสรุปประจำวัน', en: 'Daily summary settings' },
   ds_subtitle:          { th: 'บอทส่งสรุปเข้า LINE ของแอดมิน เช้า = แผนวันนี้ / เย็น = ผลตรวจห้อง', en: 'The bot sends a summary to the admin LINE: morning = today’s plan, evening = room inspection results' },
   ds_server_off:        { th: 'ฟีเจอร์นี้ถูกปิดอยู่ที่เซิร์ฟเวอร์ (DAILY_SUMMARY_ENABLED) — บันทึกการตั้งค่าได้ แต่จะยังไม่ส่งจนกว่าจะเปิด', en: 'This feature is switched off on the server (DAILY_SUMMARY_ENABLED) — settings can be saved but nothing is sent until it is enabled' },
