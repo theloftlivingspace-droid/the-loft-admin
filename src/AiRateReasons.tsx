@@ -45,7 +45,7 @@ export default function AiRateReasons() {
           const m: Record<string, string> = {
             not_configured: L('ยังไม่ได้ตั้ง RATE_REMOTE_TOKEN ใน Vercel', 'RATE_REMOTE_TOKEN is not set in Vercel'),
             gas_unauthorized: L('token ไม่ตรงกับ REMOTE_TRIGGER_TOKEN ใน Apps Script', 'Token does not match REMOTE_TRIGGER_TOKEN in Apps Script'),
-            gas_not_updated: L('Apps Script ยังเป็นเวอร์ชันเก่า: Manage deployments → New version → Deploy', 'Apps Script is outdated: Manage deployments → New version → Deploy'),
+            gas_not_updated: L('Apps Script ยังไม่รู้จักคำสั่งนี้ (เวอร์ชันเก่า) — ตรวจว่า GitHub Action "Deploy to Apps Script" ของ lh-rate-automation รันสำเร็จ', 'Apps Script does not know this action yet (old version) — check that the "Deploy to Apps Script" GitHub Action in lh-rate-automation succeeded'),
             gas_not_configured: L('Apps Script ยังไม่ได้ตั้ง REMOTE_TRIGGER_TOKEN', 'Apps Script has no REMOTE_TRIGGER_TOKEN'),
             gas_unreachable: L('เชื่อมต่อ Apps Script ไม่ได้ ลองใหม่อีกครั้ง', 'Cannot reach Apps Script — try again'),
           };
