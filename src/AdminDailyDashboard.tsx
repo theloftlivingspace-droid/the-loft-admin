@@ -8,12 +8,13 @@ import PerformanceDashboard from './PerformanceDashboard';
 import CalendarView from './CalendarView';
 import RepairList from './RepairList';
 import DailySummary from './DailySummary';
+import AiReplyDrafter from './AiReplyDrafter';
 import { useLang } from './LanguageContext';
 import { setAuthToken } from './auth';
 import { sbGet, sbInsert, sbUpsert } from './api';
 import { T, fontImports } from './theme';
 import loftLogo from './assets/brand/loft-logo.png';
-import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, BarChart3, Receipt, AlertCircle, CalendarDays, Flag, Wrench } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Building2, Package, Car, Users2, Bell, BellRing, MoreHorizontal, TrendingUp, BarChart3, Receipt, AlertCircle, CalendarDays, Flag, Wrench, Sparkles } from 'lucide-react';
 import { subscribeToPush, setForegroundBadge, getPushPermissionState } from './push';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -260,7 +261,7 @@ export default function AdminDailyDashboard() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitted, setSubmitted]           = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair' | 'summary'>('checkinout');
+  const [adminTab, setAdminTab]             = useState<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair' | 'summary' | 'ai'>('checkinout');
   // ── Main menu reorganized to 4 icon-only entries: checkinout, stock,
   // parking, etc. "etc" groups everything else (daily dashboard home,
   // booking/invoice, revenue summary, user management) behind a secondary
@@ -291,7 +292,7 @@ export default function AdminDailyDashboard() {
   const swipeDir = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const swipeBlocked = useRef(false);
   const SWIPE_THRESHOLD = 60;
-  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair' | 'summary'>>(
+  const mobileTabOrderRef = useRef<Array<'dashboard' | 'todo' | 'checkinout' | 'stock' | 'parking' | 'users' | 'revenue' | 'performance' | 'calendar' | 'repair' | 'summary' | 'ai'>>(
     ['dashboard', 'checkinout', 'calendar', 'stock', 'parking']
   );
   // Kept in sync with the visible tab set on every render (cheap, no need for
@@ -1276,6 +1277,7 @@ export default function AdminDailyDashboard() {
               ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
               ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
               ...(isAdmin ? [{ key: 'summary' as const, Icon: BellRing, label: t('tab_summary') }] : []),
+              ...((isAdmin || isFrontdesk) ? [{ key: 'ai' as const, Icon: Sparkles, label: t('tab_ai') }] : []),
               ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
             ]).map(s => (
               <button key={s.key} onClick={() => { setAdminTab(s.key); scrollToTop(); }}
@@ -1406,6 +1408,9 @@ export default function AdminDailyDashboard() {
         )}
         {isAdmin && adminTab === 'summary' && (
           <DailySummary />
+        )}
+        {(isAdmin || isFrontdesk) && adminTab === 'ai' && (
+          <div className="p-4 md:p-8"><AiReplyDrafter /></div>
         )}
         {isAdmin && adminTab === 'revenue' && (
           <RevenueDashboard />
