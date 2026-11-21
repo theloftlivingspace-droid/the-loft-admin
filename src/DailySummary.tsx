@@ -6,13 +6,13 @@ import { getAuthToken } from './auth';
 
 type Recipients = 'admin' | 'group' | 'both';
 type Cfg = {
-  morning: { enabled: boolean; time: string; recipients: Recipients; includePrices: boolean };
+  morning: { enabled: boolean; time: string; recipients: Recipients; includePrices: boolean; consolidated: boolean };
   evening: { enabled: boolean; time: string; onlyWhenFlagged: boolean; aiSummary: boolean };
 };
 type Entry = { at: string; kind: 'morning' | 'evening'; date: string; decision: 'sent' | 'skipped' | 'error'; reason: string; text: string };
 type Preview = { kind: 'morning' | 'evening'; text: string; send: boolean };
 
-const DEFAULT_CFG: Cfg = { morning: { enabled: true, time: '07:30', recipients: 'admin', includePrices: false }, evening: { enabled: true, time: '18:30', onlyWhenFlagged: true, aiSummary: false } };
+const DEFAULT_CFG: Cfg = { morning: { enabled: true, time: '07:30', recipients: 'admin', includePrices: false, consolidated: true }, evening: { enabled: true, time: '18:30', onlyWhenFlagged: true, aiSummary: false } };
 
 async function call(action: string, init?: { method?: string; body?: unknown; query?: string }) {
   const res = await fetch(`/api/daily-summary?action=${action}${init?.query ? `&${init.query}` : ''}`, {
@@ -123,6 +123,7 @@ export default function DailySummary() {
               <div style={{ fontSize: 12, color: T.inkSoft }}>{t('ds_rec_hint')}</div>
             </div>
             {chk(cfg.morning.includePrices, v => setCfg({ ...cfg, morning: { ...cfg.morning, includePrices: v } }), t('ds_include_prices'), t('ds_include_prices_hint'))}
+            {cfg.morning.consolidated && chk(cfg.evening.aiSummary, v => setCfg({ ...cfg, evening: { ...cfg.evening, aiSummary: v } }), t('ds_ai_summary'), t('ds_ai_summary_morning_hint'))}
           </>
         )}
         {kind === 'evening' && (
@@ -157,8 +158,16 @@ export default function DailySummary() {
       {err && <div role="alert" style={{ background: T.wineTint, color: T.wine, borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{err}</div>}
       {notice && <div role="status" style={{ background: T.sageTint, color: T.sage, borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{notice}</div>}
 
+      <div style={card} className="f-thai">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, fontSize: 15, fontWeight: 600 }}>
+          <input type="checkbox" checked={!!cfg.morning.consolidated} onChange={e => setCfg({ ...cfg, morning: { ...cfg.morning, consolidated: e.target.checked } })} style={{ width: 20, height: 20 }} />
+          {t('ds_consolidated')}
+        </label>
+        <div style={{ fontSize: 12, color: T.inkSoft, marginLeft: 30 }}>{t('ds_consolidated_hint')}</div>
+      </div>
+
       {section('morning')}
-      {section('evening')}
+      {!cfg.morning.consolidated && section('evening')}
 
       <div style={card}>
         <div style={{ fontSize: 13, color: T.inkSoft }}>{t('ds_recipient')}</div>
