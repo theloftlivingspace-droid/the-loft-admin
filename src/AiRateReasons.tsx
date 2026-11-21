@@ -23,11 +23,12 @@ export default function AiRateReasons() {
   const [days, setDays] = useState(14);
   const key = `${room}|${days}`;
   // ผลลัพธ์เก็บคู่กับ key ของคำขอ: busy = ยังไม่มีผลของ key ปัจจุบัน (ไม่ต้อง setState แบบ synchronous ใน effect)
-  const [res, setRes] = useState<{ key: string; rows: Row[] | null; err: string; updatedAt: string } | null>(null);
+  const [res, setRes] = useState<{ key: string; rows: Row[] | null; err: string; updatedAt: string; note: string } | null>(null);
   const cur = res && res.key === key ? res : null;
   const rows = cur ? cur.rows : null;
   const err = cur ? cur.err : '';
   const updatedAt = cur ? cur.updatedAt : '';
+  const note = cur ? cur.note : '';
   const busy = !cur;
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function AiRateReasons() {
     const from = bkkToday();
     const qs = new URLSearchParams({ from, to: addDays(from, days - 1) });
     if (room) qs.set('room', room);
-    const fail = (err: string) => { if (live) setRes({ key, rows: null, err, updatedAt: '' }); };
+    const fail = (err: string) => { if (live) setRes({ key, rows: null, err, updatedAt: '', note: '' }); };
     fetch('/api/rate-reasons?' + qs.toString(), { headers: { Authorization: `Bearer ${getAuthToken()}` } })
       .then(async (r) => ({ r, d: await r.json().catch(() => ({} as Record<string, unknown>)) }))
       .then(({ r, d }) => {
@@ -50,7 +51,7 @@ export default function AiRateReasons() {
             gas_unreachable: L('เชื่อมต่อ Apps Script ไม่ได้ ลองใหม่อีกครั้ง', 'Cannot reach Apps Script — try again'),
           };
           fail(m[code] || L('โหลดเหตุผลราคาไม่สำเร็จ (' + code + ')', 'Could not load rate reasons (' + code + ')'));
-        } else setRes({ key, rows: d.rows as Row[], err: '', updatedAt: String(d.updatedAt || '') });
+        } else setRes({ key, rows: d.rows as Row[], err: '', updatedAt: String(d.updatedAt || ''), note: String(d.note || '') });
       })
       .catch(() => fail(L('โหลดเหตุผลราคาไม่สำเร็จ', 'Could not load rate reasons')));
     return () => { live = false; };
@@ -83,6 +84,7 @@ export default function AiRateReasons() {
           {busy && <Loader2 size={18} className="animate-spin" style={{ alignSelf: 'center' }} />}
         </div>
         {updatedAt && <p className="text-xs mt-2" style={{ color: T.inkSoft }}>{L('คำนวณล่าสุด', 'Last computed')}: {updatedAt.replace('T', ' ').slice(0, 16)} UTC</p>}
+        {note && <p className="text-xs mt-1" style={{ color: T.inkSoft }}>{note}</p>}
       </div>
 
       {err && <div style={{ ...card, background: T.wineTint, borderColor: T.wine, color: T.ink }} className="text-sm">{err}</div>}
