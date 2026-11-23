@@ -252,13 +252,24 @@ export default function RepairList({ currentUser }: RepairListProps) {
 
   const [uploadingUid, setUploadingUid] = useState<string | null>(null);
 
-  async function addAfterPhoto(uid: string, file: File) {
+  async function addAfterPhotos(uid: string, files: File[]) {
+    if (!files.length) return;
     setUploadingUid(uid);
     try {
-      const url = await sbUploadPhoto(uid, file);
-      const current = items.find(i => i.uid === uid);
-      const nextPhotos = [...(current?.afterPhotos || []), url];
-      await persist(uid, { after_photos: nextPhotos });
+      // upload all selected files in parallel; skip any that fail
+      const results = await Promise.allSettled(files.map(f => sbUploadPhoto(uid, f)));
+      const urls = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map(r => r.value);
+      if (urls.length < files.length) {
+        alert(t('repair_upload_failed'));
+        results.forEach(r => { if (r.status === 'rejected') console.error(r.reason); });
+      }
+      if (urls.length) {
+        const current = items.find(i => i.uid === uid);
+        const nextPhotos = [...(current?.afterPhotos || []), ...urls];
+        await persist(uid, { after_photos: nextPhotos });
+      }
     } catch (e) {
       alert(t('repair_upload_failed'));
       console.error(e);
@@ -449,11 +460,12 @@ export default function RepairList({ currentUser }: RepairListProps) {
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
                   disabled={uploadingUid === selected.uid}
                   onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) addAfterPhoto(selected.uid, file);
+                    const files = Array.from(e.target.files ?? []);
+                    if (files.length) addAfterPhotos(selected.uid, files);
                     e.target.value = '';
                   }}
                 />
