@@ -468,7 +468,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: Math.min(todayIdx, daysCount) * cellW, background: 'rgba(100,116,139,0.08)' }} />
                         )}
                         {todayIdx >= 0 && todayIdx < daysCount && (
-                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: 'rgba(31,138,128,0.14)', borderLeft: `2px solid ${T.teal}`, borderRight: `2px solid ${T.teal}`, boxSizing: 'border-box' }} />
+                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: 'rgba(217,178,92,0.22)' }} />
                         )}
                         {roomStays.map(s => {
                           const status = s.isCancelled ? 'cancelled' : computeStatus(s.checkin, s.checkout, startDate);
