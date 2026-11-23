@@ -2332,6 +2332,17 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         </div>
       </div>
 
+      {/* Table / Cards switch — mobile row (desktop has it inside the tabs row) */}
+      <div className="md:hidden flex items-center justify-end gap-1 mb-2">
+        {([['table', tStatic('ตาราง', 'Table')], ['cards', tStatic('การ์ด', 'Cards')]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setListMode(k)}
+            className="press f-thai px-3 py-1 rounded-md text-[11px]"
+            style={listMode === k ? { background: T.teal, color: '#fff', fontWeight: 600 } : { border: `1px solid ${T.hair}`, color: T.inkSoft, background: T.card }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Filter tabs — underline style like Little Hotelier's list tabs */}
       <div className="flex items-center gap-1 mb-4" style={{ borderBottom: `1px solid ${T.hair}` }}>
         {([
@@ -2365,13 +2376,13 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
       ) : (
         <>
           {listMode === 'table' && (
-            <div className="hidden md:block rounded-xl overflow-hidden" style={{ border: `1px solid ${T.hair}`, background: T.card }}>
-              <table className="w-full f-thai" style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+            <div className="rounded-xl overflow-x-auto" style={{ border: `1px solid ${T.hair}`, background: T.card }}>
+              <table className="w-full f-thai text-[12px] md:text-[13px]" style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F1F3F7', color: T.inkSoft, fontSize: 11.5 }}>
                     {[tStatic('สถานะ', 'Status'), tStatic('ห้อง', 'Room'), tStatic('แขก', 'Guest'), tStatic('ช่องทาง', 'Channel'),
                       tStatic('เช็คอิน', 'Check-in'), tStatic('เช็คเอาท์', 'Check-out'), tStatic('คืน', 'Nights'), tStatic('รหัสจอง', 'Res. ID'), tStatic('โน้ต', 'Note'), ''].map((h, i) => (
-                      <th key={i} className="text-left font-semibold px-3 py-2.5 whitespace-nowrap" style={{ borderBottom: `1px solid ${T.hair}` }}>{h}</th>
+                      <th key={i} className={`text-left font-semibold px-2 md:px-3 py-2.5 whitespace-nowrap${[3, 7, 8].includes(i) ? ' hidden md:table-cell' : ''}`} style={{ borderBottom: `1px solid ${T.hair}` }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2385,29 +2396,29 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                       <Fragment key={key}>
                         <tr onClick={() => setOpenRow(open ? null : key)} className="cursor-pointer"
                           style={{ borderBottom: `1px solid ${T.hair}`, background: open ? '#F7F9FB' : T.card }}>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <span className="inline-block rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: ps.bg, color: '#fff' }}>{t(ps.label)}</span>
+                          <td className="px-2 md:px-3 py-2.5 whitespace-nowrap">
+                            <span className="inline-block rounded px-1.5 md:px-2 py-0.5 text-[10.5px] md:text-[11px] font-semibold" style={{ background: ps.bg, color: '#fff' }}>{t(ps.label)}</span>
                           </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
+                          <td className="px-2 md:px-3 py-2.5 whitespace-nowrap">
                             <span className="f-num font-semibold" style={{ color: '#8A94A6' }}>{s.roomNum}</span>
-                            <span className="ml-2" style={{ color: T.ink }}>{ROOM_LIST.find(r => r.num === s.roomNum)?.type ?? ''}</span>
+                            <span className="ml-2 hidden md:inline" style={{ color: T.ink }}>{ROOM_LIST.find(r => r.num === s.roomNum)?.type ?? ''}</span>
                           </td>
-                          <td className="px-3 py-2.5 font-medium" style={{ color: T.ink }}>{s.guest}</td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
+                          <td className="px-2 md:px-3 py-2.5 font-medium" style={{ color: T.ink, minWidth: 90 }}>{s.guest}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
                             <span className="rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: cs.bg, color: cs.fg }}>{channelIcon(s.channel)} {s.channel || '—'}</span>
                           </td>
-                          <td className="px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}>{fmtDMY(s.checkin)}</td>
-                          <td className="px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}>{fmtDMY(s.checkout)}</td>
-                          <td className="px-3 py-2.5 f-num" style={{ color: T.inkSoft }}>{s.nights}</td>
-                          <td className="px-3 py-2.5 f-num text-[12px]" style={{ color: T.inkSoft }}>{s.resId}</td>
-                          <td className="px-3 py-2.5 text-[12px]" style={{ color: T.brassDeep, maxWidth: 200 }}>
+                          <td className="px-2 md:px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}><span className="md:hidden">{fmtDMY(s.checkin).slice(0, 5)}</span><span className="hidden md:inline">{fmtDMY(s.checkin)}</span></td>
+                          <td className="px-2 md:px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}><span className="md:hidden">{fmtDMY(s.checkout).slice(0, 5)}</span><span className="hidden md:inline">{fmtDMY(s.checkout)}</span></td>
+                          <td className="px-2 md:px-3 py-2.5 f-num" style={{ color: T.inkSoft }}>{s.nights}</td>
+                          <td className="px-3 py-2.5 f-num text-[12px] hidden md:table-cell" style={{ color: T.inkSoft }}>{s.resId}</td>
+                          <td className="px-3 py-2.5 text-[12px] hidden md:table-cell" style={{ color: T.brassDeep, maxWidth: 200 }}>
                             <div className="truncate" title={s.note || undefined}>{s.note ? `📝 ${s.note}` : ''}</div>
                           </td>
-                          <td className="px-3 py-2.5 text-right" style={{ color: T.inkSoft, width: 28 }}>{open ? '▾' : '▸'}</td>
+                          <td className="px-2 md:px-3 py-2.5 text-right" style={{ color: T.inkSoft, width: 24 }}>{open ? '▾' : '▸'}</td>
                         </tr>
                         {open && (
                           <tr style={{ borderBottom: `1px solid ${T.hair}` }}>
-                            <td colSpan={10} style={{ background: T.paper, padding: 12 }}>
+                            <td colSpan={10} style={{ background: T.paper, padding: 8 }}>
                               <div style={{ maxWidth: 560 }}>{renderStayCard(s)}</div>
                             </td>
                           </tr>
@@ -2419,7 +2430,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
               </table>
             </div>
           )}
-          <div className={`grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2${listMode === 'table' ? ' md:hidden' : ''}`}>
+          <div className={`grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2${listMode === 'table' ? ' hidden' : ''}`}>
             {filtered.map(s => renderStayCard(s))}
           </div>
         </>
