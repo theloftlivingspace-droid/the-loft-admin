@@ -796,8 +796,13 @@ export default function AdminDailyDashboard() {
     ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
     ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
   ];
-  const deskTitle = [...deskMain, ...deskManage].find(i => i.key === adminTab)?.label ?? '';
-  const deskDateLabel = new Date().toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const deskAll = [...deskMain, ...deskManage];
+  const deskActive = deskAll.find(i => i.key === adminTab);
+  const deskTitle = deskActive?.label ?? '';
+  const DeskIcon = deskActive?.Icon ?? CalendarDays;
+  // Sub-tabs under the page title (like Little Hotelier's Calendar | Dashboard | List row)
+  const deskGroups: (typeof adminTab)[][] = [['calendar', 'checkinout', 'todo'], ['stock', 'parking', 'repair'], ['performance', 'revenue', 'dashboard']];
+  const deskTabs = (deskGroups.find(g => g.includes(adminTab)) ?? []).map(k => deskAll.find(i => i.key === k)).filter((x): x is DeskItem => !!x);
 
   return (
     <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
@@ -806,8 +811,8 @@ export default function AdminDailyDashboard() {
       {/* ── Desktop PMS sidebar (md+) — replaces the floating pill header ── */}
       <aside
         className="hidden md:flex fixed left-0 top-0 bottom-0 z-50 flex-col"
-        style={{ width: 232, background: T.navyDeep, borderRight: `1px solid ${T.hairGold}` }}>
-        <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
+        style={{ width: 216, background: T.pmsSide }}>
+        <div className="flex items-center gap-3 px-4 py-4">
           <div className="rounded-lg overflow-hidden shrink-0" style={{ width: 38, height: 38, border: `1px solid ${T.brass}66` }}>
             <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
@@ -822,7 +827,7 @@ export default function AdminDailyDashboard() {
         <nav className="flex-1 overflow-y-auto loft-scroll px-2.5 py-3" aria-label="Main">
           {([['', deskMain], [lang === 'th' ? 'จัดการ' : 'Management', deskManage]] as [string, DeskItem[]][]).map(([group, items]) => items.length === 0 ? null : (
             <div key={group || 'main'} className="mb-3">
-              {group && <div className="f-thai px-3 pb-1.5 pt-1" style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{group}</div>}
+              {group && <div className="f-thai px-3 pb-1.5 pt-2 eyebrow" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.40)', fontWeight: 600 }}>{group}</div>}
               {items.map(m => {
                 const on = adminTab === m.key;
                 return (
@@ -831,12 +836,11 @@ export default function AdminDailyDashboard() {
                     className="press focus-ring w-full flex items-center gap-3 px-3 py-2.5 rounded-lg f-thai text-left mb-0.5"
                     style={{
                       fontSize: 13.5,
-                      background: on ? 'rgba(255,255,255,0.10)' : 'transparent',
-                      color: on ? '#fff' : 'rgba(255,255,255,0.72)',
+                      background: on ? T.pmsSideOn : 'transparent',
+                      color: on ? '#fff' : 'rgba(255,255,255,0.70)',
                       fontWeight: on ? 600 : 400,
-                      boxShadow: on ? `inset 3px 0 0 ${T.brass}` : 'none',
                     }}>
-                    <m.Icon size={17} strokeWidth={on ? 2.3 : 1.8} color={on ? T.brass : undefined} />
+                    <m.Icon size={17} strokeWidth={on ? 2.2 : 1.7} color={on ? '#fff' : 'rgba(255,255,255,0.6)'} />
                     <span className="flex-1 truncate">{m.label}</span>
                     {!!m.badge && m.badge > 0 && (
                       <span className="f-num rounded-full px-1.5" style={{ fontSize: 10.5, fontWeight: 700, background: T.wine, color: '#fff', minWidth: 18, textAlign: 'center' }}>{m.badge}</span>
@@ -874,7 +878,7 @@ export default function AdminDailyDashboard() {
           </button>
         </div>
       </aside>
-      <div className="h-full flex flex-col overflow-hidden md:pl-[232px]" style={{ background: T.paper }}>
+      <div className="h-full flex flex-col overflow-hidden md:pl-[216px]" style={{ background: T.paper }}>
 
         {/* Header — desktop uses the same "no shared bar" language as
             mobile: each cluster (brand card, TH/EN, badge, date, bell,
@@ -1141,10 +1145,28 @@ export default function AdminDailyDashboard() {
         {/* Spacer — reserves room for the now-fixed desktop header (which
             now also holds the main nav) so content below doesn't render
             underneath it */}
-        <header className="hidden md:flex flex-shrink-0 items-center gap-4 px-8" style={{ height: 64, background: T.card, borderBottom: `1px solid ${T.hair}` }}>
-          <div className="min-w-0">
-            <h2 className="f-display truncate" style={{ fontSize: 18, fontWeight: 700, color: T.ink, lineHeight: 1.2 }}>{deskTitle}</h2>
-            <div className="f-thai" style={{ fontSize: 12, color: T.inkSoft }}>{deskDateLabel}</div>
+        <header className="hidden md:flex flex-shrink-0 items-center gap-4 px-8 py-2.5" style={{ minHeight: 72, background: T.card, borderBottom: `1px solid ${T.hair}` }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: T.teal }}>
+              <DeskIcon size={20} color="#fff" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="f-display truncate" style={{ fontSize: 17, fontWeight: 700, color: T.ink, lineHeight: 1.25 }}>{deskTitle}</h2>
+              {deskTabs.length > 1 && (
+                <div className="flex items-center gap-5 mt-0.5">
+                  {deskTabs.map(tb => {
+                    const on = tb.key === adminTab;
+                    return (
+                      <button key={tb.key} onClick={() => { setAdminTab(tb.key); scrollToTop(); }}
+                        className="focus-ring f-thai"
+                        style={{ fontSize: 12.5, fontWeight: on ? 600 : 400, color: on ? T.teal : T.inkSoft, padding: '2px 0', borderBottom: `2px solid ${on ? T.teal : 'transparent'}` }}>
+                        {tb.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
           <div className="ml-auto flex items-center gap-2.5">
             {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
@@ -1164,9 +1186,9 @@ export default function AdminDailyDashboard() {
             {(mainSection === 'checkinout' || mainSection === 'calendar') && (
               <div className="flex items-center gap-2">
                 {!isPreviewDate && (
-                  <span className="f-thai text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: T.brass, color: T.navyDeep }}>{t('cal_today')}</span>
+                  <span className="f-thai text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: T.teal, color: '#fff' }}>{t('cal_today')}</span>
                 )}
-                <div className="relative flex items-center rounded-lg px-2.5 py-1.5" style={{ background: T.paper, border: `1px solid ${isPreviewDate ? T.brass : T.hair}` }}>
+                <div className="relative flex items-center rounded-lg px-2.5 py-1.5" style={{ background: T.paper, border: `1px solid ${isPreviewDate ? T.teal : T.hair}` }}>
                   <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} title={t('report_date_label')}
                     className="text-xs f-num focus-ring" style={{ background: 'transparent', border: 'none', color: T.ink }} />
                   {isPreviewDate && (
@@ -1175,6 +1197,7 @@ export default function AdminDailyDashboard() {
                 </div>
               </div>
             )}
+            <span className="f-thai text-[13px] whitespace-nowrap pl-2" style={{ color: T.inkSoft }}>The Loft Living Space ⌄</span>
           </div>
         </header>
 
