@@ -11,7 +11,8 @@ import { ChevronsLeft, ChevronsRight, RefreshCw, CalendarDays } from 'lucide-rea
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
-const LABEL_W = 148; // px for the sticky room-label column
+const LABEL_W = 148; // px for the sticky room-label column (desktop)
+const LABEL_W_MOBILE = 72; // px on phones — narrower so the calendar gets more room
 const ROW_H = 56;    // px per room row
 const VISIBLE_DAYS = 21; // columns that fit on screen at once (cell width is fitted to this)
 const CENTER_OFFSET = Math.floor(VISIBLE_DAYS / 2);
@@ -142,6 +143,13 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   const scrollRef = useRef<HTMLDivElement>(null);
   const [outerEl, setOuterEl] = useState<HTMLDivElement | null>(null);
   const [cellW, setCellW] = useState(MIN_CELL_W);
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const labelW = isNarrow ? LABEL_W_MOBILE : LABEL_W;
 
   // Stretch the day columns to fill whatever page width is available
   // (desktop) instead of leaving empty space to the right of a fixed-width
@@ -157,7 +165,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   useEffect(() => {
     if (!outerEl) return;
     const measure = () => {
-      const available = outerEl.clientWidth - LABEL_W;
+      const available = outerEl.clientWidth - labelW;
       const fitted = Math.floor(available / VISIBLE_DAYS);
       setCellW(Math.max(MIN_CELL_W, fitted));
     };
@@ -165,7 +173,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     const ro = new ResizeObserver(measure);
     ro.observe(outerEl);
     return () => ro.disconnect();
-  }, [outerEl]);
+  }, [outerEl, labelW]);
 
   async function load() {
     setLoading(true);
@@ -269,7 +277,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     return map;
   }, [stays]);
 
-  const totalW = LABEL_W + daysCount * cellW;
+  const totalW = labelW + daysCount * cellW;
   const todayIdx = diffDays(rangeStart, today());
   const startIdx = diffDays(rangeStart, startDate);
 
@@ -291,7 +299,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
     const el = scrollRef.current;
     if (!el) return;
     // Center the column in the area to the right of the sticky room-label column
-    const target = Math.max(0, startIdx * cellW + cellW / 2 - (el.clientWidth - LABEL_W) / 2);
+    const target = Math.max(0, startIdx * cellW + cellW / 2 - (el.clientWidth - labelW) / 2);
     const smooth = didInitScroll.current;
     const raf = requestAnimationFrame(() => {
       el.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
@@ -417,7 +425,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           <div style={{ width: totalW, minWidth: totalW }}>
             {/* Header row: sticky top (relative to this grid's own vertical scroll) */}
             <div className="flex" style={{ position: 'sticky', top: 0, zIndex: 20, background: T.card }}>
-              <div style={{ width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 30, background: T.card, borderBottom: `1px solid ${T.hair}`, borderRight: `1px solid ${T.hair}` }} />
+              <div style={{ width: labelW, minWidth: labelW, position: 'sticky', left: 0, zIndex: 30, background: T.card, borderBottom: `1px solid ${T.hair}`, borderRight: `1px solid ${T.hair}` }} />
               {days.map((d, i) => {
                 const dt = new Date(d + 'T00:00:00');
                 const isToday = d === today();
@@ -452,12 +460,12 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                   return (
                     <div key={room.num} className="flex" style={{ height: ROW_H, borderBottom: `1px solid ${T.hair}` }}>
                       <div style={{
-                        width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 10, background: T.card,
-                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
+                        width: labelW, minWidth: labelW, position: 'sticky', left: 0, zIndex: 10, background: T.card,
+                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isNarrow ? '0 6px' : '0 10px',
                       }}>
-                        <div className="flex items-baseline gap-2 min-w-0">
+                        <div className={isNarrow ? 'flex flex-col min-w-0 leading-tight' : 'flex items-baseline gap-2 min-w-0'}>
                           <span className="f-num text-sm" style={{ color: '#8A94A6', fontWeight: 600 }}>{room.num}</span>
-                          <span className="f-thai text-[13px] truncate" style={{ color: T.ink }}>{room.type}</span>
+                          <span className={isNarrow ? 'f-thai text-[11px] truncate' : 'f-thai text-[13px] truncate'} style={{ color: T.ink }}>{room.type}</span>
                         </div>
                       </div>
                       <div style={{
