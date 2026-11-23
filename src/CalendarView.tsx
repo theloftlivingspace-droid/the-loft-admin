@@ -424,12 +424,12 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                   <div key={d} style={{
                     width: cellW, minWidth: cellW, textAlign: 'center', padding: '6px 0',
                     borderBottom: `1px solid ${T.hair}`, borderRight: i === days.length - 1 ? 'none' : `1px solid ${T.hair}`,
-                    background: isToday ? '#E9ECF1' : T.card,
+                    background: isToday ? T.teal : T.card,
                   }}>
-                    <div className="f-thai text-xs whitespace-nowrap" style={{ color: isToday ? T.ink : T.inkSoft, fontWeight: isToday ? 700 : 500 }}>
+                    <div className="f-thai text-xs whitespace-nowrap" style={{ color: isToday ? '#FFFFFF' : T.inkSoft, fontWeight: isToday ? 700 : 500 }}>
                       {wd} {dt.getDate()}
                       {(dt.getDate() === 1 || i === 0) && (
-                        <span className="f-num text-[10px] ml-1" style={{ color: T.teal, fontWeight: 600 }}>
+                        <span className="f-num text-[10px] ml-1" style={{ color: isToday ? '#FFFFFF' : T.teal, fontWeight: 600 }}>
                           {dt.toLocaleDateString('en-US', { month: 'short' })}
                         </span>
                       )}
@@ -466,7 +466,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: Math.min(todayIdx, daysCount) * cellW, background: 'rgba(100,116,139,0.08)' }} />
                         )}
                         {todayIdx >= 0 && todayIdx < daysCount && (
-                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: '#E9ECF1', opacity: 0.7 }} />
+                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: 'rgba(31,138,128,0.14)', borderLeft: `2px solid ${T.teal}`, borderRight: `2px solid ${T.teal}`, boxSizing: 'border-box' }} />
                         )}
                         {roomStays.map(s => {
                           const status = s.isCancelled ? 'cancelled' : computeStatus(s.checkin, s.checkout, startDate);
