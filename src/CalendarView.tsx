@@ -276,6 +276,8 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   // คอลัมน์ซ้ายสุดที่เห็นอยู่ — ใช้แสดงช่วงวันที่ในแถบควบคุม
   const [firstVisible, setFirstVisible] = useState(0);
   const didInitScroll = useRef(false);
+  // Bumped by the Today button so the grid re-centers even when startDate is already today
+  const [centerTick, setCenterTick] = useState(0);
 
   // เลื่อนกริดให้คอลัมน์ startDate อยู่กลางจอ ทุกครั้งที่เปลี่ยนวัน หรือโหลดข้อมูลเสร็จ
   // (ตอนโหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
@@ -288,15 +290,15 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const colCenter = LABEL_W + startIdx * cellW + cellW / 2;
-    const target = Math.max(0, colCenter - el.clientWidth / 2);
+    // Center the column in the area to the right of the sticky room-label column
+    const target = Math.max(0, startIdx * cellW + cellW / 2 - (el.clientWidth - LABEL_W) / 2);
     const smooth = didInitScroll.current;
     const raf = requestAnimationFrame(() => {
       el.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
       didInitScroll.current = true;
     });
     return () => cancelAnimationFrame(raf);
-  }, [startDate, loading, cellW, rangeStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startDate, loading, cellW, rangeStart, centerTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onGridScroll() {
     const el = scrollRef.current;
@@ -334,7 +336,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           style={{ background: T.brassPale, color: T.brassDeep, border: `1.5px solid ${T.brass}` }}>
           <span>🔍 {t('ci_preview_mode')} {startDate} {t('ci_preview_readonly')}</span>
           <button
-            onClick={() => setStartDate(today())}
+            onClick={() => { setStartDate(today()); setCenterTick(n => n + 1); }}
             className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
             style={{ background: T.brassDeep, color: '#FFFFFF' }}>
             {t('ci_preview_back_today')}
@@ -361,7 +363,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
             className="press focus-ring flex items-center justify-center rounded-md" style={{ width: 30, height: 30, border: `1px solid ${T.hair}`, background: T.card }}>
             <ChevronsLeft size={16} color={T.inkSoft} />
           </button>
-          <button onClick={() => setStartDate(today())}
+          <button onClick={() => { setStartDate(today()); setCenterTick(n => n + 1); }}
             className="press focus-ring f-thai px-3 rounded-md text-xs font-semibold" style={{ height: 30, background: T.teal, color: '#fff' }}>
             {t('cal_today')}
           </button>
