@@ -30,6 +30,10 @@ export const T = {
   // and wine (red) to not repeat that original clash.
   orange: "#C9682A",
   orangeTint: "#F3E3D5",
+  // PMS (Little Hotelier-style) accents
+  teal: "#1F8A80",
+  pmsSide: "#1B2332",
+  pmsSideOn: "#2B3548",
   hair: "rgba(11,27,61,0.12)",
   hairGold: "rgba(217,178,92,0.4)",
 } as const;

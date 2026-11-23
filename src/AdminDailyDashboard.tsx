@@ -777,10 +777,110 @@ export default function AdminDailyDashboard() {
   }
 
 
+  // ── Desktop PMS sidebar nav (md+). Same sections/role gating as the mobile
+  // bottom bar + "etc" sub-menu, flattened into one always-visible list.
+  type DeskItem = { key: typeof adminTab; Icon: typeof Building2; label: string; badge?: number };
+  const deskMain: DeskItem[] = isFrontdesk ? [
+    { key: 'checkinout', Icon: Building2,    label: t('tab_checkinout') },
+    { key: 'calendar',   Icon: CalendarDays, label: t('tab_calendar') },
+    { key: 'stock',      Icon: Package,      label: t('tab_stock'), badge: notifLowStock },
+  ] : [
+    ...(!isMaintenance ? [{ key: 'checkinout' as const, Icon: Building2, label: t('tab_checkinout') }] : []),
+    { key: 'calendar', Icon: CalendarDays, label: t('tab_calendar') },
+    { key: 'stock',    Icon: Package,      label: t('tab_stock'), badge: notifLowStock },
+    { key: 'parking',  Icon: Car,          label: t('tab_parking') },
+    ...(isAdmin ? [{ key: 'performance' as const, Icon: BarChart3, label: t('tab_performance') }] : []),
+  ];
+  const deskManage: DeskItem[] = isFrontdesk ? [] : [
+    ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
+    ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking'), badge: notifBooking + notifInvoice }] : []),
+    ...(isAdmin ? [{ key: 'revenue' as const, Icon: TrendingUp, label: t('tab_revenue') }] : []),
+    ...((isAdmin || isMaintenance) ? [{ key: 'repair' as const, Icon: Wrench, label: t('tab_repair') }] : []),
+    ...(isAdmin ? [{ key: 'users' as const, Icon: Users2, label: t('adm_tab_users') }] : []),
+  ];
+  const deskAll = [...deskMain, ...deskManage];
+  const deskActive = deskAll.find(i => i.key === adminTab);
+  const deskTitle = deskActive?.label ?? '';
+  const DeskIcon = deskActive?.Icon ?? CalendarDays;
+  // Sub-tabs under the page title (like Little Hotelier's Calendar | Dashboard | List row)
+  const deskGroups: (typeof adminTab)[][] = [['calendar', 'checkinout', 'todo'], ['stock', 'parking', 'repair'], ['performance', 'revenue', 'dashboard']];
+  const deskTabs = (deskGroups.find(g => g.includes(adminTab)) ?? []).map(k => deskAll.find(i => i.key === k)).filter((x): x is DeskItem => !!x);
+
   return (
     <div className="h-screen overflow-hidden" style={{ background: T.bone }}>
       <style>{fontImports}</style>
-      <div className="h-full flex flex-col overflow-hidden" style={{ background: T.paper }}>
+
+      {/* ── Desktop PMS sidebar (md+) — replaces the floating pill header ── */}
+      <aside
+        className="hidden md:flex fixed left-0 top-0 bottom-0 z-50 flex-col"
+        style={{ width: 216, background: T.pmsSide }}>
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="rounded-lg overflow-hidden shrink-0" style={{ width: 38, height: 38, border: `1px solid ${T.brass}66` }}>
+            <img src={loftLogo} alt="The Loft Living Space" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <div className="min-w-0">
+            <div className="f-display truncate" style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>The Loft</div>
+            <div className="f-thai truncate" style={{ fontSize: 11, color: T.brass }}>
+              {isAdmin ? t('admin_mgmt_title') : isMaintenance ? t('maintenance_title') : t('daily_admin_title')}
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto loft-scroll px-2.5 py-3" aria-label="Main">
+          {([['', deskMain], [lang === 'th' ? 'จัดการ' : 'Management', deskManage]] as [string, DeskItem[]][]).map(([group, items]) => items.length === 0 ? null : (
+            <div key={group || 'main'} className="mb-3">
+              {group && <div className="f-thai px-3 pb-1.5 pt-2 eyebrow" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.40)', fontWeight: 600 }}>{group}</div>}
+              {items.map(m => {
+                const on = adminTab === m.key;
+                return (
+                  <button key={m.key} onClick={() => { setAdminTab(m.key); scrollToTop(); }}
+                    aria-current={on ? 'page' : undefined}
+                    className="press focus-ring w-full flex items-center gap-3 px-3 py-2.5 rounded-lg f-thai text-left mb-0.5"
+                    style={{
+                      fontSize: 13.5,
+                      background: on ? T.pmsSideOn : 'transparent',
+                      color: on ? '#fff' : 'rgba(255,255,255,0.70)',
+                      fontWeight: on ? 600 : 400,
+                    }}>
+                    <m.Icon size={17} strokeWidth={on ? 2.2 : 1.7} color={on ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                    <span className="flex-1 truncate">{m.label}</span>
+                    {!!m.badge && m.badge > 0 && (
+                      <span className="f-num rounded-full px-1.5" style={{ fontSize: 10.5, fontWeight: 700, background: T.wine, color: '#fff', minWidth: 18, textAlign: 'center' }}>{m.badge}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <div className="px-3 py-3 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+          <div className="flex items-center gap-1.5 f-thai px-2.5 py-1.5 rounded-lg" style={{ fontSize: 11, background: isOfficeNetwork ? 'rgba(63,130,86,0.9)' : 'rgba(255,255,255,0.08)', color: isOfficeNetwork ? '#EAF7EE' : T.brass }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: isOfficeNetwork ? '#EAF7EE' : T.brass }} />
+            {isOfficeNetwork ? t('office_badge') : t('online_badge')}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 rounded-full p-0.5 flex-1" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+              {(['th', 'en'] as const).map(l => (
+                <button key={l} onClick={() => setLang(l)} className="press focus-ring flex-1 rounded-full"
+                  style={{ padding: '4px 0', fontSize: 11, fontWeight: 700, color: lang === l ? T.navyDeep : 'rgba(255,255,255,0.7)', background: lang === l ? T.brass : 'transparent' }}>
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleEnableNotifications} title={pushPerm === 'granted' ? 'Notifications on' : 'Enable notifications'}
+              className="press focus-ring flex items-center justify-center rounded-full shrink-0"
+              style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: pushPerm === 'granted' ? T.brass : 'rgba(255,255,255,0.85)' }}>
+              {pushPerm === 'granted' ? <BellRing size={14} /> : <Bell size={14} />}
+            </button>
+          </div>
+          <button onClick={handleLogout} className="press focus-ring w-full f-thai rounded-lg py-2"
+            style={{ fontSize: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.9)' }}>
+            {t('logout_btn')}
+          </button>
+        </div>
+      </aside>
+      <div className="h-full flex flex-col overflow-hidden md:pl-[216px]" style={{ background: T.paper }}>
 
         {/* Header — desktop uses the same "no shared bar" language as
             mobile: each cluster (brand card, TH/EN, badge, date, bell,
@@ -789,7 +889,7 @@ export default function AdminDailyDashboard() {
             of one connected strip. Kept to a single row and small sizes so
             it doesn't eat up vertical space on shorter laptop screens. */}
         <div
-          className="flex-shrink-0 hidden md:flex md:fixed md:left-6 md:right-6 md:z-50 items-center justify-between gap-3"
+          className="hidden"
           style={{ top: 12 }}>
           <div className="flex items-center gap-2.5 rounded-full pl-2 pr-4 py-2 flex-shrink-0" style={{ background: T.navyDeep, border: `1px solid ${T.hairGold}`, boxShadow: '0 8px 20px rgba(11,30,66,0.3)' }}>
             <div className="flex items-center justify-center rounded-full shrink-0 overflow-hidden" style={{ width: 32, height: 32, border: `1px solid ${T.brass}55` }}>
@@ -1047,11 +1147,65 @@ export default function AdminDailyDashboard() {
         {/* Spacer — reserves room for the now-fixed desktop header (which
             now also holds the main nav) so content below doesn't render
             underneath it */}
-        <div className="hidden md:block flex-shrink-0" style={{ height: 68 }} />
+        <header className="hidden md:flex flex-shrink-0 items-center gap-4 px-8 py-2.5" style={{ minHeight: 72, background: T.card, borderBottom: `1px solid ${T.hair}` }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: T.teal }}>
+              <DeskIcon size={20} color="#fff" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="f-display truncate" style={{ fontSize: 17, fontWeight: 700, color: T.ink, lineHeight: 1.25 }}>{deskTitle}</h2>
+              {deskTabs.length > 1 && (
+                <div className="flex items-center gap-5 mt-0.5">
+                  {deskTabs.map(tb => {
+                    const on = tb.key === adminTab;
+                    return (
+                      <button key={tb.key} onClick={() => { setAdminTab(tb.key); scrollToTop(); }}
+                        className="focus-ring f-thai"
+                        style={{ fontSize: 12.5, fontWeight: on ? 600 : 400, color: on ? T.teal : T.inkSoft, padding: '2px 0', borderBottom: `2px solid ${on ? T.teal : 'transparent'}` }}>
+                        {tb.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2.5">
+            {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
+              <button onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
+                className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: T.brassPale, border: `1px solid ${T.hairGold}`, color: T.brassDeep }}>
+                <ClipboardList size={13} /> {notifBooking} booking · <Receipt size={13} /> {notifInvoice} invoice
+              </button>
+            )}
+            {notifLowStock > 0 && (
+              <button onClick={() => { setStockInitialTab('stock'); setAdminTab('stock'); }}
+                className="press focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: T.wineTint, border: `1px solid ${T.wine}30`, color: T.wine }}>
+                <AlertCircle size={13} /> {notifLowStock} {t('notif_low_stock')}
+              </button>
+            )}
+            {(mainSection === 'checkinout' || mainSection === 'calendar') && (
+              <div className="flex items-center gap-2">
+                {!isPreviewDate && (
+                  <span className="f-thai text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: T.teal, color: '#fff' }}>{t('cal_today')}</span>
+                )}
+                <div className="relative flex items-center rounded-lg px-2.5 py-1.5" style={{ background: T.paper, border: `1px solid ${isPreviewDate ? T.teal : T.hair}` }}>
+                  <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} title={t('report_date_label')}
+                    className="text-xs f-num focus-ring" style={{ background: 'transparent', border: 'none', color: T.ink }} />
+                  {isPreviewDate && (
+                    <span className="flex items-center ml-1" title={t('ci_preview_readonly')}><Flag size={12} color={T.brassDeep} fill={T.brass} /></span>
+                  )}
+                </div>
+              </div>
+            )}
+            <span className="f-thai text-[13px] whitespace-nowrap pl-2" style={{ color: T.inkSoft }}>The Loft Living Space ⌄</span>
+          </div>
+        </header>
 
         {/* Desktop notification row — own separate pills, floating below the two header clusters */}
         {((isAdmin && (notifBooking > 0 || notifInvoice > 0)) || notifLowStock > 0) && (
-          <div className="hidden md:flex flex-wrap items-center gap-2 px-6 mt-2.5">
+          <div className="hidden">
             {isAdmin && (notifBooking > 0 || notifInvoice > 0) && (
               <button
                 onClick={() => { setTodoInitialTab(notifBooking > 0 ? 'booking' : 'invoice'); setAdminTab('todo'); }}
@@ -1270,7 +1424,7 @@ export default function AdminDailyDashboard() {
 
         {/* Etc sub-menu — labeled, shown only when the "Etc" main section is active */}
         {mainSection === 'etc' && (
-          <div className="flex-shrink-0 flex px-4 md:px-8 py-2.5 gap-2 overflow-x-auto mt-16 md:mt-0" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
+          <div className="flex-shrink-0 flex md:hidden px-4 py-2.5 gap-2 overflow-x-auto mt-16" style={{ borderBottom: `1px solid ${T.hair}`, background: T.paper }}>
             {([
               ...(!isMaintenance ? [{ key: 'dashboard' as const, Icon: LayoutGrid, label: t('tab_dashboard') }] : []),
               ...(isAdmin ? [{ key: 'todo' as const, Icon: ClipboardList, label: t('tab_booking') }] : []),

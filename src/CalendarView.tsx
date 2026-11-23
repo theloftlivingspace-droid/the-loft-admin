@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLang } from './LanguageContext';
 import { formatGuests, guestEmoji, type GuestFields } from './guests';
 import { T } from './theme';
-import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, RefreshCw, CalendarDays } from 'lucide-react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Same GAS backend that powers Check-in/out — it already carries every stay
@@ -11,8 +11,8 @@ import { ChevronLeft, ChevronRight, RefreshCw, CalendarDays } from 'lucide-react
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
-const LABEL_W = 76;  // px for the sticky room-label column
-const ROW_H = 62;    // px per room row
+const LABEL_W = 148; // px for the sticky room-label column
+const ROW_H = 56;    // px per room row
 const VISIBLE_DAYS = 21; // columns that fit on screen at once (cell width is fitted to this)
 const CENTER_OFFSET = Math.floor(VISIBLE_DAYS / 2);
 // The grid itself is scrollable: 3 months back through FORWARD_DAYS ahead, so
@@ -54,14 +54,14 @@ function channelColor(channel: string): string {
 // (ROOM_GRID_CONFIG / stay-card cardStyle in CheckInOut.tsx) so a booking's
 // color means the same thing on both screens ────────────────────────────────
 type CalStatus = 'checked-in' | 'arriving-today' | 'arriving-soon' | 'checking-out-today' | 'cancelled';
-const STATUS_STYLE: Record<CalStatus, { bg: string; accent: string; label: string }> = {
-  'checked-in':         { bg: '#C2DACA', accent: T.sage,      label: 'cal_status_checked_in' },
-  'arriving-today':     { bg: '#EEDCB2', accent: T.brassDeep, label: 'cal_status_arriving_today' },
-  'arriving-soon':      { bg: '#BAC4D6', accent: T.navy,      label: 'cal_status_arriving_soon' },
-  'checking-out-today': { bg: '#E4BDC3', accent: T.wine,      label: 'cal_status_checking_out' },
+const STATUS_STYLE: Record<CalStatus, { bg: string; accent: string; fg: string; label: string }> = {
+  'checked-in':         { bg: '#3F7D4A', accent: '#2F6338', fg: '#FFFFFF', label: 'cal_status_checked_in' },
+  'arriving-today':     { bg: '#9A6A12', accent: '#7A520C', fg: '#FFFFFF', label: 'cal_status_arriving_today' },
+  'arriving-soon':      { bg: '#1F7F7A', accent: '#16635F', fg: '#FFFFFF', label: 'cal_status_arriving_soon' },
+  'checking-out-today': { bg: '#5B6575', accent: '#434C5A', fg: '#FFFFFF', label: 'cal_status_checking_out' },
   // เทาจาง — บุ๊คกิ้งที่ยกเลิกแล้ว ยังโชว์ตำแหน่งเดิมบนปฏิทินไว้ดูประวัติได้
   // (ไม่ได้อยู่ใน 4 สถานะปกติด้านบนที่ legend เดิมโชว์ ต้องเพิ่ม legend เอง)
-  'cancelled':          { bg: '#E4E4E7', accent: '#71717A',   label: 'cal_status_cancelled' },
+  'cancelled':          { bg: '#E4E4E7', accent: '#71717A', fg: '#3F3F46', label: 'cal_status_cancelled' },
 };
 // Same date-based classification as stayFromRawRow() in CheckInOut.tsx, so a
 // stay's color always matches what Check-in/out would show for it today.
@@ -276,6 +276,8 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   // คอลัมน์ซ้ายสุดที่เห็นอยู่ — ใช้แสดงช่วงวันที่ในแถบควบคุม
   const [firstVisible, setFirstVisible] = useState(0);
   const didInitScroll = useRef(false);
+  // Bumped by the Today button so the grid re-centers even when startDate is already today
+  const [centerTick, setCenterTick] = useState(0);
 
   // เลื่อนกริดให้คอลัมน์ startDate อยู่กลางจอ ทุกครั้งที่เปลี่ยนวัน หรือโหลดข้อมูลเสร็จ
   // (ตอนโหลดอยู่ กริดยังไม่ mount, scrollRef.current เป็น null)
@@ -288,15 +290,15 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const colCenter = LABEL_W + startIdx * cellW + cellW / 2;
-    const target = Math.max(0, colCenter - el.clientWidth / 2);
+    // Center the column in the area to the right of the sticky room-label column
+    const target = Math.max(0, startIdx * cellW + cellW / 2 - (el.clientWidth - LABEL_W) / 2);
     const smooth = didInitScroll.current;
     const raf = requestAnimationFrame(() => {
       el.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
       didInitScroll.current = true;
     });
     return () => cancelAnimationFrame(raf);
-  }, [startDate, loading, cellW, rangeStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startDate, loading, cellW, rangeStart, centerTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onGridScroll() {
     const el = scrollRef.current;
@@ -334,7 +336,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           style={{ background: T.brassPale, color: T.brassDeep, border: `1.5px solid ${T.brass}` }}>
           <span>🔍 {t('ci_preview_mode')} {startDate} {t('ci_preview_readonly')}</span>
           <button
-            onClick={() => setStartDate(today())}
+            onClick={() => { setStartDate(today()); setCenterTick(n => n + 1); }}
             className="press flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold"
             style={{ background: T.brassDeep, color: '#FFFFFF' }}>
             {t('ci_preview_back_today')}
@@ -342,58 +344,53 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         </div>
       )}
 
-      {/* Header controls */}
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+      {/* Mobile-only title (desktop shows it in the shell top bar) */}
+      <div className="md:hidden flex items-center gap-1.5 mb-3">
+        <CalendarDays size={18} color={T.navy} />
+        <h2 className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('cal_title')}</h2>
+      </div>
+
+      {/* PMS toolbar — From date, « » paging, Today, refresh, legend */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-2 mb-3">
+        <div className="flex items-center gap-2 f-thai text-xs" style={{ color: T.inkSoft }}>
+          <span>{lang === 'th' ? 'ตั้งแต่' : 'From'}:</span>
+          <span className="f-num flex items-center gap-2 rounded-md px-2.5 py-1.5" style={{ border: `1px solid ${T.hair}`, background: T.card, color: T.ink }}>
+            {startDate.split('-').reverse().join('/')} <CalendarDays size={14} color={T.inkSoft} />
+          </span>
+        </div>
         <div className="flex items-center gap-1.5">
-          <CalendarDays size={18} color={T.navy} />
-          <h2 className="f-thai font-bold text-base" style={{ color: T.ink }}>{t('cal_title')}</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={load} disabled={loading}
-            className="press focus-ring flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs f-thai disabled:opacity-50"
-            style={{ border: `1px solid ${T.hairGold}`, color: T.inkSoft }}>
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            {t('cal_refresh')}
+          <button onClick={() => setStartDate(addDays(startDate, -7))} aria-label="-7"
+            className="press focus-ring flex items-center justify-center rounded-md" style={{ width: 30, height: 30, border: `1px solid ${T.hair}`, background: T.card }}>
+            <ChevronsLeft size={16} color={T.inkSoft} />
           </button>
-          {lastRefresh && !loading && (
-            <span className="f-num text-[11px]" style={{ color: T.inkSoft }}>{t('cal_updated')} {lastRefresh}</span>
-          )}
+          <button onClick={() => { setStartDate(today()); setCenterTick(n => n + 1); }}
+            className="press focus-ring f-thai px-3 rounded-md text-xs font-semibold" style={{ height: 30, background: T.teal, color: '#fff' }}>
+            {t('cal_today')}
+          </button>
+          <button onClick={() => setStartDate(addDays(startDate, 7))} aria-label="+7"
+            className="press focus-ring flex items-center justify-center rounded-md" style={{ width: 30, height: 30, border: `1px solid ${T.hair}`, background: T.card }}>
+            <ChevronsRight size={16} color={T.inkSoft} />
+          </button>
+          <button onClick={load} disabled={loading} aria-label={t('cal_refresh')} title={t('cal_refresh')}
+            className="press focus-ring flex items-center justify-center rounded-md disabled:opacity-50" style={{ width: 30, height: 30, border: `1px solid ${T.hair}`, background: T.card }}>
+            <RefreshCw size={14} color={T.inkSoft} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
-      </div>
-
-      {/* Date navigation — the ± week / Today shortcuts. Jumping to an exact
-          date is done from the shared date picker in the header pill above
-          (same one Check-in/out uses), so there's no second date input here. */}
-      <div className="flex items-center gap-2 mb-3">
-        <button onClick={() => setStartDate(addDays(startDate, -7))}
-          className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
-          <ChevronLeft size={16} color={T.navy} />
-        </button>
-        <button onClick={() => setStartDate(today())}
-          className="press focus-ring f-thai px-3 py-1.5 rounded-lg text-xs font-semibold"
-          style={{ background: T.navyTint, color: T.navy }}>
-          {t('cal_today')}
-        </button>
-        <button onClick={() => setStartDate(addDays(startDate, 7))}
-          className="press focus-ring flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${T.hairGold}` }}>
-          <ChevronRight size={16} color={T.navy} />
-        </button>
-        <span className="f-num text-xs" style={{ color: T.inkSoft }}>
+        <span className="f-num text-[11px]" style={{ color: T.inkSoft }}>
           {addDays(rangeStart, firstVisible)} → {addDays(rangeStart, Math.min(daysCount - 1, firstVisible + VISIBLE_DAYS - 1))}
+          {lastRefresh && !loading ? ` · ${t('cal_updated')} ${lastRefresh}` : ''}
         </span>
-      </div>
-
-      {/* Legend — status colors (matches Check-in/out) */}
-      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3">
-        {(Object.keys(STATUS_STYLE) as CalStatus[]).map(st => {
-          const s = STATUS_STYLE[st];
-          return (
-            <div key={st} className="flex items-center gap-1">
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: s.bg, border: `1.5px solid ${s.accent}`, display: 'inline-block' }} />
-              <span className="f-thai text-[11px]" style={{ color: T.inkSoft }}>{t(s.label)}</span>
-            </div>
-          );
-        })}
+        <div className="md:ml-auto flex items-center flex-wrap gap-x-3 gap-y-1">
+          {(Object.keys(STATUS_STYLE) as CalStatus[]).map(st => {
+            const x = STATUS_STYLE[st];
+            return (
+              <div key={st} className="flex items-center gap-1">
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: x.bg, border: `1px solid ${x.accent}`, display: 'inline-block' }} />
+                <span className="f-thai text-[11px]" style={{ color: T.inkSoft }}>{t(x.label)}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {error && (
@@ -409,7 +406,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
       ) : (
         <div
           ref={el => { scrollRef.current = el; setOuterEl(el); }}
-          className="rounded-2xl cal-hscroll"
+          className="rounded-xl cal-hscroll"
           onScroll={onGridScroll}
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
@@ -429,13 +426,12 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                   <div key={d} style={{
                     width: cellW, minWidth: cellW, textAlign: 'center', padding: '6px 0',
                     borderBottom: `1px solid ${T.hair}`, borderRight: i === days.length - 1 ? 'none' : `1px solid ${T.hair}`,
-                    background: isToday ? T.brassPale : T.card,
+                    background: isToday ? T.teal : T.card,
                   }}>
-                    <div className="f-thai text-[10px]" style={{ color: isToday ? T.brassDeep : T.inkSoft, fontWeight: isToday ? 700 : 400 }}>{wd}</div>
-                    <div className="f-num text-sm" style={{ color: isToday ? T.brassDeep : T.ink, fontWeight: isToday ? 800 : 600 }}>
-                      {dt.getDate()}
+                    <div className="f-thai text-xs whitespace-nowrap" style={{ color: isToday ? '#FFFFFF' : T.inkSoft, fontWeight: isToday ? 700 : 500 }}>
+                      {wd} {dt.getDate()}
                       {(dt.getDate() === 1 || i === 0) && (
-                        <span className="f-num text-[9px] font-semibold ml-0.5" style={{ color: T.brassDeep }}>
+                        <span className="f-num text-[10px] ml-1" style={{ color: isToday ? '#FFFFFF' : T.teal, fontWeight: 600 }}>
                           {dt.toLocaleDateString('en-US', { month: 'short' })}
                         </span>
                       )}
@@ -448,7 +444,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
             {/* Room groups */}
             {ROOM_GROUPS.map(group => (
               <div key={group.label}>
-                <div className="f-thai text-xs font-bold px-3 py-1.5" style={{ background: T.navyTint, color: T.navy }}>
+                <div className="f-thai text-[11px] font-semibold px-3 py-1.5 eyebrow" style={{ background: '#F1F3F7', color: T.inkSoft, borderBottom: `1px solid ${T.hair}` }}>
                   {group.label}
                 </div>
                 {group.rooms.map(room => {
@@ -457,17 +453,22 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                     <div key={room.num} className="flex" style={{ height: ROW_H, borderBottom: `1px solid ${T.hair}` }}>
                       <div style={{
                         width: LABEL_W, minWidth: LABEL_W, position: 'sticky', left: 0, zIndex: 10, background: T.card,
-                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 6px',
+                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
                       }}>
-                        <div className="f-num text-sm font-bold" style={{ color: T.ink }}>{room.num}</div>
-                        <div className="f-thai text-[10px]" style={{ color: T.inkSoft }}>{room.type}</div>
+                        <div className="flex items-baseline gap-2 min-w-0">
+                          <span className="f-num text-sm" style={{ color: '#8A94A6', fontWeight: 600 }}>{room.num}</span>
+                          <span className="f-thai text-[13px] truncate" style={{ color: T.ink }}>{room.type}</span>
+                        </div>
                       </div>
                       <div style={{
                         width: daysCount * cellW, minWidth: daysCount * cellW, position: 'relative',
                         backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${cellW - 1}px, ${T.hair} ${cellW - 1}px, ${T.hair} ${cellW}px)`,
                       }}>
+                        {todayIdx > 0 && (
+                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: Math.min(todayIdx, daysCount) * cellW, background: 'rgba(100,116,139,0.08)' }} />
+                        )}
                         {todayIdx >= 0 && todayIdx < daysCount && (
-                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: T.brassPale, opacity: 0.35 }} />
+                          <div style={{ position: 'absolute', left: todayIdx * cellW, top: 0, bottom: 0, width: cellW, background: 'rgba(217,178,92,0.22)' }} />
                         )}
                         {roomStays.map(s => {
                           const status = s.isCancelled ? 'cancelled' : computeStatus(s.checkin, s.checkout, startDate);
@@ -495,26 +496,23 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                                 position: 'absolute', top: 5, bottom: 5,
                                 left: clipL + 3, width: (clipR - clipL) - 6,
                                 background: st.bg,
-                                borderLeft: `4px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}`,
-                                borderTop: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
-                                borderRight: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
-                                borderBottom: `1px ${s.isCancelled ? 'dashed' : 'solid'} ${st.accent}44`,
-                                borderRadius: 6, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
+                                border: s.isCancelled ? `1px dashed ${st.accent}` : 'none',
+                                borderRadius: 4, padding: '3px 7px', overflow: 'hidden', cursor: 'pointer',
                                 opacity: s.isCancelled ? 0.7 : 1,
                               }}
                             >
-                              <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: T.ink, textDecoration: s.isCancelled ? 'line-through' : 'none' }}>
+                              <div className="f-thai text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: st.fg, textDecoration: s.isCancelled ? 'line-through' : 'none' }}>
                                 {s.guest || t('cal_no_name')}
                               </div>
                               <div className="f-thai text-[10px] whitespace-nowrap overflow-hidden text-ellipsis">
                                 {s.isCancelled && (
                                   <span className="font-semibold" style={{ color: st.accent }}>🚫 {t('cal_status_cancelled')} · </span>
                                 )}
-                                <span className="font-semibold" style={{ color: channelColor(s.channel) }}>{channelLabel(s.channel)}</span>
-                                <span className="f-num" style={{ color: T.inkSoft }}> · 🌙{s.nights}</span>
+                                <span className="font-semibold" style={{ color: s.isCancelled ? channelColor(s.channel) : 'rgba(255,255,255,0.92)' }}>{channelLabel(s.channel)}</span>
+                                <span className="f-num" style={{ color: s.isCancelled ? T.inkSoft : 'rgba(255,255,255,0.8)' }}> · 🌙{s.nights}</span>
                                 {s.note && (
                                   <span
-                                    style={{ color: T.brassDeep }}
+                                    style={{ color: s.isCancelled ? T.brassDeep : '#FFE9B8' }}
                                     // Native tooltip — only worth showing when the note is long
                                     // enough that the single-line ellipsis is actually cutting
                                     // something off; short notes already fit and need no popup.
@@ -542,7 +540,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
           <div className="rounded-2xl w-full max-w-sm p-5" style={{ background: T.card, boxShadow: '0 20px 50px rgba(11,30,66,0.4)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].accent }}>
+              <span className="f-thai text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].bg, color: STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].fg }}>
                 {t(STATUS_STYLE[detail.isCancelled ? 'cancelled' : computeStatus(detail.checkin, detail.checkout, startDate)].label)}
               </span>
               <p className="f-thai font-bold text-sm" style={{ color: T.ink }}>{t('cal_room_word')} {detail.roomNum}</p>
