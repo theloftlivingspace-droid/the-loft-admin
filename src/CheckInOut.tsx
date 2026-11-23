@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, Fragment } from 'react';
 import { useLang } from './LanguageContext';
 import { GuestBadge } from './GuestBadge';
 import { type GuestFields } from './guests';
@@ -177,6 +177,15 @@ function channelStyle(ch: string): { bg: string; fg: string } {
   if (c.includes('expedia')) return { bg: T.brassPale, fg: T.brassDeep };
   return { bg: T.bone, fg: T.inkSoft };
 }
+
+// Solid status pills used by the PMS-style table (same palette as the calendar bars)
+const PMS_STATUS: Record<Stay['status'], { bg: string; label: string }> = {
+  'checked-in':         { bg: '#3F7D4A', label: 'cal_status_checked_in' },
+  'arriving-today':     { bg: '#9A6A12', label: 'cal_status_arriving_today' },
+  'arriving-soon':      { bg: '#1F7F7A', label: 'cal_status_arriving_soon' },
+  'checking-out-today': { bg: '#5B6575', label: 'cal_status_checking_out' },
+};
+const fmtDMY = (d: string) => d.split('-').reverse().join('/');
 
 function channelIcon(ch: string): string {
   const c = (ch || '').toLowerCase();
@@ -904,6 +913,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [loading, setLoading]       = useState(() => readRoomStatusCache() === null);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
+  // PMS table (md+) vs. original cards; a table row expands to the full stay card
+  const [listMode, setListMode]     = useState<'table' | 'cards'>('table');
+  const [openRow, setOpenRow]       = useState<string | null>(null);
   // Room-status grid legend filter — clicking a legend chip highlights only
   // that status's tiles (full color) and dims every other tile to a pastel
   // tint, rather than hiding rooms outright. null = no filter, all tiles at
@@ -2312,8 +2324,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
+      {/* Filter tabs — underline style like Little Hotelier's list tabs */}
+      <div className="flex items-center gap-1 mb-4" style={{ borderBottom: `1px solid ${T.hair}` }}>
         {([
           { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
           { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
@@ -2321,20 +2333,88 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setView(tab.key)}
-            className="press f-thai flex-1 px-2 py-1.5 text-xs rounded-xl font-medium"
-            style={view === tab.key ? { background: T.card, color: T.navy, boxShadow: '0 1px 4px rgba(11,30,66,0.15)' } : { color: T.inkSoft }}>
+            className="press f-thai flex-1 md:flex-none px-3 py-2 text-xs"
+            style={view === tab.key
+              ? { color: T.teal, fontWeight: 600, borderBottom: `2px solid ${T.teal}`, marginBottom: -1 }
+              : { color: T.inkSoft, fontWeight: 400, borderBottom: '2px solid transparent', marginBottom: -1 }}>
             {tab.label}
           </button>
         ))}
+        <div className="hidden md:flex ml-auto items-center gap-1 pb-1">
+          {([['table', tStatic('ตาราง', 'Table')], ['cards', tStatic('การ์ด', 'Cards')]] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setListMode(k)}
+              className="press f-thai px-2.5 py-1 rounded-md text-[11px]"
+              style={listMode === k ? { background: T.teal, color: '#fff', fontWeight: 600 } : { border: `1px solid ${T.hair}`, color: T.inkSoft, background: T.card }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Cards */}
+      {/* List */}
       {filtered.length === 0 ? (
         <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2">
-          {filtered.map(s => renderStayCard(s))}
-        </div>
+        <>
+          {listMode === 'table' && (
+            <div className="hidden md:block rounded-xl overflow-hidden" style={{ border: `1px solid ${T.hair}`, background: T.card }}>
+              <table className="w-full f-thai" style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#F1F3F7', color: T.inkSoft, fontSize: 11.5 }}>
+                    {[tStatic('สถานะ', 'Status'), tStatic('ห้อง', 'Room'), tStatic('แขก', 'Guest'), tStatic('ช่องทาง', 'Channel'),
+                      tStatic('เช็คอิน', 'Check-in'), tStatic('เช็คเอาท์', 'Check-out'), tStatic('คืน', 'Nights'), tStatic('รหัสจอง', 'Res. ID'), tStatic('โน้ต', 'Note'), ''].map((h, i) => (
+                      <th key={i} className="text-left font-semibold px-3 py-2.5 whitespace-nowrap" style={{ borderBottom: `1px solid ${T.hair}` }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(s => {
+                    const key = `${s.resId}|${s.checkin}|${s.roomNum}`;
+                    const open = openRow === key;
+                    const ps = PMS_STATUS[s.status];
+                    const cs = channelStyle(s.channel);
+                    return (
+                      <Fragment key={key}>
+                        <tr onClick={() => setOpenRow(open ? null : key)} className="cursor-pointer"
+                          style={{ borderBottom: `1px solid ${T.hair}`, background: open ? '#F7F9FB' : T.card }}>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <span className="inline-block rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: ps.bg, color: '#fff' }}>{t(ps.label)}</span>
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <span className="f-num font-semibold" style={{ color: '#8A94A6' }}>{s.roomNum}</span>
+                            <span className="ml-2" style={{ color: T.ink }}>{ROOM_LIST.find(r => r.num === s.roomNum)?.type ?? ''}</span>
+                          </td>
+                          <td className="px-3 py-2.5 font-medium" style={{ color: T.ink }}>{s.guest}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <span className="rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: cs.bg, color: cs.fg }}>{channelIcon(s.channel)} {s.channel || '—'}</span>
+                          </td>
+                          <td className="px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}>{fmtDMY(s.checkin)}</td>
+                          <td className="px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}>{fmtDMY(s.checkout)}</td>
+                          <td className="px-3 py-2.5 f-num" style={{ color: T.inkSoft }}>{s.nights}</td>
+                          <td className="px-3 py-2.5 f-num text-[12px]" style={{ color: T.inkSoft }}>{s.resId}</td>
+                          <td className="px-3 py-2.5 text-[12px]" style={{ color: T.brassDeep, maxWidth: 200 }}>
+                            <div className="truncate" title={s.note || undefined}>{s.note ? `📝 ${s.note}` : ''}</div>
+                          </td>
+                          <td className="px-3 py-2.5 text-right" style={{ color: T.inkSoft, width: 28 }}>{open ? '▾' : '▸'}</td>
+                        </tr>
+                        {open && (
+                          <tr style={{ borderBottom: `1px solid ${T.hair}` }}>
+                            <td colSpan={10} style={{ background: T.paper, padding: 12 }}>
+                              <div style={{ maxWidth: 560 }}>{renderStayCard(s)}</div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className={`grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2${listMode === 'table' ? ' md:hidden' : ''}`}>
+            {filtered.map(s => renderStayCard(s))}
+          </div>
+        </>
       )}
 
       {/* Legend */}
