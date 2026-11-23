@@ -437,13 +437,21 @@ type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'closed' | 'arr
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
 // Summary KPI row above, rather than the solid saturated blocks used before.
 const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
-  vacant:          { bg: '#D9DCE3', fg: '#5B6472' },
-  occupied:        { bg: '#C2DACA',  fg: T.sage },
-  'checkout-today':{ bg: '#E4BDC3',  fg: T.wine },
-  'closed':        { bg: '#D1C4DF',  fg: T.plum },
-  'arriving-today':{ bg: '#EEDCB2', fg: T.brassDeep },
-  'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
+  // PMS look: solid fills + white text, identical to the calendar bars and the
+  // table status pills. "vacant" stays light (nothing going on) with dark text.
+  vacant:          { bg: '#E9ECF1', fg: '#6B7589' },
+  occupied:        { bg: '#3F7D4A', fg: '#FFFFFF' },
+  'checkout-today':{ bg: '#5B6575', fg: '#FFFFFF' },
+  'closed':        { bg: '#6B4C93', fg: '#FFFFFF' },
+  'arriving-today':{ bg: '#9A6A12', fg: '#FFFFFF' },
+  'arriving-soon': { bg: '#1F7F7A', fg: '#FFFFFF' },
 };
+// Text color for a tile: white-on-solid normally; when dimmed (legend filter
+// elsewhere) the tile goes pale, so text falls back to the status color itself.
+function gridFg(cfg: { bg: string; fg: string }, dimmed: boolean): string {
+  if (!dimmed) return cfg.fg;
+  return cfg.fg === '#FFFFFF' ? cfg.bg : dimToward(cfg.fg, 0.4);
+}
 
 // Mixes a hex color toward white — used to produce the "dimmed" pastel
 // version of a tile/chip's own color when the legend filter has a different
@@ -2241,7 +2249,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           needed. Tap a card to highlight only that status in the grid
           below (full color, everything else dims to a pastel tint); tap
           the same card again to clear. */}
-      <div className="grid grid-cols-6 gap-1 mb-5">
+      <div className="grid grid-cols-6 gap-1.5 md:gap-2.5 mb-5">
         {([
           { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel'),           icon: '🛏️' },
           { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today'), icon: '🧳' },
@@ -2260,12 +2268,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           const isSelected = gridFilter === k.key;
           const isDimmed = gridFilter !== null && !isSelected;
           const bg = isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg;
-          const fg = isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg;
+          const fg = gridFg(cfg, isDimmed);
           return (
             <button key={k.key}
               onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
               className="press f-thai rounded-lg py-3 px-0.5 text-center transition-colors overflow-hidden"
-              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
+              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.ink}` : `1px solid ${isDimmed ? bg : cfg.bg}`, opacity: isDimmed ? 0.7 : 1, boxShadow: isSelected ? `0 0 0 2px ${T.teal}55` : 'none' }}>
               <div className="text-base leading-none mb-0.5">{k.icon}</div>
               <div className="f-num text-xl font-bold leading-none">{val}</div>
               <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 9.5 }}>{k.label}</div>
@@ -2287,7 +2295,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             </button>
           </div>
         )}
-        <div className="grid grid-cols-8 gap-1">
+        <div className="grid grid-cols-8 gap-1 md:gap-1.5">
           {roomGrid.map(r => {
             // If a legend filter is active and this room's *top* status
             // doesn't match it, check whether the room has a secondary
@@ -2310,14 +2318,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const cfg = ROOM_GRID_CONFIG[displayStatus];
             const isDimmed = gridFilter !== null && !matchesFilter;
             const bg = isDimmed ? dimToward(cfg.bg) : cfg.bg;
-            const fg = isDimmed ? dimToward(cfg.fg, 0.55) : cfg.fg;
+            const fg = gridFg(cfg, isDimmed);
             return (
               <button key={r.num}
                 onClick={() => goToRoomCard(displayTargetKey, r.num, displayStatus)}
                 className="press f-thai rounded-md py-1.5 px-0.5 text-center overflow-hidden transition-colors"
-                style={{ background: bg, border: `1px solid ${fg}30` }}>
+                style={{ background: bg, border: `1px solid ${isDimmed ? bg : cfg.bg}` }}>
                 <div className="f-num text-[13px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
-                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.7, fontSize: '8.5px' }}>{r.type}</div>
+                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.85, fontSize: '8.5px' }}>{r.type}</div>
               </button>
             );
           })}
