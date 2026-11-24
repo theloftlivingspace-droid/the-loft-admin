@@ -980,6 +980,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
   // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
   const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tableRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
 
   async function markCheckedIn(resId: string) {
@@ -1808,9 +1809,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     }
     setView('all');
     setHighlightKey(targetKey);
+    // Table mode: the cards are hidden, so open + scroll to the matching table row
+    const stay = stays.find(x => folderKey(x.roomNum, x.checkin, x.resId) === targetKey);
+    const rowKey = stay ? `${stay.resId}|${stay.checkin}|${stay.roomNum}` : null;
+    if (listMode === 'table' && rowKey) setOpenRow(rowKey);
     setTimeout(() => {
-      roomCardRefs.current[targetKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
+      const el = listMode === 'table' && rowKey ? tableRowRefs.current[rowKey] : roomCardRefs.current[targetKey];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
     setTimeout(() => setHighlightKey(k => (k === targetKey ? null : k)), 2200);
   }
 
@@ -2394,8 +2400,8 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
                     const cs = channelStyle(s.channel);
                     return (
                       <Fragment key={key}>
-                        <tr onClick={() => setOpenRow(open ? null : key)} className="cursor-pointer"
-                          style={{ borderBottom: `1px solid ${T.hair}`, background: open ? '#F7F9FB' : T.card }}>
+                        <tr ref={el => { tableRowRefs.current[key] = el; }} onClick={() => setOpenRow(open ? null : key)} className="cursor-pointer"
+                          style={{ borderBottom: `1px solid ${T.hair}`, background: highlightKey === folderKey(s.roomNum, s.checkin, s.resId) ? '#FFF4D6' : open ? '#F7F9FB' : T.card, transition: 'background 0.3s' }}>
                           <td className="px-2 md:px-3 py-2.5 whitespace-nowrap">
                             <span className="inline-block rounded px-1.5 md:px-2 py-0.5 text-[10.5px] md:text-[11px] font-semibold" style={{ background: ps.bg, color: '#fff' }}>{t(ps.label)}</span>
                           </td>
