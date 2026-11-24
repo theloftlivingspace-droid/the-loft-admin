@@ -11,7 +11,7 @@ import { ChevronsLeft, ChevronsRight, RefreshCw, CalendarDays } from 'lucide-rea
 const GAS_API = '/api/gas-proxy?app=checkinout';
 
 const MIN_CELL_W = 68;  // px per day column — minimum; stretches wider to fill the page on desktop
-const LABEL_W = 148; // px for the sticky room-label column (desktop)
+const LABEL_W = 92; // px for the sticky room-label column (desktop)
 const LABEL_W_MOBILE = 72; // px on phones — narrower so the calendar gets more room
 const ROW_H = 56;    // px per room row
 const VISIBLE_DAYS = 21; // columns that fit on screen at once (cell width is fitted to this)
@@ -420,7 +420,7 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
           onMouseMove={onDragMove}
           onMouseUp={endDrag}
           onMouseLeave={endDrag}
-          style={{ border: `1px solid ${T.hair}`, background: T.card, overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100dvh - 240px)', minHeight: 320, cursor: 'grab' }}
+          style={{ border: `1px solid ${T.hair}`, background: T.card, overflowX: 'auto', overflowY: 'auto', ...(isNarrow ? { maxHeight: 'calc(100dvh - 240px)' } : { height: 'calc(100dvh - 192px)' }), minHeight: 320, cursor: 'grab' }}
         >
           <div style={{ width: totalW, minWidth: totalW }}>
             {/* Header row: sticky top (relative to this grid's own vertical scroll) */}
@@ -461,11 +461,11 @@ export default function CalendarView({ viewDate, onViewDateChange }: CalendarVie
                     <div key={room.num} className="flex" style={{ height: ROW_H, borderBottom: `1px solid ${T.hair}` }}>
                       <div style={{
                         width: labelW, minWidth: labelW, position: 'sticky', left: 0, zIndex: 10, background: T.card,
-                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isNarrow ? '0 6px' : '0 10px',
+                        borderRight: `1px solid ${T.hair}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isNarrow ? '0 6px' : '0 8px',
                       }}>
-                        <div className={isNarrow ? 'flex flex-col min-w-0 leading-tight' : 'flex items-baseline gap-2 min-w-0'}>
+                        <div className="flex flex-col min-w-0 leading-tight">
                           <span className="f-num text-sm" style={{ color: '#8A94A6', fontWeight: 600 }}>{room.num}</span>
-                          <span className={isNarrow ? 'f-thai text-[11px] truncate' : 'f-thai text-[13px] truncate'} style={{ color: T.ink }}>{room.type}</span>
+                          <span className={isNarrow ? 'f-thai text-[11px] truncate' : 'f-thai text-[12px] truncate'} style={{ color: T.ink }}>{room.type}</span>
                         </div>
                       </div>
                       <div style={{
