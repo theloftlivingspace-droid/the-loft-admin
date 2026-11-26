@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, Fragment } from 'react';
 import { useLang } from './LanguageContext';
 import { GuestBadge } from './GuestBadge';
 import { type GuestFields } from './guests';
@@ -177,6 +177,15 @@ function channelStyle(ch: string): { bg: string; fg: string } {
   if (c.includes('expedia')) return { bg: T.brassPale, fg: T.brassDeep };
   return { bg: T.bone, fg: T.inkSoft };
 }
+
+// Solid status pills used by the PMS-style table (same palette as the calendar bars)
+const PMS_STATUS: Record<Stay['status'], { bg: string; label: string }> = {
+  'checked-in':         { bg: '#3F7D4A', label: 'cal_status_checked_in' },
+  'arriving-today':     { bg: '#9A6A12', label: 'cal_status_arriving_today' },
+  'arriving-soon':      { bg: '#1F7F7A', label: 'cal_status_arriving_soon' },
+  'checking-out-today': { bg: '#5B6575', label: 'cal_status_checking_out' },
+};
+const fmtDMY = (d: string) => d.split('-').reverse().join('/');
 
 function channelIcon(ch: string): string {
   const c = (ch || '').toLowerCase();
@@ -428,13 +437,21 @@ type RoomGridStatus = 'vacant' | 'occupied' | 'checkout-today' | 'closed' | 'arr
 // Tint intensity (pale bg + deep fg + fg-at-30%-opacity border) matches the
 // Summary KPI row above, rather than the solid saturated blocks used before.
 const ROOM_GRID_CONFIG: Record<RoomGridStatus, { bg: string; fg: string }> = {
-  vacant:          { bg: '#D9DCE3', fg: '#5B6472' },
-  occupied:        { bg: '#C2DACA',  fg: T.sage },
-  'checkout-today':{ bg: '#E4BDC3',  fg: T.wine },
-  'closed':        { bg: '#D1C4DF',  fg: T.plum },
-  'arriving-today':{ bg: '#EEDCB2', fg: T.brassDeep },
-  'arriving-soon': { bg: '#BAC4D6',  fg: T.navy },
+  // PMS look: solid fills + white text, identical to the calendar bars and the
+  // table status pills. "vacant" stays light (nothing going on) with dark text.
+  vacant:          { bg: '#E9ECF1', fg: '#6B7589' },
+  occupied:        { bg: '#3F7D4A', fg: '#FFFFFF' },
+  'checkout-today':{ bg: '#5B6575', fg: '#FFFFFF' },
+  'closed':        { bg: '#6B4C93', fg: '#FFFFFF' },
+  'arriving-today':{ bg: '#9A6A12', fg: '#FFFFFF' },
+  'arriving-soon': { bg: '#1F7F7A', fg: '#FFFFFF' },
 };
+// Text color for a tile: white-on-solid normally; when dimmed (legend filter
+// elsewhere) the tile goes pale, so text falls back to the status color itself.
+function gridFg(cfg: { bg: string; fg: string }, dimmed: boolean): string {
+  if (!dimmed) return cfg.fg;
+  return cfg.fg === '#FFFFFF' ? cfg.bg : dimToward(cfg.fg, 0.4);
+}
 
 // Mixes a hex color toward white — used to produce the "dimmed" pastel
 // version of a tile/chip's own color when the legend filter has a different
@@ -904,6 +921,9 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
   const [loading, setLoading]       = useState(() => readRoomStatusCache() === null);
   const [error, setError]           = useState('');
   const [view, setView]             = useState<'all' | 'checkedin' | 'arrivals' | 'checkouts'>('all');
+  // PMS table (md+) vs. original cards; a table row expands to the full stay card
+  const [listMode, setListMode]     = useState<'table' | 'cards'>('table');
+  const [openRow, setOpenRow]       = useState<string | null>(null);
   // Room-status grid legend filter — clicking a legend chip highlights only
   // that status's tiles (full color) and dims every other tile to a pastel
   // tint, rather than hiding rooms outright. null = no filter, all tiles at
@@ -960,6 +980,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
 
   // ── Room-status grid: refs to each rendered card (for scroll/highlight) ──
   const roomCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tableRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
 
   async function markCheckedIn(resId: string) {
@@ -1788,9 +1809,14 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
     }
     setView('all');
     setHighlightKey(targetKey);
+    // Table mode: the cards are hidden, so open + scroll to the matching table row
+    const stay = stays.find(x => folderKey(x.roomNum, x.checkin, x.resId) === targetKey);
+    const rowKey = stay ? `${stay.resId}|${stay.checkin}|${stay.roomNum}` : null;
+    if (listMode === 'table' && rowKey) setOpenRow(rowKey);
     setTimeout(() => {
-      roomCardRefs.current[targetKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
+      const el = listMode === 'table' && rowKey ? tableRowRefs.current[rowKey] : roomCardRefs.current[targetKey];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
     setTimeout(() => setHighlightKey(k => (k === targetKey ? null : k)), 2200);
   }
 
@@ -2229,7 +2255,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           needed. Tap a card to highlight only that status in the grid
           below (full color, everything else dims to a pastel tint); tap
           the same card again to clear. */}
-      <div className="grid grid-cols-6 gap-1 mb-5">
+      <div className="grid grid-cols-6 gap-1.5 md:gap-2.5 mb-5">
         {([
           { key: 'occupied' as RoomGridStatus,       label: t('ci_in_hotel'),           icon: '🛏️' },
           { key: 'checkout-today' as RoomGridStatus, label: t('ci_checking_out_today'), icon: '🧳' },
@@ -2248,12 +2274,12 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           const isSelected = gridFilter === k.key;
           const isDimmed = gridFilter !== null && !isSelected;
           const bg = isDimmed ? dimToward(cfg.bg, 0.8) : cfg.bg;
-          const fg = isDimmed ? dimToward(cfg.fg, 0.6) : cfg.fg;
+          const fg = gridFg(cfg, isDimmed);
           return (
             <button key={k.key}
               onClick={() => setGridFilter(cur => (cur === k.key ? null : k.key))}
               className="press f-thai rounded-lg py-3 px-0.5 text-center transition-colors overflow-hidden"
-              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.navy}` : `1px solid ${fg}30`, opacity: isDimmed ? 0.65 : 1 }}>
+              style={{ background: bg, color: fg, border: isSelected ? `2px solid ${T.ink}` : `1px solid ${isDimmed ? bg : cfg.bg}`, opacity: isDimmed ? 0.7 : 1, boxShadow: isSelected ? `0 0 0 2px ${T.teal}55` : 'none' }}>
               <div className="text-base leading-none mb-0.5">{k.icon}</div>
               <div className="f-num text-xl font-bold leading-none">{val}</div>
               <div className="leading-tight mt-0.5 truncate w-full" style={{ fontSize: 9.5 }}>{k.label}</div>
@@ -2275,7 +2301,7 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             </button>
           </div>
         )}
-        <div className="grid grid-cols-8 gap-1">
+        <div className="grid grid-cols-8 gap-1 md:gap-1.5">
           {roomGrid.map(r => {
             // If a legend filter is active and this room's *top* status
             // doesn't match it, check whether the room has a secondary
@@ -2298,22 +2324,33 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
             const cfg = ROOM_GRID_CONFIG[displayStatus];
             const isDimmed = gridFilter !== null && !matchesFilter;
             const bg = isDimmed ? dimToward(cfg.bg) : cfg.bg;
-            const fg = isDimmed ? dimToward(cfg.fg, 0.55) : cfg.fg;
+            const fg = gridFg(cfg, isDimmed);
             return (
               <button key={r.num}
                 onClick={() => goToRoomCard(displayTargetKey, r.num, displayStatus)}
                 className="press f-thai rounded-md py-1.5 px-0.5 text-center overflow-hidden transition-colors"
-                style={{ background: bg, border: `1px solid ${fg}30` }}>
+                style={{ background: bg, border: `1px solid ${isDimmed ? bg : cfg.bg}` }}>
                 <div className="f-num text-[13px] font-bold leading-none" style={{ color: fg }}>{r.num}</div>
-                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.7, fontSize: '8.5px' }}>{r.type}</div>
+                <div className="leading-none truncate w-full mt-1" style={{ color: fg, opacity: 0.85, fontSize: '8.5px' }}>{r.type}</div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1.5 mb-4 rounded-2xl p-1" style={{ background: T.bone }}>
+      {/* Table / Cards switch — mobile row (desktop has it inside the tabs row) */}
+      <div className="md:hidden flex items-center justify-end gap-1 mb-2">
+        {([['table', tStatic('ตาราง', 'Table')], ['cards', tStatic('การ์ด', 'Cards')]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setListMode(k)}
+            className="press f-thai px-3 py-1 rounded-md text-[11px]"
+            style={listMode === k ? { background: T.teal, color: '#fff', fontWeight: 600 } : { border: `1px solid ${T.hair}`, color: T.inkSoft, background: T.card }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter tabs — underline style like Little Hotelier's list tabs */}
+      <div className="flex items-center gap-1 mb-4" style={{ borderBottom: `1px solid ${T.hair}` }}>
         {([
           { key: 'all',       label: `${t('ci_filter_all')} (${stays.length})` },
           { key: 'checkedin', label: `${t('ci_filter_checkedin')} (${counts.checkedin})` },
@@ -2321,20 +2358,88 @@ const CheckInOut = forwardRef<CheckInOutHandle, CheckInOutProps>(function CheckI
           { key: 'arrivals',  label: `${t('ci_filter_arrivals')} (${counts.arrivals})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setView(tab.key)}
-            className="press f-thai flex-1 px-2 py-1.5 text-xs rounded-xl font-medium"
-            style={view === tab.key ? { background: T.card, color: T.navy, boxShadow: '0 1px 4px rgba(11,30,66,0.15)' } : { color: T.inkSoft }}>
+            className="press f-thai flex-1 md:flex-none px-3 py-2 text-xs"
+            style={view === tab.key
+              ? { color: T.teal, fontWeight: 600, borderBottom: `2px solid ${T.teal}`, marginBottom: -1 }
+              : { color: T.inkSoft, fontWeight: 400, borderBottom: '2px solid transparent', marginBottom: -1 }}>
             {tab.label}
           </button>
         ))}
+        <div className="hidden md:flex ml-auto items-center gap-1 pb-1">
+          {([['table', tStatic('ตาราง', 'Table')], ['cards', tStatic('การ์ด', 'Cards')]] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setListMode(k)}
+              className="press f-thai px-2.5 py-1 rounded-md text-[11px]"
+              style={listMode === k ? { background: T.teal, color: '#fff', fontWeight: 600 } : { border: `1px solid ${T.hair}`, color: T.inkSoft, background: T.card }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Cards */}
+      {/* List */}
       {filtered.length === 0 ? (
         <div className="f-thai text-center py-12 text-sm" style={{ color: T.inkSoft }}>{t('ci_no_data')}</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2">
-          {filtered.map(s => renderStayCard(s))}
-        </div>
+        <>
+          {listMode === 'table' && (
+            <div className="rounded-xl overflow-x-auto" style={{ border: `1px solid ${T.hair}`, background: T.card }}>
+              <table className="w-full f-thai text-[12px] md:text-[13px]" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F1F3F7', color: T.inkSoft, fontSize: 11.5 }}>
+                    {[tStatic('สถานะ', 'Status'), tStatic('ห้อง', 'Room'), tStatic('แขก', 'Guest'), tStatic('ช่องทาง', 'Channel'),
+                      tStatic('เช็คอิน', 'Check-in'), tStatic('เช็คเอาท์', 'Check-out'), tStatic('คืน', 'Nights'), tStatic('รหัสจอง', 'Res. ID'), tStatic('โน้ต', 'Note'), ''].map((h, i) => (
+                      <th key={i} className={`text-left font-semibold px-2 md:px-3 py-2.5 whitespace-nowrap${[3, 7, 8].includes(i) ? ' hidden md:table-cell' : ''}`} style={{ borderBottom: `1px solid ${T.hair}` }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(s => {
+                    const key = `${s.resId}|${s.checkin}|${s.roomNum}`;
+                    const open = openRow === key;
+                    const ps = PMS_STATUS[s.status];
+                    const cs = channelStyle(s.channel);
+                    return (
+                      <Fragment key={key}>
+                        <tr ref={el => { tableRowRefs.current[key] = el; }} onClick={() => setOpenRow(open ? null : key)} className="cursor-pointer"
+                          style={{ borderBottom: `1px solid ${T.hair}`, background: highlightKey === folderKey(s.roomNum, s.checkin, s.resId) ? '#FFF4D6' : open ? '#F7F9FB' : T.card, transition: 'background 0.3s' }}>
+                          <td className="px-2 md:px-3 py-2.5 whitespace-nowrap">
+                            <span className="inline-block rounded px-1.5 md:px-2 py-0.5 text-[10.5px] md:text-[11px] font-semibold" style={{ background: ps.bg, color: '#fff' }}>{t(ps.label)}</span>
+                          </td>
+                          <td className="px-2 md:px-3 py-2.5 whitespace-nowrap">
+                            <span className="f-num font-semibold" style={{ color: '#8A94A6' }}>{s.roomNum}</span>
+                            <span className="ml-2 hidden md:inline" style={{ color: T.ink }}>{ROOM_LIST.find(r => r.num === s.roomNum)?.type ?? ''}</span>
+                          </td>
+                          <td className="px-2 md:px-3 py-2.5 font-medium" style={{ color: T.ink, minWidth: 90 }}>{s.guest}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
+                            <span className="rounded px-2 py-0.5 text-[11px] font-semibold" style={{ background: cs.bg, color: cs.fg }}>{channelIcon(s.channel)} {s.channel || '—'}</span>
+                          </td>
+                          <td className="px-2 md:px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}><span className="md:hidden">{fmtDMY(s.checkin).slice(0, 5)}</span><span className="hidden md:inline">{fmtDMY(s.checkin)}</span></td>
+                          <td className="px-2 md:px-3 py-2.5 f-num whitespace-nowrap" style={{ color: T.ink }}><span className="md:hidden">{fmtDMY(s.checkout).slice(0, 5)}</span><span className="hidden md:inline">{fmtDMY(s.checkout)}</span></td>
+                          <td className="px-2 md:px-3 py-2.5 f-num" style={{ color: T.inkSoft }}>{s.nights}</td>
+                          <td className="px-3 py-2.5 f-num text-[12px] hidden md:table-cell" style={{ color: T.inkSoft }}>{s.resId}</td>
+                          <td className="px-3 py-2.5 text-[12px] hidden md:table-cell" style={{ color: T.brassDeep, maxWidth: 200 }}>
+                            <div className="truncate" title={s.note || undefined}>{s.note ? `📝 ${s.note}` : ''}</div>
+                          </td>
+                          <td className="px-2 md:px-3 py-2.5 text-right" style={{ color: T.inkSoft, width: 24 }}>{open ? '▾' : '▸'}</td>
+                        </tr>
+                        {open && (
+                          <tr style={{ borderBottom: `1px solid ${T.hair}` }}>
+                            <td colSpan={10} style={{ background: T.paper, padding: 8 }}>
+                              <div style={{ maxWidth: 560 }}>{renderStayCard(s)}</div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className={`grid grid-cols-1 gap-3 items-start lg:grid-cols-2 landscape:min-[640px]:grid-cols-2${listMode === 'table' ? ' hidden' : ''}`}>
+            {filtered.map(s => renderStayCard(s))}
+          </div>
+        </>
       )}
 
       {/* Legend */}
