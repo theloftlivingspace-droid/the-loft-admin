@@ -60,7 +60,9 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Bucket `repair-photos` (public) must exist with anon insert/select policies.
 async function sbUploadPhoto(uid: string, file: File): Promise<string> {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `${uid}-${Date.now()}.${ext}`;
+  // random suffix: parallel uploads can share the same Date.now() and collide
+  const rand = Math.random().toString(36).slice(2, 10);
+  const path = `${uid}-${Date.now()}-${rand}.${ext}`;
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/repair-photos/${path}`, {
     method: 'POST',
     headers: {
